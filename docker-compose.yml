@@ -1,0 +1,31 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: arapp_dev
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - "8080:8080"
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://dev:dev@postgres:5432/arapp_dev?schema=public
+    ports:
+      - "3000:3000"
+      - "5555:5555"
+    depends_on:
+      - postgres
+
+volumes:
+  db_data:
