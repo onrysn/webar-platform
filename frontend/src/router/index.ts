@@ -1,8 +1,12 @@
 ﻿import { createRouter, createWebHistory } from 'vue-router';
 import Login from '../modules/auth/Login.vue';
 import Register from '../modules/auth/Register.vue';
-import Dashboard from '../modules/dashboard/Dashboard.vue';
+import DashboardHome from '../modules/dashboard/Dashboard.vue';
 import { useAuthStore } from '../store/modules/auth';
+import MainLayout from '../layouts/MainLayout.vue';
+import Profile from '../modules/dashboard/Profile.vue';
+import Projects from '../modules/dashboard/Projects.vue';
+import Settings from '../modules/dashboard/settings.vue';
 
 const routes = [
   { path: '/', redirect: '/login' },
@@ -10,8 +14,14 @@ const routes = [
   { path: '/register', component: Register },
   {
     path: '/dashboard',
-    component: Dashboard,
+    component: MainLayout,   // MainLayout kullanılıyor
     meta: { requiresAuth: true },
+    children: [
+      { path: '', component: DashboardHome },      // /dashboard
+      { path: 'profile', component: Profile },    // /dashboard/profile
+      { path: 'projects', component: Projects },  // /dashboard/projects
+      { path: 'settings', component: Settings },  // /dashboard/settings
+    ],
   },
 ];
 
