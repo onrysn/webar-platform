@@ -27,6 +27,21 @@ export const useAuthStore = defineStore('auth', {
         throw new Error(err.response?.data?.message || 'Register failed');
       }
     },
+    async fetchMe() {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+
+      try {
+        const res = await axios.get('http://localhost:3000/auth/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        this.user = res.data;
+        this.token = token;
+      } catch (err) {
+        console.warn('Token geçersiz, çıkış yapılıyor.');
+        this.logout();
+      }
+    },
     logout() {
       this.user = null;
       this.token = '';
