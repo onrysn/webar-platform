@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useCompanyStore } from '../../store/modules/company';
+import { useCompanyStore } from '../../../store/modules/company';
 
 const router = useRouter();
 const companyStore = useCompanyStore();

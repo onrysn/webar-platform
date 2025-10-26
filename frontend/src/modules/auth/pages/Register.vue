@@ -13,8 +13,8 @@
 
 <script lang="ts">
 import { defineComponent, ref } from 'vue';
-import { useAuthStore } from '../../store/modules/auth';
-import router from '../../router';
+import { useAuthStore } from '../../../store/modules/auth';
+import router from '../../../router';
 
 export default defineComponent({
   setup() {

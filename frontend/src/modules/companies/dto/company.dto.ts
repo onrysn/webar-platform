@@ -1,7 +1,18 @@
+export interface CompanyUserDto {
+  user: {
+    id: number;
+    name: string;
+    email: string;
+  };
+  role: string;
+  createdAt: string;
+}
+
 export interface CompanyDto {
-  id?: number;      // Oluşturulurken id yok olabilir
+  id?: number;      
   name: string;
   domain: string;
-  apiKey?: string;  // sadece backend tarafından döndürülen alan
+  apiKey?: string;  
   createdAt?: string;
+  users?: CompanyUserDto[];
 }

@@ -22,8 +22,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useCompanyStore } from '../../store/modules/company';
-import CompanyCard from './components/CompanyCard.vue';
+import { useCompanyStore } from '../../../store/modules/company';
+import CompanyCard from '../components/CompanyCard.vue';
 
 const router = useRouter();
 const companyStore = useCompanyStore();

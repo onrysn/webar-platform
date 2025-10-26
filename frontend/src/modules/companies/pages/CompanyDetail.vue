@@ -10,20 +10,26 @@
       <h1 class="text-2xl font-semibold mb-2">{{ company.name }}</h1>
       <p class="text-gray-600 mb-4">Alan Adı: {{ company.domain }}</p>
 
-      <router-link
-        to="/dashboard/companies"
-        class="text-blue-600 hover:underline"
-      >
-        ← Listeye Dön
-      </router-link>
+      <nav class="flex space-x-4 mb-4">
+        <router-link :to="`/dashboard/companies/${company.id}/update`"
+          class="text-blue-600 hover:underline">Güncelle</router-link>
+        <router-link :to="`/dashboard/companies/${company.id}/manage-users`"
+          class="text-blue-600 hover:underline">Kullanıcılar</router-link>
+        <router-link :to="`/dashboard/companies/${company.id}/api-key`" class="text-blue-600 hover:underline">API
+          Key</router-link>
+      </nav>
+
+      <!-- Burada child component render edilecek -->
+      <router-view />
     </div>
   </div>
 </template>
 
+
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
-import { useCompanyStore } from '../../store/modules/company';
+import { useCompanyStore } from '../../../store/modules/company';
 
 const route = useRoute();
 const companyStore = useCompanyStore();

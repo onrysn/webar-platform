@@ -1,8 +1,10 @@
-import { Controller, Post, Body, Get, Param, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Body, Get, Param, Req, UseGuards, Put, Delete } from '@nestjs/common';
 import { CompanyService } from './company.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CreateCompanyDto } from './dto/createCompany.dto';
+import { UpdateCompanyDto } from './dto/updateCompany.dto';
+import { ManageUserDto } from './dto/manageUser.dto';
 
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth('access-token')
@@ -13,12 +15,7 @@ export class CompanyController {
 
   @Post()
   async createCompany(@Body() createCompanyDto: CreateCompanyDto, @Req() req: any) {
-    console.log('req.user:', req.user);
-    console.log('req.create:', createCompanyDto);
-    const company = await this.companyService.createCompany(createCompanyDto.name, createCompanyDto.domain);
-    // Oluşturan kullanıcıyı otomatik ekle (admin)
-    await this.companyService.addUserToCompany(req.user.userId, company.id, 'admin');
-    return company;
+    return this.companyService.createCompany(req.user.userId, createCompanyDto.name, createCompanyDto.domain);
   }
 
   @Get()
@@ -27,7 +24,32 @@ export class CompanyController {
   }
 
   @Get(':id')
-  async getCompany(@Param('id') id: string) {
-    return this.companyService.getCompanyById(Number(id));
+  async getCompany(@Param('id') id: string, @Req() req: any) {
+    return this.companyService.getCompanyById(req.user.userId, Number(id));
+  }
+
+  @Put(':id')
+  async updateCompany(@Param('id') id: string, @Body() updateDto: UpdateCompanyDto, @Req() req: any) {
+    return this.companyService.updateCompany(req.user.userId, Number(id), updateDto);
+  }
+
+  @Delete(':id')
+  async deleteCompany(@Param('id') id: string, @Req() req: any) {
+    return this.companyService.deleteCompany(req.user.userId, Number(id));
+  }
+
+  @Post(':id/users')
+  async addUser(@Param('id') id: string, @Body() dto: ManageUserDto, @Req() req: any) {
+    return this.companyService.addUserToCompany(req.user.userId, dto.userId, Number(id), dto.role);
+  }
+
+  @Delete(':id/users/:userId')
+  async removeUser(@Param('id') id: string, @Param('userId') userId: string, @Req() req: any) {
+    return this.companyService.removeUserFromCompany(req.user.userId, Number(userId), Number(id));
+  }
+
+  @Post(':id/regenerate-api-key')
+  async regenerateApiKey(@Param('id') id: string, @Req() req: any) {
+    return this.companyService.regenerateApiKey(req.user.userId, Number(id));
   }
 }

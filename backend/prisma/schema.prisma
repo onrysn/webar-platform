@@ -27,17 +27,18 @@ model Company {
   id        Int       @id @default(autoincrement())
   name      String
   domain    String
-  apiKey    String
+  apiKey    String    @unique
   createdAt DateTime  @default(now())
   users     UserCompany[]
 }
 
 model UserCompany {
-  id        Int      @id @default(autoincrement())
   userId    Int
   companyId Int
   role      String   @default("member")
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id])
   company   Company  @relation(fields: [companyId], references: [id])
+
+  @@id([userId, companyId]) // composite primary key
 }
