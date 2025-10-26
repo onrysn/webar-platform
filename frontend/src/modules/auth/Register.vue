@@ -27,7 +27,7 @@ export default defineComponent({
     const submitRegister = async () => {
       error.value = '';
       try {
-        await auth.register(name.value, email.value, password.value);
+        await auth.register({ name: name.value, email: email.value, password: password.value });
         router.push('/dashboard');
       } catch (err: any) {
         error.value = err.message;

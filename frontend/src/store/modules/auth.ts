@@ -1,5 +1,7 @@
 ﻿import { defineStore } from 'pinia';
-import axios from 'axios';
+import type { LoginDto } from '../../modules/auth/dto/login.dto';
+import type { RegisterDto } from '../../modules/auth/dto/register.dto';
+import { authService } from '../../services/authService';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
@@ -7,9 +9,9 @@ export const useAuthStore = defineStore('auth', {
     token: '' as string,
   }),
   actions: {
-    async login(email: string, password: string) {
+    async login(data: LoginDto) {
       try {
-        const res = await axios.post('http://localhost:3000/auth/login', { email, password });
+        const res = await authService.login(data);
         this.user = res.data.user;
         this.token = res.data.token;
         localStorage.setItem('token', this.token);
@@ -17,9 +19,10 @@ export const useAuthStore = defineStore('auth', {
         throw new Error(err.response?.data?.message || 'Login failed');
       }
     },
-    async register(name: string, email: string, password: string) {
+
+    async register(data: RegisterDto) {
       try {
-        const res = await axios.post('http://localhost:3000/auth/register', { name, email, password });
+        const res = await authService.register(data);
         this.user = res.data.user;
         this.token = res.data.token;
         localStorage.setItem('token', this.token);
@@ -27,14 +30,13 @@ export const useAuthStore = defineStore('auth', {
         throw new Error(err.response?.data?.message || 'Register failed');
       }
     },
+
     async fetchMe() {
       const token = localStorage.getItem('token');
       if (!token) return;
 
       try {
-        const res = await axios.get('http://localhost:3000/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const res = await authService.fetchMe();
         this.user = res.data;
         this.token = token;
       } catch (err) {
@@ -42,11 +44,13 @@ export const useAuthStore = defineStore('auth', {
         this.logout();
       }
     },
+
     logout() {
       this.user = null;
       this.token = '';
       localStorage.removeItem('token');
     },
+
     loadFromStorage() {
       const token = localStorage.getItem('token');
       if (token) this.token = token;

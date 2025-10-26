@@ -7,6 +7,9 @@ import MainLayout from '../layouts/MainLayout.vue';
 import Profile from '../modules/dashboard/Profile.vue';
 import Projects from '../modules/dashboard/Projects.vue';
 import Settings from '../modules/dashboard/settings.vue';
+import CompaniesList from '../modules/companies/CompaniesList.vue';
+import CompanyCreate from '../modules/companies/CompanyCreate.vue';
+import CompanyDetail from '../modules/companies/CompanyDetail.vue';
 
 const routes = [
   { path: '/', redirect: '/login' },
@@ -21,6 +24,9 @@ const routes = [
       { path: 'profile', component: Profile },    // /dashboard/profile
       { path: 'projects', component: Projects },  // /dashboard/projects
       { path: 'settings', component: Settings },  // /dashboard/settings
+      { path: 'companies', component: CompaniesList },      // /dashboard/companies
+      { path: 'companies/create', component: CompanyCreate }, // /dashboard/companies/create
+      { path: 'companies/:id', component: CompanyDetail },
     ],
   },
 ];

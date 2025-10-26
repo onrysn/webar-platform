@@ -25,7 +25,7 @@ export default defineComponent({
     const submit = async () => {
       error.value = '';
       try {
-        await auth.login(email.value, password.value);
+        await auth.login({ email: email.value, password: password.value });
         router.push('/dashboard');
       } catch (err: any) {
         error.value = err.message;
