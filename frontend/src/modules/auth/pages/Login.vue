@@ -18,8 +18,8 @@ import router from '../../../router';
 export default defineComponent({
   setup() {
     const auth = useAuthStore();
-    const email = ref('');
-    const password = ref('');
+    const email = ref('onur@gmail.com');
+    const password = ref('217070');
     const error = ref('');
 
     const submit = async () => {
