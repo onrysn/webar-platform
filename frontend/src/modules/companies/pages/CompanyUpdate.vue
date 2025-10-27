@@ -15,10 +15,12 @@
 
 <script setup lang="ts">
 import { reactive, onMounted } from 'vue';
+import { useToast } from 'vue-toastification';
 import { useRoute, useRouter } from 'vue-router';
 import type { CompanyDto } from '../dto/company.dto';
 import { companyService } from '../../../services/companyService';
 
+const toast = useToast();
 const route = useRoute();
 const router = useRouter();
 const companyId = Number(route.params.id);
@@ -35,7 +37,7 @@ async function loadCompany() {
 
 async function updateCompany() {
   await companyService.updateCompany(companyId, form);
-  alert('Şirket güncellendi!');
+  toast.success('Şirket güncellendi!')
   router.push('/companies');
 }
 

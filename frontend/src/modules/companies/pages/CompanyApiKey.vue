@@ -9,10 +9,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { useToast } from 'vue-toastification';
 import type { CompanyDto } from '../dto/company.dto';
 import { companyService } from '../../../services/companyService';
 
 const route = useRoute();
+const toast = useToast();
 const companyId = Number(route.params.id);
 const company = ref<CompanyDto>({ id: 0, name: '', domain: '', apiKey: '', users: [] });
 
@@ -23,7 +25,7 @@ async function loadCompany() {
 async function regenerateKey() {
   const res = await companyService.regenerateApiKey(companyId);
   company.value.apiKey = res.apiKey;
-  alert('API Key yenilendi!');
+  toast.success('API Key başarıyla yenilendi!');
 }
 
 onMounted(loadCompany);

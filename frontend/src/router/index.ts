@@ -35,15 +35,15 @@ const routes = [
       { path: 'settings', component: Settings },  // /dashboard/settings
 
       // Companies
-      { path: 'companies', component: CompaniesList },           // /dashboard/companies
-      { path: 'companies/create', component: CompanyCreate },    // /dashboard/companies/create
+      { path: 'companies', component: CompaniesList ,meta: { adminOnly: true }},           // /dashboard/companies
+      { path: 'companies/create', component: CompanyCreate ,meta: { adminOnly: true }},    // /dashboard/companies/create
       {
         path: 'companies/:id',
         component: CompanyDetail,                               // Şirket detay
         children: [
-          { path: 'update', component: CompanyUpdate },         // /dashboard/companies/:id/update
-          { path: 'manage-users', component: CompanyManageUsers }, // /dashboard/companies/:id/manage-users
-          { path: 'api-key', component: CompanyApiKey },        // /dashboard/companies/:id/api-key
+          { path: 'update', component: CompanyUpdate ,meta: { adminOnly: true }},         // /dashboard/companies/:id/update
+          { path: 'manage-users', component: CompanyManageUsers ,meta: { adminOnly: true }}, // /dashboard/companies/:id/manage-users
+          { path: 'api-key', component: CompanyApiKey ,meta: { adminOnly: true }},        // /dashboard/companies/:id/api-key
         ],
       },
     ],
@@ -67,6 +67,11 @@ router.beforeEach(async (to) => {
 
   if (to.meta.requiresAuth && !auth.token) {
     return '/login';
+  }
+
+    // Admin-only sayfa kontrolü
+  if (to.meta.adminOnly && auth.user?.role !== 'admin') {
+    return '/dashboard';
   }
 
   if ((to.path === '/login' || to.path === '/register') && auth.token) {

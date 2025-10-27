@@ -4,7 +4,7 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class CompanyService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService) { }
 
   /** Şirket oluşturma */
   async createCompany(userId: number, name: string, domain: string) {
@@ -21,12 +21,18 @@ export class CompanyService {
 
   /** Kullanıcının şirkete ait yetkisini kontrol et */
   private async checkUserRole(userId: number, companyId: number, allowedRoles: string[]) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (user?.role === 'admin') return 'admin';
+
     const userCompany = await this.prisma.userCompany.findUnique({
       where: { userId_companyId: { userId, companyId } },
     });
-    if (!userCompany) throw new ForbiddenException('Access denied: Not a member of this company');
+
+    if (!userCompany)
+      throw new ForbiddenException('Access denied: Not a member of this company');
     if (!allowedRoles.includes(userCompany.role))
       throw new ForbiddenException(`Access denied: Requires role ${allowedRoles.join(', ')}`);
+
     return userCompany.role;
   }
 

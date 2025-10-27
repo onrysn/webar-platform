@@ -37,9 +37,11 @@
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useToast } from 'vue-toastification';
 import { useRouter } from 'vue-router';
 import { useCompanyStore } from '../../../store/modules/company';
 
+const toast = useToast();
 const router = useRouter();
 const companyStore = useCompanyStore();
 
@@ -52,7 +54,7 @@ const handleSubmit = async () => {
     router.push('/dashboard/companies');
   } catch (err) {
     console.error(err);
-    alert('Şirket oluşturulamadı');
+    toast.error('Şirket oluşturulamadı');
   }
 };
 </script>

@@ -39,11 +39,18 @@ const loading = ref(true);
 const company = ref<any>(null);
 
 const fetchCompany = async () => {
-  loading.value = true;
-  const id = Number(route.params.id);
-  company.value = await companyStore.fetchCompanyById(id);
-  loading.value = false;
+  try {
+    loading.value = true;
+    const id = Number(route.params.id);
+    company.value = await companyStore.fetchCompanyById(id);
+  } catch (err) {
+    console.error('Şirket yüklenemedi:', err);
+    company.value = null;
+  } finally {
+    loading.value = false;
+  }
 };
+
 
 // Route param değişirse şirket bilgilerini tekrar çek
 watch(() => route.params.id, () => {

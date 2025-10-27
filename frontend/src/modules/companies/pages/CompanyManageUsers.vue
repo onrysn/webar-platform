@@ -28,10 +28,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
+import { useToast } from 'vue-toastification';
 import type { CompanyDto } from '../dto/company.dto';
 import { companyService } from '../../../services/companyService';
 
 const route = useRoute();
+const toast = useToast();
 const companyId = Number(route.params.id);
 
 const company = ref<CompanyDto>({ id: 0, name: '', domain: '', apiKey: '', users: [] });
@@ -43,15 +45,28 @@ async function loadCompany() {
 }
 
 async function addUser() {
-  if (!newUserId.value) return;
-  await companyService.addUserToCompany(companyId, { userId: newUserId.value, role: newUserRole.value });
-  await loadCompany();
-  newUserId.value = null;
+  try {
+    if (!newUserId.value) return;
+    await companyService.addUserToCompany(companyId, { userId: newUserId.value, role: newUserRole.value });
+    await loadCompany();
+    newUserId.value = null;
+    toast.success('Kullanıcı Başarıyla Eklendi');
+  } catch (err) {
+    console.error(err);
+    toast.error('Kullanıcı Eklenemedi');
+  }
 }
 
 async function removeUser(userId: number) {
-  await companyService.removeUserFromCompany(companyId, userId);
-  await loadCompany();
+  try {
+    await companyService.removeUserFromCompany(companyId, userId);
+    await loadCompany();
+    toast.success('Kullanıcı Başarıyla Çıkarıldı');
+  } catch (err) {
+    console.error(err);
+    toast.error('Kullanıcı Çıkarılamadı');
+  }
+
 }
 
 onMounted(loadCompany);

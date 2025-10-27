@@ -5,7 +5,7 @@ import { authService } from '../../services/authService';
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    user: null as null | { id: number; name: string; email: string },
+    user: null as null | { id: number; name: string; email: string; role?: string },
     token: '' as string,
   }),
   actions: {
