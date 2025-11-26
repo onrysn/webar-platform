@@ -14,14 +14,16 @@ datasource db {
 }
 
 model User {
-  id           Int           @id @default(autoincrement())
-  name         String
-  email        String        @unique
-  passwordHash String
-  role         String        @default("member")
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
+  id            Int           @id @default(autoincrement())
+  name          String
+  email         String        @unique
+  passwordHash  String
+  role          String        @default("member")
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
   userCompanies UserCompany[]
+  models        ARModel[]    
 }
 
 model Company {
@@ -30,7 +32,10 @@ model Company {
   domain    String
   apiKey    String    @unique
   createdAt DateTime  @default(now())
+
   users     UserCompany[]
+  arModels  ARModel[]   
+  scenes    ARScene[]   
 }
 
 model UserCompany {
@@ -38,8 +43,44 @@ model UserCompany {
   companyId Int
   role      String   @default("member")
   createdAt DateTime @default(now())
+
   user      User     @relation(fields: [userId], references: [id])
   company   Company  @relation(fields: [companyId], references: [id])
 
-  @@id([userId, companyId]) // composite primary key
+  @@id([userId, companyId])
+}
+
+model ARModel {
+  id          Int        @id @default(autoincrement())
+  fileName    String
+  fileType    String
+  filePath    String
+  fileSize    Int?
+  fileHash    String?
+  companyId   Int
+  uploadedBy  Int
+  createdAt   DateTime   @default(now())
+
+  iv          String     // 16 byte hex
+  authTag     String     // 16 byte hex
+
+  company     Company    @relation(fields: [companyId], references: [id])
+  user        User       @relation(fields: [uploadedBy], references: [id])
+  scenes      ARScene[]
+}
+
+model ARScene {
+  id        Int      @id @default(autoincrement())
+  name      String
+  modelId   Int
+  companyId Int
+
+  position  Json     @default("{}")
+  rotation  Json     @default("{}")
+  scale     Json     @default("{}")
+
+  createdAt DateTime @default(now())
+
+  model     ARModel  @relation(fields: [modelId], references: [id])
+  company   Company  @relation(fields: [companyId], references: [id])
 }
