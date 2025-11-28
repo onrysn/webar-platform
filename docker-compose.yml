@@ -29,6 +29,9 @@ services:
       - "5555:5555"
     depends_on:
       - postgres
+    volumes:
+      - ./backend:/app                  # Kodlar senin bilgisayarından okunur
+      - /app/node_modules               # node_modules container içinde kalır
 
   frontend:
     build: ./frontend
@@ -38,6 +41,9 @@ services:
       - "5173:5173"  # Vite dev server
     depends_on:
       - backend
+    volumes:
+      - ./frontend:/app                 # Kodlar host → container
+      - /app/node_modules               # node_modules container içinde
 
 volumes:
   db_data:

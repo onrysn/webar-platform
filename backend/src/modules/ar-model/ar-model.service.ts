@@ -48,7 +48,7 @@ export class ARModelService {
         return path.basename(fileName, path.extname(fileName));
     }
 
-    async uploadModel(file: MulterFile, companyId: number, uploadedBy: number) {
+    async uploadModel(file: MulterFile, companyId: number, uploadedBy: number, thumbnailBase64?: string | null) {
         // 1️⃣ Dosyayı şifrele
         const { encrypted, iv, authTag } = this.encrypt(file.buffer);
 
@@ -68,6 +68,26 @@ export class ARModelService {
         // 5️⃣ Dosya hash (bütünlük kontrolü için plaintext üzerinden)
         const fileHash = crypto.createHash('sha256').update(file.buffer).digest('hex');
 
+        let thumbnailPath: string | null = null;
+
+        // 6️⃣ Thumbnail kaydet (opsiyonel)
+        if (thumbnailBase64) {
+            const thumbDir = path.resolve('./uploads/thumbnails');
+            if (!fs.existsSync(thumbDir)) {
+                fs.mkdirSync(thumbDir, { recursive: true });
+            }
+
+            const thumbFileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}.png`;
+            thumbnailPath = path.join(thumbDir, thumbFileName);
+
+            // Base64 → buffer
+            const base64Data = thumbnailBase64.replace(/^data:image\/png;base64,/, '');
+            const buffer = Buffer.from(base64Data, 'base64');
+
+            await fs.promises.writeFile(thumbnailPath, buffer);
+        }
+
+
         // 6️⃣ DB kaydı oluştur
         return this.prisma.aRModel.create({
             data: {
@@ -80,6 +100,7 @@ export class ARModelService {
                 uploadedBy,
                 iv: iv.toString('hex'),
                 authTag: authTag.toString('hex'),
+                thumbnailPath,
             },
         });
     }

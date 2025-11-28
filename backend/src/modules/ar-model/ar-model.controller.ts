@@ -26,6 +26,7 @@ export class ARModelController {
             properties: {
                 file: { type: 'string', format: 'binary' },
                 companyId: { type: 'number' },
+                thumbnail: { type: 'string' },
             },
             required: ['file', 'companyId'],
         },
@@ -33,10 +34,11 @@ export class ARModelController {
     async uploadModel(
         @UploadedFile() file: MulterFile,
         @Body('companyId') companyId: number,
+        @Body('thumbnail') thumbnailBase64: string | null,
         @Req() req: any
     ) {
         const userId = req.user.userId;
-        return this.arModelService.uploadModel(file, +companyId, userId);
+        return this.arModelService.uploadModel(file, +companyId, userId, thumbnailBase64);
     }
 
 
@@ -86,6 +88,7 @@ export class ARModelController {
                 companyId: true,
                 fileSize: true,
                 createdAt: true,
+                thumbnailPath: true,
             },
         });
 
