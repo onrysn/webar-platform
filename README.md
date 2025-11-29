@@ -13,6 +13,9 @@ docker exec -it webar-platform-backend-1 sh
 # 4️⃣ Prisma migrate çalıştır (tabloları oluştur)
 npx prisma migrate dev --name init
 
+# 4️⃣4️⃣ Prisma seed çalıştır
+npx ts-node prisma/seed.ts
+
 # 5️⃣ (Opsiyonel) Prisma Studio ile veritabanını gör
 npx prisma studio
 
