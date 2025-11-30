@@ -11,7 +11,7 @@
         <router-link to="/dashboard/settings" class="hover:underline">Settings</router-link>
 
         <!-- Companies Menü -->
-        <div class="mt-4">
+        <div v-if="isAdmin" class="mt-4">
           <div class="font-semibold mb-1">Companies</div>
           <router-link to="/dashboard/companies" class="block hover:underline ml-2">List</router-link>
           <router-link to="/dashboard/companies/create" class="block hover:underline ml-2">Create</router-link>
@@ -29,6 +29,13 @@
               API Key
             </router-link>
           </div>
+        </div>
+
+        <!-- AR Models Menü (Örnek) -->
+        <div v-if="isAdmin" class="mt-4">
+          <div class="font-semibold mb-1">AR Models</div>
+          <router-link to="/dashboard/ar-model" class="block hover:underline ml-2">List</router-link>
+          <router-link to="/dashboard/ar-model/upload" class="block hover:underline ml-2">Upload</router-link>
         </div>
       </nav>
 
@@ -63,17 +70,15 @@ export default defineComponent({
       router.push('/login');
     };
 
-    // URL’den aktif companyId’yi alıyoruz
     const activeCompanyId = computed(() => {
       const match = route.path.match(/\/dashboard\/companies\/(\d+)/);
       return match ? match[1] : null;
     });
 
-    return { logout, activeCompanyId };
+    // Admin-only kontrolü
+    const isAdmin = computed(() => auth.user?.role === 'admin');
+
+    return { logout, activeCompanyId, isAdmin };
   },
 });
 </script>
-
-<style scoped>
-/* İsteğe göre hover ve aktif state ekleyebilirsin */
-</style>

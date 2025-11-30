@@ -19,6 +19,9 @@ import CompanyApiKey from '../modules/companies/pages/CompanyApiKey.vue';
 // Auth sayfaları
 import Login from '../modules/auth/pages/Login.vue';
 import Register from '../modules/auth/pages/Register.vue';
+import ModelList from '../modules/ar-model/pages/ModelList.vue';
+import UploadModel from '../modules/ar-model/pages/UploadModel.vue';
+import ModelDetail from '../modules/ar-model/pages/ModelDetail.vue';
 
 const routes = [
   { path: '/', redirect: '/login' },
@@ -35,17 +38,22 @@ const routes = [
       { path: 'settings', component: Settings },  // /dashboard/settings
 
       // Companies
-      { path: 'companies', component: CompaniesList ,meta: { adminOnly: true }},           // /dashboard/companies
-      { path: 'companies/create', component: CompanyCreate ,meta: { adminOnly: true }},    // /dashboard/companies/create
+      { path: 'companies', component: CompaniesList, meta: { adminOnly: true } },           // /dashboard/companies
+      { path: 'companies/create', component: CompanyCreate, meta: { adminOnly: true } },    // /dashboard/companies/create
       {
         path: 'companies/:id',
         component: CompanyDetail,                               // Şirket detay
         children: [
-          { path: 'update', component: CompanyUpdate ,meta: { adminOnly: true }},         // /dashboard/companies/:id/update
-          { path: 'manage-users', component: CompanyManageUsers ,meta: { adminOnly: true }}, // /dashboard/companies/:id/manage-users
-          { path: 'api-key', component: CompanyApiKey ,meta: { adminOnly: true }},        // /dashboard/companies/:id/api-key
+          { path: 'update', component: CompanyUpdate, meta: { adminOnly: true } },         // /dashboard/companies/:id/update
+          { path: 'manage-users', component: CompanyManageUsers, meta: { adminOnly: true } }, // /dashboard/companies/:id/manage-users
+          { path: 'api-key', component: CompanyApiKey, meta: { adminOnly: true } },        // /dashboard/companies/:id/api-key
         ],
       },
+
+      { path: 'ar-model', name: 'ModelList', component: ModelList },
+      { path: 'ar-model/upload', name: 'UploadModel', component: UploadModel, meta: { adminOnly: true }  },
+      { path: 'ar-model/:id', name: 'ModelDetail', component: ModelDetail },
+
     ],
   },
 ];
@@ -69,7 +77,7 @@ router.beforeEach(async (to) => {
     return '/login';
   }
 
-    // Admin-only sayfa kontrolü
+  // Admin-only sayfa kontrolü
   if (to.meta.adminOnly && auth.user?.role !== 'admin') {
     return '/dashboard';
   }

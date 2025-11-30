@@ -1,8 +1,13 @@
 import http from "./httpService";
+import type { AxiosRequestConfig, AxiosResponse } from "axios";
 
 export const apiService = {
-  get: (url: string, params?: any) => http.get(url, { params }),
-  post: (url: string, data?: any) => http.post(url, data),
-  put: (url: string, data?: any) => http.put(url, data),
-  delete: (url: string) => http.delete(url),
+  get: <T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
+    http.get<T>(url, config),
+  post: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
+    http.post<T>(url, data, config),
+  put: <T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
+    http.put<T>(url, data, config),
+  delete: <T = any>(url: string, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> =>
+    http.delete<T>(url, config),
 };
