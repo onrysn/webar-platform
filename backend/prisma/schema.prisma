@@ -5,7 +5,10 @@
 // Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
+  // "native": Senin Windows bilgisayarında çalışması için
+  // "debian-openssl-3.0.x": Yeni Docker imajı (Bookworm) için
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
 }
 
 datasource db {

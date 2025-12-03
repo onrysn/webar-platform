@@ -1,10 +1,11 @@
 // ar-model.service.ts
-import { Injectable } from '@nestjs/common';
+import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { File as MulterFile } from 'multer';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
+import { spawn } from 'child_process';
 
 @Injectable()
 export class ARModelService {
@@ -102,6 +103,68 @@ export class ARModelService {
                 authTag: authTag.toString('hex'),
                 thumbnailPath,
             },
+        });
+    }
+
+    async convertForTest(file: MulterFile): Promise<string> {
+        let glbPath = file.path;
+
+        // --- DÜZELTME BAŞLANGICI ---
+        // Eğer Multer MemoryStorage kullanıyorsa 'path' undefined gelir.
+        // Bu durumda buffer'ı diske geçici olarak yazmalıyız.
+        if (!glbPath) {
+            if (!file.buffer) {
+                throw new InternalServerErrorException('File uploaded but neither path nor buffer found.');
+            }
+
+            // Geçici bir dosya yolu oluştur (uploads/temp klasörü altına)
+            const tempDir = path.join(process.cwd(), 'uploads', 'temp');
+            if (!fs.existsSync(tempDir)) {
+                fs.mkdirSync(tempDir, { recursive: true });
+            }
+
+            // Dosya ismini güvenli hale getir
+            const safeName = (file.originalname || 'temp_model.glb').replace(/[^a-zA-Z0-9.]/g, '_');
+            glbPath = path.join(tempDir, `${Date.now()}-${safeName}`);
+
+            // Buffer'ı diske yaz
+            fs.writeFileSync(glbPath, file.buffer);
+        }
+        // --- DÜZELTME BİTİŞİ ---
+
+        const outputDir = path.dirname(glbPath);
+        // Dosya uzantısını (.glb) silip yerine .usdz ekle
+        const fileName = path.basename(glbPath, path.extname(glbPath));
+        const usdzOutputName = `${fileName}.usdz`;
+        const usdzOutputPath = path.join(outputDir, usdzOutputName);
+
+        // Docker içindeki script yolu
+        const scriptPath = path.join(process.cwd(), 'scripts', 'convert.py');
+
+        return new Promise((resolve, reject) => {
+            const blender = spawn('blender', [
+                '-b',
+                '-P', scriptPath,
+                '--',
+                glbPath,
+                usdzOutputPath,
+            ]);
+
+            let errorLog = '';
+
+            blender.stderr.on('data', (data) => {
+                errorLog += data.toString();
+            });
+
+            blender.on('close', (code) => {
+                // İşlem bittiyse ve dosya varsa
+                if (code === 0 && fs.existsSync(usdzOutputPath)) {
+                    resolve(usdzOutputPath);
+                } else {
+                    console.error(`Blender Error Log: ${errorLog}`);
+                    reject(new InternalServerErrorException(`Conversion failed with code ${code}. Log: ${errorLog}`));
+                }
+            });
         });
     }
 }

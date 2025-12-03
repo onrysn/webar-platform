@@ -95,4 +95,36 @@ export class ARModelController {
         return models;
     }
 
+    @Post('test-convert')
+    @UseInterceptors(FileInterceptor('file', modelUploadConfig)) // Mevcut config'i kullanıyoruz
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                file: { type: 'string', format: 'binary' },
+            },
+        },
+    })
+    async testConversion(@UploadedFile() file: MulterFile, @Res() res: Response) {
+        if (!file) return res.status(400).send('File is required');
+        
+        try {
+            // 1. Service'deki test metodunu çağır
+            const usdzPath = await this.arModelService.convertForTest(file);
+
+            // 2. Oluşan dosyayı istemciye indir
+            res.download(usdzPath, (err) => {
+                if (err) {
+                    console.error('Download error:', err);
+                }
+                // (Opsiyonel) İndirme bitince temizlik yap
+                // fs.unlinkSync(usdzPath); 
+                // fs.unlinkSync(file.path);
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message });
+        }
+    }
+
 }
