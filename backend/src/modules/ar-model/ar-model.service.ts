@@ -109,60 +109,183 @@ export class ARModelService {
     async convertForTest(file: MulterFile): Promise<string> {
         let glbPath = file.path;
 
-        // --- DÜZELTME BAŞLANGICI ---
-        // Eğer Multer MemoryStorage kullanıyorsa 'path' undefined gelir.
-        // Bu durumda buffer'ı diske geçici olarak yazmalıyız.
+        // --- 1. DOSYA ADI VE UZANTI KONTROLÜ ---
+        // Dosyanın orijinal uzantısını alıyoruz (.glb)
+        const originalExt = path.extname(file.originalname).toLowerCase();
+
+        // A) DiskStorage durumunda:
+        // Multer dosyayı uzantısız kaydettiyse (örn: "temp/1234abc"), sonuna .glb ekleyelim.
+        if (glbPath) {
+            if (!glbPath.toLowerCase().endsWith(originalExt)) {
+                const newPath = glbPath + originalExt;
+                try {
+                    fs.renameSync(glbPath, newPath);
+                    glbPath = newPath;
+                } catch (err) {
+                    console.error('Dosya yeniden adlandırılamadı:', err);
+                }
+            }
+        }
+
+        // B) MemoryStorage (Buffer) durumunda veya yol yoksa:
         if (!glbPath) {
             if (!file.buffer) {
                 throw new InternalServerErrorException('File uploaded but neither path nor buffer found.');
             }
 
-            // Geçici bir dosya yolu oluştur (uploads/temp klasörü altına)
             const tempDir = path.join(process.cwd(), 'uploads', 'temp');
             if (!fs.existsSync(tempDir)) {
                 fs.mkdirSync(tempDir, { recursive: true });
             }
 
-            // Dosya ismini güvenli hale getir
-            const safeName = (file.originalname || 'temp_model.glb').replace(/[^a-zA-Z0-9.]/g, '_');
-            glbPath = path.join(tempDir, `${Date.now()}-${safeName}`);
+            // Dosya ismini güvenli hale getir ve mutlaka UZANTIYI ekle
+            const safeName = (file.originalname || 'temp_model')
+                .replace(/[^a-zA-Z0-9.]/g, '_')
+                .replace(originalExt, ''); // Uzantı çiftlenmesin diye siliyoruz
 
-            // Buffer'ı diske yaz
+            // Timestamp + Ad + Uzantı
+            glbPath = path.join(tempDir, `${Date.now()}-${safeName}${originalExt}`);
+
             fs.writeFileSync(glbPath, file.buffer);
         }
-        // --- DÜZELTME BİTİŞİ ---
+        // -----------------------------------------------------
 
         const outputDir = path.dirname(glbPath);
-        // Dosya uzantısını (.glb) silip yerine .usdz ekle
         const fileName = path.basename(glbPath, path.extname(glbPath));
         const usdzOutputName = `${fileName}.usdz`;
         const usdzOutputPath = path.join(outputDir, usdzOutputName);
 
-        // Docker içindeki script yolu
-        const scriptPath = path.join(process.cwd(), 'scripts', 'convert.py');
+        const scriptPath = path.join(process.cwd(), 'scripts', 'convert_glb_usdz.py');
 
         return new Promise((resolve, reject) => {
             const blender = spawn('blender', [
-                '-b',
+                '-b',           // Background (Arayüzsüz)
+                '-noaudio',     // <--- SES HATASINI ÇÖZEN KOMUT
                 '-P', scriptPath,
                 '--',
                 glbPath,
                 usdzOutputPath,
             ]);
 
-            let errorLog = '';
+            let combinedLog = '';
+
+            // Hem stdout hem stderr dinleniyor
+            blender.stdout.on('data', (data) => {
+                combinedLog += data.toString();
+            });
 
             blender.stderr.on('data', (data) => {
-                errorLog += data.toString();
+                combinedLog += data.toString();
             });
 
             blender.on('close', (code) => {
-                // İşlem bittiyse ve dosya varsa
+                // İşlem bitti ve dosya oluştuysa başarılı
                 if (code === 0 && fs.existsSync(usdzOutputPath)) {
                     resolve(usdzOutputPath);
                 } else {
-                    console.error(`Blender Error Log: ${errorLog}`);
-                    reject(new InternalServerErrorException(`Conversion failed with code ${code}. Log: ${errorLog}`));
+                    console.error(`Blender USDZ Conversion Failed (Code: ${code})`);
+                    console.error(`Full Log:\n${combinedLog}`);
+
+                    reject(new InternalServerErrorException(
+                        `Conversion failed with code ${code}. Check server logs for details.`
+                    ));
+                }
+            });
+        });
+    }
+
+    async convertCadToGlb(file: MulterFile): Promise<string> {
+        let inputPath = file.path;
+
+        // Dosyanın orijinal uzantısını alıyoruz (Örn: .fbx, .obj)
+        // Blender scripti bu uzantıya bakarak import yöntemini seçiyor.
+        const originalExt = path.extname(file.originalname).toLowerCase();
+
+        // --- 1. SENARYO: Dosya DiskStorage ile kaydedildiyse ---
+        // Multer bazen dosyaları uzantısız kaydeder (örn: "temp/1234abc").
+        // Eğer dosya yolunda uzantı yoksa, yeniden adlandırıp uzantıyı ekliyoruz.
+        if (inputPath) {
+            if (!inputPath.toLowerCase().endsWith(originalExt)) {
+                const newPath = inputPath + originalExt;
+                try {
+                    fs.renameSync(inputPath, newPath);
+                    inputPath = newPath; // Artık script'e bu yeni yolu göndereceğiz
+                } catch (err) {
+                    console.error('Dosya yeniden adlandırılamadı:', err);
+                    // Rename başarısız olsa bile devam edelim, belki şans eseri çalışır
+                }
+            }
+        }
+
+        // --- 2. SENARYO: Dosya MemoryStorage (Buffer) ile geldiyse ---
+        // inputPath henüz yoksa, buffer'ı diske yazmamız gerekiyor.
+        if (!inputPath) {
+            if (!file.buffer) {
+                throw new InternalServerErrorException('File uploaded but neither path nor buffer found.');
+            }
+
+            const tempDir = path.join(process.cwd(), 'uploads', 'temp');
+            if (!fs.existsSync(tempDir)) {
+                fs.mkdirSync(tempDir, { recursive: true });
+            }
+
+            // Dosya ismini güvenli hale getir ve mutlaka UZANTIYI ekle
+            const safeName = (file.originalname || 'temp_cad_model')
+                .replace(/[^a-zA-Z0-9.]/g, '_')
+                .replace(originalExt, ''); // Uzantıyı çiftlememek için siliyoruz, aşağıda ekleyeceğiz
+
+            // Dosya yolunu oluştururken uzantıyı (originalExt) eklemeyi unutmuyoruz
+            inputPath = path.join(tempDir, `${Date.now()}-${safeName}${originalExt}`);
+
+            fs.writeFileSync(inputPath, file.buffer);
+        }
+
+        // --- CONVERT İŞLEMİ HAZIRLIK ---
+
+        const outputDir = path.dirname(inputPath);
+        // Dosya adını alıp uzantısını değiştiriyoruz
+        const fileName = path.basename(inputPath, path.extname(inputPath));
+        const glbOutputName = `${fileName}.glb`;
+        const glbOutputPath = path.join(outputDir, glbOutputName);
+
+        // Python scriptimizin yolu
+        const scriptPath = path.join(process.cwd(), 'scripts', 'convert_cad_to_glb.py');
+
+        // --- BLENDER PROCESS ---
+        return new Promise((resolve, reject) => {
+            const blender = spawn('blender', [
+                '-b',           // Background mod (arayüzsüz)
+                '-noaudio',     // Ses sistemini kapat (Docker/Linux hatalarını önler)
+                '-P', scriptPath, // Python scriptini çalıştır
+                '--',           // Script argümanları başlıyor
+                inputPath,      // Girdi dosyası
+                glbOutputPath,  // Çıktı dosyası
+            ]);
+
+            let combinedLog = '';
+
+            // Hem normal çıktıları (stdout) hem de hataları (stderr) yakalıyoruz
+            // Çünkü Blender bazen hataları normal çıktı gibi basabiliyor.
+            blender.stdout.on('data', (data) => {
+                combinedLog += data.toString();
+            });
+
+            blender.stderr.on('data', (data) => {
+                combinedLog += data.toString();
+            });
+
+            blender.on('close', (code) => {
+                // İşlem bitti ve dosya başarıyla oluştu mu?
+                if (code === 0 && fs.existsSync(glbOutputPath)) {
+                    resolve(glbOutputPath);
+                } else {
+                    // Hata durumunda konsola detaylı log basıyoruz
+                    console.error(`Blender Process Failed (Code: ${code})`);
+                    console.error(`Full Log:\n${combinedLog}`);
+
+                    reject(new InternalServerErrorException(
+                        `CAD conversion failed with code ${code}. Check server logs for details.`
+                    ));
                 }
             });
         });

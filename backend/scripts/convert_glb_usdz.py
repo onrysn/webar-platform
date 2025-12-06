@@ -59,7 +59,7 @@ if __name__ == "__main__":
         argv = argv[argv.index("--") + 1:]
     
     if len(argv) < 2:
-        print("Usage: blender -b -P convert.py -- <input.glb> <output.usdz>")
+        print("Usage: blender -b -P convert_glb_usdz.py -- <input.glb> <output.usdz>")
         sys.exit(1)
 
     input_file = argv[0]

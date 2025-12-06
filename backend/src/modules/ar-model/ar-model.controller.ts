@@ -126,5 +126,42 @@ export class ARModelController {
             return res.status(500).json({ error: error.message });
         }
     }
+    
+    @Post('convert-cad-to-glb')
+    @UseInterceptors(FileInterceptor('file', modelUploadConfig)) // Config aynı kalabilir veya genişletilebilir
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                file: { type: 'string', format: 'binary' },
+            },
+        },
+    })
+    async convertCadToGlbEndpoint(@UploadedFile() file: MulterFile, @Res() res: Response) {
+        if (!file) return res.status(400).send('File is required');
+
+        // İzin verilen format kontrolü (Opsiyonel ama önerilir)
+        const allowedExts = ['.fbx', '.obj', '.dxf', '.dae'];
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (!allowedExts.includes(ext)) {
+             return res.status(400).send(`Unsupported file type. Allowed: ${allowedExts.join(', ')}`);
+        }
+
+        try {
+            // 1. Service metodunu çağır (CAD -> GLB)
+            const glbPath = await this.arModelService.convertCadToGlb(file);
+
+            // 2. Oluşan GLB dosyasını indir
+            res.download(glbPath, (err) => {
+                if (err) {
+                    console.error('Download error:', err);
+                }
+                // Temizlik işlemleri buraya eklenebilir
+            });
+        } catch (error) {
+            return res.status(500).json({ error: error.message });
+        }
+    }
 
 }
