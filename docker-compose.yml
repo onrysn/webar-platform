@@ -1,4 +1,5 @@
 version: '3.8'
+
 services:
   postgres:
     image: postgres:15
@@ -26,26 +27,38 @@ services:
       ENCRYPTION_KEY: 8a31efb9c02bd78ccf2f45e4bcd44a8120f6d62eac943e4b7285a4dbe4dff209
       SDL_AUDIODRIVER: dummy
       AUDIODEV: null
+      CONVERTER_URL: http://converter:3001
     ports:
       - "3000:3000"
       - "5555:5555"
     depends_on:
       - postgres
+      - converter
     volumes:
-      - ./backend:/app                  # Kodlar senin bilgisayarından okunur
-      - /app/node_modules               # node_modules container içinde kalır
+      - ./backend:/app
+      - /app/node_modules
 
   frontend:
     build: ./frontend
     environment:
-      VITE_API_BASE_URL: http://backend:3000  # Backend container adı üzerinden bağlantı
+      VITE_API_BASE_URL: http://backend:3000
     ports:
-      - "5173:5173"  # Vite dev server
+      - "5173:5173"
     depends_on:
       - backend
     volumes:
-      - ./frontend:/app                 # Kodlar host → container
-      - /app/node_modules               # node_modules container içinde
+      - ./frontend:/app
+      - /app/node_modules
+
+  converter:
+    build: ./gltf2usdz
+    container_name: converter
+    ports:
+      - "3001:3001"  # host:container
+    restart: always
+    volumes:
+      - ./gltf2usdz:/app
+      - /app/node_modules
 
 volumes:
   db_data:

@@ -6,10 +6,14 @@ import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
+import fetch from 'node-fetch';       // FormData burada!
+import FormData from 'form-data';     // 🔥 Node ortamında doğru FormData
+
 
 @Injectable()
 export class ARModelService {
     private key: Buffer;
+    private converterUrl = process.env.CONVERTER_URL || 'http://converter:3001';
 
     constructor(private prisma: PrismaService) {
         const keyHex = process.env.ENCRYPTION_KEY;
@@ -107,92 +111,135 @@ export class ARModelService {
     }
 
     async convertForTest(file: MulterFile): Promise<string> {
-        let glbPath = file.path;
+        interface ConvertResponse {
+            id: string;
+            expires: number;
+            name: string;
+        }
 
-        // --- 1. DOSYA ADI VE UZANTI KONTROLÜ ---
-        // Dosyanın orijinal uzantısını alıyoruz (.glb)
+        console.log("[convertForTest] Başladı");
+
+        // --- 1️⃣ File buffer veya path kontrolü ---
+        let fileBuffer: Buffer;
+        if (file.buffer && file.buffer.length > 0) {
+            fileBuffer = file.buffer;
+            console.log("[convertForTest] file.buffer mevcut, boyut:", fileBuffer.length);
+        } else if (file.path && fs.existsSync(file.path)) {
+            fileBuffer = fs.readFileSync(file.path);
+            console.log("[convertForTest] file.path kullanıldı:", file.path, "boyut:", fileBuffer.length);
+        } else {
+            throw new InternalServerErrorException("Uploaded file has no buffer or valid path!");
+        }
+
+        // --- 2️⃣ TEMP klasörü ---
+        const tempDir = path.join(process.cwd(), 'uploads', 'temp');
+        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
+        console.log("[convertForTest] Temp klasörü hazır:", tempDir);
+
+        // --- 3️⃣ Orijinal uzantı ve güvenli dosya adı ---
         const originalExt = path.extname(file.originalname).toLowerCase();
+        const safeName = (file.originalname || 'temp_model')
+            .replace(/[^a-zA-Z0-9.]/g, '_')
+            .replace(originalExt, '');
+        console.log("[convertForTest] Safe dosya adı:", safeName);
 
-        // A) DiskStorage durumunda:
-        // Multer dosyayı uzantısız kaydettiyse (örn: "temp/1234abc"), sonuna .glb ekleyelim.
-        if (glbPath) {
-            if (!glbPath.toLowerCase().endsWith(originalExt)) {
-                const newPath = glbPath + originalExt;
-                try {
-                    fs.renameSync(glbPath, newPath);
-                    glbPath = newPath;
-                } catch (err) {
-                    console.error('Dosya yeniden adlandırılamadı:', err);
-                }
-            }
+        // --- 4️⃣ GLB dosyasını diske yaz ---
+        const glbPath = path.join(tempDir, `${Date.now()}-${safeName}${originalExt}`);
+        try {
+            fs.writeFileSync(glbPath, fileBuffer);
+            console.log("[convertForTest] GLB dosyası yazıldı:", glbPath);
+        } catch (err) {
+            console.error("[convertForTest] GLB dosyası yazılamadı:", err);
+            throw new InternalServerErrorException("Failed to write GLB file: " + err.message);
         }
 
-        // B) MemoryStorage (Buffer) durumunda veya yol yoksa:
-        if (!glbPath) {
-            if (!file.buffer) {
-                throw new InternalServerErrorException('File uploaded but neither path nor buffer found.');
-            }
+        // --- 5️⃣ MIME tipi ---
+        const mime = originalExt === '.glb' ? 'model/gltf-binary' : 'model/gltf+json';
+        console.log("[convertForTest] MIME tipi:", mime);
 
-            const tempDir = path.join(process.cwd(), 'uploads', 'temp');
-            if (!fs.existsSync(tempDir)) {
-                fs.mkdirSync(tempDir, { recursive: true });
-            }
-
-            // Dosya ismini güvenli hale getir ve mutlaka UZANTIYI ekle
-            const safeName = (file.originalname || 'temp_model')
-                .replace(/[^a-zA-Z0-9.]/g, '_')
-                .replace(originalExt, ''); // Uzantı çiftlenmesin diye siliyoruz
-
-            // Timestamp + Ad + Uzantı
-            glbPath = path.join(tempDir, `${Date.now()}-${safeName}${originalExt}`);
-
-            fs.writeFileSync(glbPath, file.buffer);
-        }
-        // -----------------------------------------------------
-
-        const outputDir = path.dirname(glbPath);
-        const fileName = path.basename(glbPath, path.extname(glbPath));
-        const usdzOutputName = `${fileName}.usdz`;
-        const usdzOutputPath = path.join(outputDir, usdzOutputName);
-
-        const scriptPath = path.join(process.cwd(), 'scripts', 'convert_glb_usdz.py');
-
-        return new Promise((resolve, reject) => {
-            const blender = spawn('blender', [
-                '-b',           // Background (Arayüzsüz)
-                '-noaudio',     // <--- SES HATASINI ÇÖZEN KOMUT
-                '-P', scriptPath,
-                '--',
-                glbPath,
-                usdzOutputPath,
-            ]);
-
-            let combinedLog = '';
-
-            // Hem stdout hem stderr dinleniyor
-            blender.stdout.on('data', (data) => {
-                combinedLog += data.toString();
-            });
-
-            blender.stderr.on('data', (data) => {
-                combinedLog += data.toString();
-            });
-
-            blender.on('close', (code) => {
-                // İşlem bitti ve dosya oluştuysa başarılı
-                if (code === 0 && fs.existsSync(usdzOutputPath)) {
-                    resolve(usdzOutputPath);
-                } else {
-                    console.error(`Blender USDZ Conversion Failed (Code: ${code})`);
-                    console.error(`Full Log:\n${combinedLog}`);
-
-                    reject(new InternalServerErrorException(
-                        `Conversion failed with code ${code}. Check server logs for details.`
-                    ));
-                }
-            });
+        // --- 6️⃣ FormData oluştur ---
+        const formData = new FormData();
+        formData.append("file", fs.createReadStream(glbPath), {
+            filename: file.originalname,
+            contentType: mime,
         });
+        console.log("[convertForTest] FormData hazır");
+
+        try {
+            // --- 7️⃣ Convert servisine istek ---
+            console.log("[convertForTest] Convert servisine istek gönderiliyor...");
+            const convertResp = await fetch(`${this.converterUrl}/api/convert`, {
+                method: "POST",
+                body: formData,
+                headers: formData.getHeaders(),
+                // @ts-ignore
+                timeout: 120000,
+            });
+            console.log("[convertForTest] Convert servisi yanıtı geldi, status:", convertResp.status);
+
+            if (!convertResp.ok) {
+                const text = await convertResp.text();
+                console.error("[convertForTest] Convert servisi hatası:", text);
+                throw new InternalServerErrorException("Convert failed: " + text);
+            }
+
+            const convertJson = (await convertResp.json()) as ConvertResponse;
+            console.log("[convertForTest] Convert servisi JSON:", convertJson);
+
+            const { id, name } = convertJson;
+            if (!id || !name) {
+                throw new InternalServerErrorException("Invalid conversion response: missing id or name.");
+            }
+            console.log("[convertForTest] Convert response id ve name doğrulandı:", id, name);
+
+            // --- 8️⃣ USDZ indirme isteği ---
+            const downloadUrl = `${this.converterUrl}/api/download?id=${id}&name=${name}`;
+            console.log("[convertForTest] USDZ indirilecek URL:", downloadUrl);
+
+            const usdzResp = await fetch(downloadUrl, {
+                // @ts-ignore
+                timeout: 120000,
+            });
+            console.log("[convertForTest] USDZ download servisi yanıtı geldi, status:", usdzResp.status);
+
+            if (!usdzResp.ok) {
+                const text = await usdzResp.text();
+                console.error("[convertForTest] USDZ download hatası:", text);
+                throw new InternalServerErrorException("Download failed: " + text);
+            }
+
+            // --- 9️⃣ USDZ buffer ---
+            const usdzBuffer = await usdzResp.buffer();
+            if (!usdzBuffer || usdzBuffer.length === 0) {
+                throw new InternalServerErrorException(
+                    `USDZ download failed, buffer empty. Status: ${usdzResp.status}`
+                );
+            }
+            console.log("[convertForTest] USDZ buffer başarıyla alındı, boyut:", usdzBuffer.length);
+
+            // --- 10️⃣ USDZ dosyasını kaydet ---
+            const usdzPath = path.join(tempDir, `${safeName}.usdz`);
+            try {
+                fs.writeFileSync(usdzPath, usdzBuffer);
+                console.log("[convertForTest] USDZ dosyası kaydedildi:", usdzPath);
+            } catch (err) {
+                console.error("[convertForTest] USDZ dosyası yazılamadı:", err);
+                throw new InternalServerErrorException("Failed to write USDZ file: " + err.message);
+            }
+
+            return usdzPath;
+
+        } finally {
+            // --- 11️⃣ TEMP GLB sil ---
+            if (fs.existsSync(glbPath)) {
+                fs.unlinkSync(glbPath);
+                console.log("[convertForTest] Temp GLB dosyası silindi:", glbPath);
+            }
+        }
     }
+
+
+
 
     async convertCadToGlb(file: MulterFile): Promise<string> {
         let inputPath = file.path;
