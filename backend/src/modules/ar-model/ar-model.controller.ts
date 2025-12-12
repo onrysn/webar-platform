@@ -1,5 +1,5 @@
 // ar-model.controller.ts
-import { Controller, Post, UseInterceptors, UploadedFile, Req, UseGuards, Query, Get, Param, Res, Body } from '@nestjs/common';
+import { Controller, Post, UseInterceptors, UploadedFile, Req, UseGuards, Query, Get, Param, Res, Body, BadRequestException } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ARModelService } from './ar-model.service';
 import { modelUploadConfig } from 'src/config/multer/ar-model-upload.config';
@@ -16,31 +16,6 @@ import * as path from 'path';
 @Controller('ar-model')
 export class ARModelController {
     constructor(private readonly arModelService: ARModelService, private prisma: PrismaService) { }
-
-    @Post('upload')
-    @UseInterceptors(FileInterceptor('file', modelUploadConfig))
-    @ApiConsumes('multipart/form-data')
-    @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                file: { type: 'string', format: 'binary' },
-                companyId: { type: 'number' },
-                thumbnail: { type: 'string' },
-            },
-            required: ['file', 'companyId'],
-        },
-    })
-    async uploadModel(
-        @UploadedFile() file: MulterFile,
-        @Body('companyId') companyId: number,
-        @Body('thumbnail') thumbnailBase64: string | null,
-        @Req() req: any
-    ) {
-        const userId = req.user.userId;
-        return this.arModelService.uploadModel(file, +companyId, userId, thumbnailBase64);
-    }
-
 
     @Get('download/:id')
     async downloadModel(@Param('id') id: number, @Res() res: Response) {
@@ -95,73 +70,55 @@ export class ARModelController {
         return models;
     }
 
-    @Post('test-convert')
-    @UseInterceptors(FileInterceptor('file', modelUploadConfig)) // Mevcut config'i kullanıyoruz
+    // --------------------------
+    // FBX upload -> backend does glb+usdz, returns tempId + preview urls
+    // --------------------------
+    @Post('upload-fbx')
+    @UseInterceptors(FileInterceptor('file', modelUploadConfig))
     @ApiConsumes('multipart/form-data')
-    @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                file: { type: 'string', format: 'binary' },
-            },
-        },
-    })
-    async testConversion(@UploadedFile() file: MulterFile, @Res() res: Response) {
-        if (!file) return res.status(400).send('File is required');
-        
-        try {
-            // 1. Service'deki test metodunu çağır
-            const usdzPath = await this.arModelService.convertForTest(file);
-
-            // 2. Oluşan dosyayı istemciye indir
-            res.download(usdzPath, (err) => {
-                if (err) {
-                    console.error('Download error:', err);
-                }
-                // (Opsiyonel) İndirme bitince temizlik yap
-                // fs.unlinkSync(usdzPath); 
-                // fs.unlinkSync(file.path);
-            });
-        } catch (error) {
-            return res.status(500).json({ error: error.message });
-        }
+    @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+    async uploadFbx(@UploadedFile() file: MulterFile, @Req() req: any) {
+        if (!file) throw new BadRequestException('File is required');
+        const userId = req.user.userId;
+        // convertFbxToTemp returns { tempId, glbUrl, usdzUrl, names... }
+        return this.arModelService.convertFbxToTemp(file, userId);
     }
-    
-    @Post('convert-cad-to-glb')
-    @UseInterceptors(FileInterceptor('file', modelUploadConfig)) // Config aynı kalabilir veya genişletilebilir
+
+    // --------------------------
+    // Manual GLB upload -> saved to tempId (if provided) or create new
+    // --------------------------
+    @Post('upload-glb')
+    @UseInterceptors(FileInterceptor('file', modelUploadConfig))
     @ApiConsumes('multipart/form-data')
-    @ApiBody({
-        schema: {
-            type: 'object',
-            properties: {
-                file: { type: 'string', format: 'binary' },
-            },
-        },
-    })
-    async convertCadToGlbEndpoint(@UploadedFile() file: MulterFile, @Res() res: Response) {
-        if (!file) return res.status(400).send('File is required');
+    @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' }, tempId: { type: 'string', nullable: true } } } })
+    async uploadGlb(@UploadedFile() file: MulterFile, @Body('tempId') tempId: string | undefined, @Req() req: any) {
+        if (!file) throw new BadRequestException('File is required');
+        const userId = req.user.userId;
+        return this.arModelService.saveTempUploadedModel(file, 'glb', tempId, userId);
+    }
 
-        // İzin verilen format kontrolü (Opsiyonel ama önerilir)
-        const allowedExts = ['.fbx', '.obj', '.dxf', '.dae'];
-        const ext = path.extname(file.originalname).toLowerCase();
-        if (!allowedExts.includes(ext)) {
-             return res.status(400).send(`Unsupported file type. Allowed: ${allowedExts.join(', ')}`);
-        }
+    // --------------------------
+    // Manual USDZ upload -> saved to same tempId (if provided) or create new
+    // --------------------------
+    @Post('upload-usdz')
+    @UseInterceptors(FileInterceptor('file', modelUploadConfig))
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' }, tempId: { type: 'string', nullable: true } } } })
+    async uploadUsdz(@UploadedFile() file: MulterFile, @Body('tempId') tempId: string | undefined, @Req() req: any) {
+        if (!file) throw new BadRequestException('File is required');
+        const userId = req.user.userId;
+        return this.arModelService.saveTempUploadedModel(file, 'usdz', tempId, userId);
+    }
 
-        try {
-            // 1. Service metodunu çağır (CAD -> GLB)
-            const glbPath = await this.arModelService.convertCadToGlb(file);
-
-            // 2. Oluşan GLB dosyasını indir
-            res.download(glbPath, (err) => {
-                if (err) {
-                    console.error('Download error:', err);
-                }
-                // Temizlik işlemleri buraya eklenebilir
-            });
-        } catch (error) {
-            return res.status(500).json({ error: error.message });
-        }
+    // --------------------------
+    // Finalize -> tempId required, metadata e.g. companyId, thumbnail
+    // --------------------------
+    @Post('finalize')
+    @ApiBody({ schema: { type: 'object', properties: { tempId: { type: 'string' }, companyId: { type: 'number' }, modelName: { type: 'string', nullable: true }, thumbnail: { type: 'string', nullable: true } }, required: ['tempId', 'companyId'] } })
+    async finalize(@Body() body: { tempId: string, companyId: number, modelName?: string, thumbnail?: string }, @Req() req: any) {
+        const userId = req.user.userId;
+        const { tempId, companyId, modelName, thumbnail } = body;
+        return this.arModelService.finalizeTempModel(tempId, +companyId, userId, modelName, thumbnail || null);
     }
 
 }

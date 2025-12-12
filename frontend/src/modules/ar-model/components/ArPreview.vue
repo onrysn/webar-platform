@@ -1,5 +1,5 @@
 <template>
-  <div class="relative w-full h-full bg-gray-100 rounded-xl overflow-hidden border border-gray-200">
+  <div class="relative w-full h-full bg-gray-100 rounded-xl overflow-hidden border border-gray-200 group">
     
     <canvas ref="canvasRef" class="w-full h-full block outline-none cursor-move"></canvas>
     
@@ -9,7 +9,7 @@
           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
         </svg>
-        <span class="text-sm font-semibold text-gray-700">Model Hazırlanıyor...</span>
+        <span class="text-sm font-semibold text-gray-700">Model Yükleniyor...</span>
       </div>
     </div>
 
@@ -25,13 +25,13 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
-// USDZLoader importu
 import { USDZLoader } from 'three/examples/jsm/loaders/USDZLoader.js';
 
-defineOptions({ name: 'ThreeViewer' });
+defineOptions({ name: 'ArPreview' });
 
 const props = defineProps<{
-  file: File | null;
+  src?: string | null;  // URL desteği (Backend temp path)
+  file?: File | null;   // Local dosya desteği
 }>();
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -44,9 +44,17 @@ let camera: THREE.PerspectiveCamera | null = null;
 let controls: OrbitControls | null = null;
 let currentModel: THREE.Object3D | null = null;
 let animationId: number | null = null;
-let resizeObserver: ResizeObserver | null = null;
 
-// --- Three.js Başlatma ---
+// --- Screenshot Metodu (Dışarıya Açık) ---
+const takeScreenshot = (mimeType = 'image/png', quality = 0.8): string | null => {
+  if (!renderer || !scene || !camera) return null;
+  renderer.render(scene, camera); // Son kareyi render al
+  return renderer.domElement.toDataURL(mimeType, quality);
+};
+
+// Metodu dışarı açıyoruz
+defineExpose({ takeScreenshot });
+
 const initThreeJS = () => {
   if (!canvasRef.value || renderer) return;
 
@@ -54,22 +62,19 @@ const initThreeJS = () => {
     canvas: canvasRef.value, 
     alpha: true, 
     antialias: true,
-    preserveDrawingBuffer: true
+    preserveDrawingBuffer: true // Screenshot için zorunlu
   });
   
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.shadowMap.enabled = true;
-  // Renk yönetimi USDZ için önemlidir
   renderer.outputColorSpace = THREE.SRGBColorSpace; 
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.0;
+  renderer.toneMappingExposure = 1.2;
 
   scene = new THREE.Scene();
-  // Hafif gri bir zemin rengi eklenebilir veya alpha:true ile transparan kalabilir
-  // scene.background = new THREE.Color(0xf3f4f6); 
-
-  // Işıklandırma (USDZ dokularının parlamaması veya karanlık kalmaması için)
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+  
+  // Işıklandırma
+  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
   scene.add(ambientLight);
 
   const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
@@ -78,16 +83,17 @@ const initThreeJS = () => {
   scene.add(dirLight);
   
   const fillLight = new THREE.DirectionalLight(0xffffff, 0.8);
-  fillLight.position.set(-5, 0, -5);
+  fillLight.position.set(-5, 2, -5);
   scene.add(fillLight);
 
   camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
-  camera.position.set(0, 0, 5); // Başlangıç pozisyonu
+  camera.position.set(0, 0, 5);
 
   controls = new OrbitControls(camera, canvasRef.value);
   controls.enableDamping = true;
   
-  resizeObserver = new ResizeObserver(entries => {
+  // Resize Observer
+  const resizeObserver = new ResizeObserver(entries => {
     for (const entry of entries) {
       if(!entry.contentRect) continue;
       const { width, height } = entry.contentRect;
@@ -103,63 +109,65 @@ const initThreeJS = () => {
   animate();
 };
 
-// --- Dosya İşleme ---
-const processFile = async (file: File) => {
-  error.value = null;
-  loading.value = true;
+const loadModel = async () => {
+  if ((!props.src && !props.file) || !scene) return;
   
+  loading.value = true;
+  error.value = null;
+
   // Eski modeli temizle
-  if (currentModel && scene) {
+  if (currentModel) {
     scene.remove(currentModel);
-    cleanObject(currentModel);
+    // Cleanup geometry/materials here ideally
     currentModel = null;
   }
 
   try {
-    await nextTick();
-    initThreeJS();
+    let url = '';
+    let ext = '';
 
-    const buffer = await file.arrayBuffer();
-    const ext = file.name.split('.').pop()?.toLowerCase();
+    // Kaynak belirleme (URL öncelikli, yoksa File)
+    if (props.src) {
+      url = props.src;
+      ext = url.split('.').pop()?.toLowerCase() || 'glb';
+    } else if (props.file) {
+      url = URL.createObjectURL(props.file);
+      ext = props.file.name.split('.').pop()?.toLowerCase() || 'glb';
+    }
+
     let object: THREE.Object3D | null = null;
 
-    if (ext === 'glb' || ext === 'gltf') {
+    if (ext.includes('glb') || ext.includes('gltf')) {
       const loader = new GLTFLoader();
-      const gltf = await loader.parseAsync(buffer, '');
+      const gltf = await loader.loadAsync(url);
       object = gltf.scene;
     } 
     else if (ext === 'fbx') {
       const loader = new FBXLoader();
-      object = loader.parse(buffer, '');
+      object = await loader.loadAsync(url);
     }
-    // ARTIK ÇALIŞACAK OLAN KISIM:
     else if (ext === 'usdz') {
       const loader = new USDZLoader();
-      // USDZLoader bir THREE.Group döndürür
-      object = await loader.parse(buffer);
+      object = await loader.loadAsync(url);
     }
     else {
-      throw new Error('Desteklenmeyen format: ' + ext);
+      throw new Error(`Desteklenmeyen format: ${ext}`);
     }
 
     if (object) {
       currentModel = object;
-      scene?.add(object);
-      
-      // USDZ bazen çok küçük veya çok büyük gelebilir, ölçekleme gerekebilir
-      // Ancak fitCameraToSelection bunu görsel olarak çözecektir.
+      scene.add(object);
       fitCameraToSelection(camera!, controls!, [object]);
     }
 
   } catch (err: any) {
     console.error("Yükleme hatası:", err);
-    error.value = "Dosya açılamadı. Hata: " + (err.message || 'Bilinmiyor');
+    error.value = "Model yüklenemedi. Formatı veya yolu kontrol edin.";
   } finally {
     loading.value = false;
   }
 };
 
-// --- Yardımcılar ---
 const fitCameraToSelection = (camera: THREE.PerspectiveCamera, controls: OrbitControls, selection: THREE.Object3D[]) => {
   const box = new THREE.Box3();
   for (const object of selection) box.expandByObject(object);
@@ -168,11 +176,10 @@ const fitCameraToSelection = (camera: THREE.PerspectiveCamera, controls: OrbitCo
 
   const size = box.getSize(new THREE.Vector3());
   const center = box.getCenter(new THREE.Vector3());
-  
   const maxSize = Math.max(size.x, size.y, size.z);
   const fitHeightDistance = maxSize / (2 * Math.atan(Math.PI * camera.fov / 360));
   const fitWidthDistance = fitHeightDistance / camera.aspect;
-  const distance = 1.5 * Math.max(fitHeightDistance, fitWidthDistance);
+  const distance = 1.2 * Math.max(fitHeightDistance, fitWidthDistance);
   
   controls.maxDistance = distance * 10;
   controls.target.copy(center);
@@ -185,39 +192,25 @@ const fitCameraToSelection = (camera: THREE.PerspectiveCamera, controls: OrbitCo
   controls.update();
 };
 
-const cleanObject = (object: THREE.Object3D) => {
-  object.traverse((child) => {
-    if ((child as any).geometry) (child as any).geometry.dispose();
-    if ((child as any).material) {
-      if (Array.isArray((child as any).material)) {
-        (child as any).material.forEach((m: any) => m.dispose());
-      } else {
-        (child as any).material.dispose();
-      }
-    }
-  });
-};
-
 const animate = () => {
   animationId = requestAnimationFrame(animate);
   controls?.update();
-  if (renderer && scene && camera) {
-    renderer.render(scene, camera);
-  }
+  renderer?.render(scene!, camera!);
 };
 
-onMounted(() => {
-  if (props.file) processFile(props.file);
+onMounted(async () => {
+  await nextTick();
+  initThreeJS();
+  loadModel();
 });
 
 onBeforeUnmount(() => {
   if (animationId) cancelAnimationFrame(animationId);
-  resizeObserver?.disconnect();
   renderer?.dispose();
-  if (currentModel) cleanObject(currentModel);
 });
 
-watch(() => props.file, (newFile) => {
-  if (newFile) processFile(newFile);
+// Hem src hem file değiştiğinde tetikle
+watch(() => [props.src, props.file], () => {
+  loadModel();
 });
 </script>

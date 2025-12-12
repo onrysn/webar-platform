@@ -71,6 +71,11 @@ model ARModel {
   iv          String     // 16 byte hex
   authTag     String     // 16 byte hex
   thumbnailPath String?   // thumbnail için
+  
+  usdzFilePath String?   // encrypted path for usdz
+  usdzIv       String?
+  usdzAuthTag  String?
+  usdzFileSize Int?
 
   company     Company    @relation(fields: [companyId], references: [id])
   user        User       @relation(fields: [uploadedBy], references: [id])

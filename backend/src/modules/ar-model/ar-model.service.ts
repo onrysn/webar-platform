@@ -1,29 +1,34 @@
-// ar-model.service.ts
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+// ar-model.service.ts (revize)
+import { Injectable, InternalServerErrorException, BadRequestException, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { File as MulterFile } from 'multer';
 import * as crypto from 'crypto';
 import * as fs from 'fs';
 import * as path from 'path';
 import { spawn } from 'child_process';
-import fetch from 'node-fetch';       // FormData burada!
-import FormData from 'form-data';     // 🔥 Node ortamında doğru FormData
-
+import fetch from 'node-fetch';
+import FormData from 'form-data';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class ARModelService {
     private key: Buffer;
     private converterUrl = process.env.CONVERTER_URL || 'http://converter:3001';
+    private TEMP_ROOT = path.join(process.cwd(), 'uploads', 'temp');
+    private FINAL_ROOT = path.join(process.cwd(), 'uploads', 'models');
 
     constructor(private prisma: PrismaService) {
         const keyHex = process.env.ENCRYPTION_KEY;
         if (!keyHex || keyHex.length !== 64) {
             throw new Error('ENCRYPTION_KEY is missing or invalid (must be 32 bytes hex)!');
         }
-        this.key = Buffer.from(keyHex, 'hex'); // 32 byte
+        this.key = Buffer.from(keyHex, 'hex');
+
+        if (!fs.existsSync(this.TEMP_ROOT)) fs.mkdirSync(this.TEMP_ROOT, { recursive: true });
+        if (!fs.existsSync(this.FINAL_ROOT)) fs.mkdirSync(this.FINAL_ROOT, { recursive: true });
     }
 
-    // AES-256-GCM şifreleme
+    // encryption helpers (kendi önceki metotları kullan)
     private encrypt(buffer: Buffer) {
         const iv = crypto.randomBytes(16);
         const cipher = crypto.createCipheriv('aes-256-gcm', this.key, iv);
@@ -32,7 +37,6 @@ export class ARModelService {
         return { encrypted, iv, authTag };
     }
 
-    // AES-256-GCM çözme
     decryptFile(filePath: string, ivHex: string, authTagHex: string): Buffer {
         const encryptedBuffer = fs.readFileSync(filePath);
         const iv = Buffer.from(ivHex, 'hex');
@@ -42,230 +46,237 @@ export class ARModelService {
         return Buffer.concat([decipher.update(encryptedBuffer), decipher.final()]);
     }
 
-    // MIME tipini veya uzantıyı almak
-    private getFileType(fileName: string): string {
-        const ext = path.extname(fileName).toLowerCase();
-        return ext || 'application/octet-stream';
+    private getMimeByExt(ext: string) {
+        ext = ext.toLowerCase();
+        if (ext === '.glb') return 'model/gltf-binary';
+        if (ext === '.gltf') return 'model/gltf+json';
+        if (ext === '.usdz') return 'application/octet-stream';
+        return 'application/octet-stream';
     }
 
-    // Dosya adı uzantısız
-    private getFileNameWithoutExt(fileName: string): string {
+    private ensureTempDir(tempId: string) {
+        const dir = path.join(this.TEMP_ROOT, tempId);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        return dir;
+    }
+
+    // Save an uploaded file to a temp folder (glb or usdz)
+    async saveTempUploadedModel(file: MulterFile, kind: 'glb' | 'usdz', tempId?: string, userId?: number) {
+        // tempId yoksa oluştur
+        if (!tempId) tempId = `${Date.now()}_${uuidv4()}`;
+        const tempDir = this.ensureTempDir(tempId);
+
+        // Determine filename
+        const ext = path.extname(file.originalname) || (kind === 'glb' ? '.glb' : '.usdz');
+        const baseName = path.basename(file.originalname, path.extname(file.originalname)) || `model_${Date.now()}`;
+        const filename = `${baseName}${ext}`;
+
+        // Read buffer either from disk path or file.buffer
+        let buffer: Buffer;
+        if (file.buffer && file.buffer.length > 0) {
+            buffer = file.buffer;
+        } else if (file.path && fs.existsSync(file.path)) {
+            buffer = fs.readFileSync(file.path);
+        } else {
+            throw new InternalServerErrorException('Uploaded file has no buffer or path');
+        }
+
+        const outPath = path.join(tempDir, filename);
+        fs.writeFileSync(outPath, buffer);
+
+        // Return preview URLs (assuming you serve /uploads/temp statically behind /temp/)
+        // You may need to adapt URLs to your nginx/static config.
+        const previewUrl = `/temp/${tempId}/${filename}`;
+
+        // Basic metadata return
+        return { tempId, kind, filename, previewUrl, size: buffer.length };
+    }
+
+    // Convert FBX to GLB & USDZ and save both in temp/<tempId>/
+    async convertFbxToTemp(file: MulterFile, userId?: number) {
+        // create tempId and dir
+        const tempId = `${Date.now()}_${uuidv4()}`;
+        const tempDir = this.ensureTempDir(tempId);
+
+        // read input buffer/path
+        let inputBuffer: Buffer;
+        let inputPath: string | undefined;
+        if (file.buffer && file.buffer.length > 0) {
+            inputBuffer = file.buffer;
+            // write to temp file
+            const inputName = `${Date.now()}_${path.basename(file.originalname)}`;
+            inputPath = path.join(tempDir, inputName);
+            fs.writeFileSync(inputPath, inputBuffer);
+        } else if (file.path && fs.existsSync(file.path)) {
+            // copy disk-stored upload into temp
+            inputPath = path.join(tempDir, `${Date.now()}_${path.basename(file.path) + path.extname(file.originalname)}`);
+            fs.copyFileSync(file.path, inputPath);
+        } else {
+            throw new InternalServerErrorException('No file buffer or path for FBX upload');
+        }
+
+        // Ensure file extension
+        const ext = path.extname(inputPath).toLowerCase();
+        if (ext !== '.fbx' && ext !== '.obj' && ext !== '.dae' && ext !== '.gltf' && ext !== '.glb') {
+            // still try to run, but better to validate
+        }
+
+        // --- 1) Convert to GLB via blender script (convertCadToGlb) ---
+        // We can reuse your convertCadToGlb logic by creating a MulterFile-like object or calling the function directly.
+        // For simplicity, call convertCadToGlb with a synthetic MulterFile-like input
+        const fakeMulterFile = { originalname: path.basename(inputPath), path: inputPath } as unknown as MulterFile;
+        const glbPath = await this.convertCadToGlb(fakeMulterFile); // returns output path
+
+        // --- 2) Convert GLB -> USDZ via converter service (HTTP) ---
+        // Use the converter endpoint used earlier (same logic as convertForTest earlier)
+        const formData = new FormData();
+        formData.append('file', fs.createReadStream(glbPath), { filename: path.basename(glbPath), contentType: this.getMimeByExt('.glb') });
+
+        const convertResp = await fetch(`${this.converterUrl}/api/convert`, {
+            method: 'POST',
+            body: formData,
+            headers: formData.getHeaders(),
+        });
+
+        if (!convertResp.ok) {
+            const text = await convertResp.text();
+            throw new InternalServerErrorException('Converter failed: ' + text);
+        }
+
+        const convertJson = await convertResp.json();
+        const { id, name } = convertJson as { id: string; name: string };
+
+        // download usd
+        const downloadUrl = `${this.converterUrl}/api/download?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`;
+        const usdzResp = await fetch(downloadUrl);
+        if (!usdzResp.ok) {
+            throw new InternalServerErrorException('USDZ download failed: ' + (await usdzResp.text()));
+        }
+        const usdzBuffer = await usdzResp.buffer();
+
+        // move or copy glb/usdz into tempDir with stable filenames
+        const safeBase = path.basename(this.getFileNameWithoutExt(file.originalname));
+        const glbName = `${safeBase}.glb`;
+        const usdzName = `${safeBase}.usdz`;
+
+        const finalGlbPath = path.join(tempDir, glbName);
+        const finalUsdzPath = path.join(tempDir, usdzName);
+        // copy/move glb
+        fs.copyFileSync(glbPath, finalGlbPath);
+        // write usdz
+        fs.writeFileSync(finalUsdzPath, usdzBuffer);
+
+        // optionally remove intermediate glbPath if different
+        if (glbPath !== finalGlbPath && fs.existsSync(glbPath)) {
+            try { fs.unlinkSync(glbPath); } catch (e) { /* ignore */ }
+        }
+
+        // return preview urls + tempId
+        return {
+            tempId,
+            glb: { filename: glbName, url: `/temp/${tempId}/${glbName}`, path: finalGlbPath, size: fs.statSync(finalGlbPath).size },
+            usdz: { filename: usdzName, url: `/temp/${tempId}/${usdzName}`, path: finalUsdzPath, size: fs.statSync(finalUsdzPath).size },
+        };
+    }
+
+    private getFileNameWithoutExt(fileName: string) {
         return path.basename(fileName, path.extname(fileName));
     }
 
-    async uploadModel(file: MulterFile, companyId: number, uploadedBy: number, thumbnailBase64?: string | null) {
-        // 1️⃣ Dosyayı şifrele
-        const { encrypted, iv, authTag } = this.encrypt(file.buffer);
+    // finalize: check both files exist, encrypt & move to final storage, create DB row
+    async finalizeTempModel(tempId: string, companyId: number, uploadedBy: number, modelName?: string, thumbnailBase64?: string | null) {
+        const tempDir = path.join(this.TEMP_ROOT, tempId);
+        if (!fs.existsSync(tempDir)) throw new NotFoundException('Temp folder not found');
 
-        // 2️⃣ Klasör kontrolü
-        const uploadDir = path.resolve('./uploads/models');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
+        // look for glb and usdz files inside temp
+        const files = fs.readdirSync(tempDir);
+        const glbFile = files.find(f => f.toLowerCase().endsWith('.glb'));
+        const usdzFile = files.find(f => f.toLowerCase().endsWith('.usdz'));
+
+        if (!glbFile || !usdzFile) {
+            throw new BadRequestException('Both GLB and USDZ must be present to finalize.');
         }
 
-        // 3️⃣ Benzersiz dosya adı
-        const encryptedName = `${Date.now()}-${Math.round(Math.random() * 1e9)}.enc`;
-        const savePath = path.join(uploadDir, encryptedName);
+        // read glb data and encrypt + save to final
+        const glbBuffer = fs.readFileSync(path.join(tempDir, glbFile));
+        const { encrypted: glbEncrypted, iv: glbIv, authTag: glbAuth } = this.encrypt(glbBuffer);
+        const glbFinalName = `${Date.now()}-${uuidv4()}-${glbFile}.enc`;
+        const glbFinalPath = path.join(this.FINAL_ROOT, glbFinalName);
+        fs.writeFileSync(glbFinalPath, glbEncrypted);
 
-        // 4️⃣ Şifreli dosyayı kaydet
-        await fs.promises.writeFile(savePath, encrypted);
+        // read usdz and encrypt + save
+        const usdzBuffer = fs.readFileSync(path.join(tempDir, usdzFile));
+        const { encrypted: usdzEncrypted, iv: usdzIv, authTag: usdzAuth } = this.encrypt(usdzBuffer);
+        const usdzFinalName = `${Date.now()}-${uuidv4()}-${usdzFile}.enc`;
+        const usdzFinalPath = path.join(this.FINAL_ROOT, usdzFinalName);
+        fs.writeFileSync(usdzFinalPath, usdzEncrypted);
 
-        // 5️⃣ Dosya hash (bütünlük kontrolü için plaintext üzerinden)
-        const fileHash = crypto.createHash('sha256').update(file.buffer).digest('hex');
-
+        // optional thumbnail save
         let thumbnailPath: string | null = null;
-
-        // 6️⃣ Thumbnail kaydet (opsiyonel)
         if (thumbnailBase64) {
-            const thumbDir = path.resolve('./uploads/thumbnails');
-            if (!fs.existsSync(thumbDir)) {
-                fs.mkdirSync(thumbDir, { recursive: true });
-            }
-
+            const thumbDir = path.join(process.cwd(), 'uploads', 'thumbnails');
+            if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
             const thumbFileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}.png`;
             thumbnailPath = path.join(thumbDir, thumbFileName);
-
-            // Base64 → buffer
-            const base64Data = thumbnailBase64.replace(/^data:image\/png;base64,/, '');
-            const buffer = Buffer.from(base64Data, 'base64');
-
-            await fs.promises.writeFile(thumbnailPath, buffer);
+            const base64Data = thumbnailBase64.replace(/^data:image\/\w+;base64,/, '');
+            fs.writeFileSync(thumbnailPath, Buffer.from(base64Data, 'base64'));
         }
 
-
-        // 6️⃣ DB kaydı oluştur
-        return this.prisma.aRModel.create({
+        // create DB row: keep one row representing the model that references both files
+        const fileHash = crypto.createHash('sha256').update(glbBuffer).digest('hex');
+        const created = await this.prisma.aRModel.create({
             data: {
-                fileName: this.getFileNameWithoutExt(file.originalname),
-                fileType: this.getFileType(file.originalname),
-                filePath: savePath,
-                fileSize: encrypted.length,
+                fileName: modelName || this.getFileNameWithoutExt(glbFile),
+                fileType: '.glb/.usdz',
+                filePath: glbFinalPath, // store the glb encrypted path as primary filePath (you may want to change schema to store both)
+                fileSize: glbEncrypted.length,
                 fileHash,
                 companyId,
                 uploadedBy,
-                iv: iv.toString('hex'),
-                authTag: authTag.toString('hex'),
+                iv: glbIv.toString('hex'),
+                authTag: glbAuth.toString('hex'),
+                // store usd additional fields in metadata columns if available; otherwise create second table. For simplicity:
+                // You can add extra columns to schema for second file's path, iv, authTag. Example below assumes you added them:
+                // usdzFilePath, usdzIv, usdzAuthTag, usdzFileSize
+                // For this snippet, I'll assume those columns exist:
+                usdzFilePath: usdzFinalPath,
+                usdzIv: usdzIv.toString('hex'),
+                usdzAuthTag: usdzAuth.toString('hex'),
+                usdzFileSize: usdzEncrypted.length,
                 thumbnailPath,
             },
         });
-    }
 
-    async convertForTest(file: MulterFile): Promise<string> {
-        interface ConvertResponse {
-            id: string;
-            expires: number;
-            name: string;
-        }
-
-        console.log("[convertForTest] Başladı");
-
-        // --- 1️⃣ File buffer veya path kontrolü ---
-        let fileBuffer: Buffer;
-        if (file.buffer && file.buffer.length > 0) {
-            fileBuffer = file.buffer;
-            console.log("[convertForTest] file.buffer mevcut, boyut:", fileBuffer.length);
-        } else if (file.path && fs.existsSync(file.path)) {
-            fileBuffer = fs.readFileSync(file.path);
-            console.log("[convertForTest] file.path kullanıldı:", file.path, "boyut:", fileBuffer.length);
-        } else {
-            throw new InternalServerErrorException("Uploaded file has no buffer or valid path!");
-        }
-
-        // --- 2️⃣ TEMP klasörü ---
-        const tempDir = path.join(process.cwd(), 'uploads', 'temp');
-        if (!fs.existsSync(tempDir)) fs.mkdirSync(tempDir, { recursive: true });
-        console.log("[convertForTest] Temp klasörü hazır:", tempDir);
-
-        // --- 3️⃣ Orijinal uzantı ve güvenli dosya adı ---
-        const originalExt = path.extname(file.originalname).toLowerCase();
-        const safeName = (file.originalname || 'temp_model')
-            .replace(/[^a-zA-Z0-9.]/g, '_')
-            .replace(originalExt, '');
-        console.log("[convertForTest] Safe dosya adı:", safeName);
-
-        // --- 4️⃣ GLB dosyasını diske yaz ---
-        const glbPath = path.join(tempDir, `${Date.now()}-${safeName}${originalExt}`);
+        // cleanup temp dir
         try {
-            fs.writeFileSync(glbPath, fileBuffer);
-            console.log("[convertForTest] GLB dosyası yazıldı:", glbPath);
+            fs.rmSync(tempDir, { recursive: true, force: true });
         } catch (err) {
-            console.error("[convertForTest] GLB dosyası yazılamadı:", err);
-            throw new InternalServerErrorException("Failed to write GLB file: " + err.message);
+            console.error('Failed to delete temp dir', tempDir, err);
         }
 
-        // --- 5️⃣ MIME tipi ---
-        const mime = originalExt === '.glb' ? 'model/gltf-binary' : 'model/gltf+json';
-        console.log("[convertForTest] MIME tipi:", mime);
-
-        // --- 6️⃣ FormData oluştur ---
-        const formData = new FormData();
-        formData.append("file", fs.createReadStream(glbPath), {
-            filename: file.originalname,
-            contentType: mime,
-        });
-        console.log("[convertForTest] FormData hazır");
-
-        try {
-            // --- 7️⃣ Convert servisine istek ---
-            console.log("[convertForTest] Convert servisine istek gönderiliyor...");
-            const convertResp = await fetch(`${this.converterUrl}/api/convert`, {
-                method: "POST",
-                body: formData,
-                headers: formData.getHeaders(),
-                // @ts-ignore
-                timeout: 120000,
-            });
-            console.log("[convertForTest] Convert servisi yanıtı geldi, status:", convertResp.status);
-
-            if (!convertResp.ok) {
-                const text = await convertResp.text();
-                console.error("[convertForTest] Convert servisi hatası:", text);
-                throw new InternalServerErrorException("Convert failed: " + text);
-            }
-
-            const convertJson = (await convertResp.json()) as ConvertResponse;
-            console.log("[convertForTest] Convert servisi JSON:", convertJson);
-
-            const { id, name } = convertJson;
-            if (!id || !name) {
-                throw new InternalServerErrorException("Invalid conversion response: missing id or name.");
-            }
-            console.log("[convertForTest] Convert response id ve name doğrulandı:", id, name);
-
-            // --- 8️⃣ USDZ indirme isteği ---
-            const downloadUrl = `${this.converterUrl}/api/download?id=${id}&name=${name}`;
-            console.log("[convertForTest] USDZ indirilecek URL:", downloadUrl);
-
-            const usdzResp = await fetch(downloadUrl, {
-                // @ts-ignore
-                timeout: 120000,
-            });
-            console.log("[convertForTest] USDZ download servisi yanıtı geldi, status:", usdzResp.status);
-
-            if (!usdzResp.ok) {
-                const text = await usdzResp.text();
-                console.error("[convertForTest] USDZ download hatası:", text);
-                throw new InternalServerErrorException("Download failed: " + text);
-            }
-
-            // --- 9️⃣ USDZ buffer ---
-            const usdzBuffer = await usdzResp.buffer();
-            if (!usdzBuffer || usdzBuffer.length === 0) {
-                throw new InternalServerErrorException(
-                    `USDZ download failed, buffer empty. Status: ${usdzResp.status}`
-                );
-            }
-            console.log("[convertForTest] USDZ buffer başarıyla alındı, boyut:", usdzBuffer.length);
-
-            // --- 10️⃣ USDZ dosyasını kaydet ---
-            const usdzPath = path.join(tempDir, `${safeName}.usdz`);
-            try {
-                fs.writeFileSync(usdzPath, usdzBuffer);
-                console.log("[convertForTest] USDZ dosyası kaydedildi:", usdzPath);
-            } catch (err) {
-                console.error("[convertForTest] USDZ dosyası yazılamadı:", err);
-                throw new InternalServerErrorException("Failed to write USDZ file: " + err.message);
-            }
-
-            return usdzPath;
-
-        } finally {
-            // --- 11️⃣ TEMP GLB sil ---
-            if (fs.existsSync(glbPath)) {
-                fs.unlinkSync(glbPath);
-                console.log("[convertForTest] Temp GLB dosyası silindi:", glbPath);
-            }
-        }
+        // Return created DB record minimal info (do not return paths in production)
+        return { id: created.id, fileName: created.fileName, message: 'Model saved' };
     }
 
-
-
-
+    // Reuse your existing convertCadToGlb below unchanged (but ensure it returns output path)
     async convertCadToGlb(file: MulterFile): Promise<string> {
+        // ... your existing implementation unchanged (copy/paste)
+        // ensure it returns the glb output path on success
         let inputPath = file.path;
-
-        // Dosyanın orijinal uzantısını alıyoruz (Örn: .fbx, .obj)
-        // Blender scripti bu uzantıya bakarak import yöntemini seçiyor.
         const originalExt = path.extname(file.originalname).toLowerCase();
 
-        // --- 1. SENARYO: Dosya DiskStorage ile kaydedildiyse ---
-        // Multer bazen dosyaları uzantısız kaydeder (örn: "temp/1234abc").
-        // Eğer dosya yolunda uzantı yoksa, yeniden adlandırıp uzantıyı ekliyoruz.
         if (inputPath) {
             if (!inputPath.toLowerCase().endsWith(originalExt)) {
                 const newPath = inputPath + originalExt;
                 try {
                     fs.renameSync(inputPath, newPath);
-                    inputPath = newPath; // Artık script'e bu yeni yolu göndereceğiz
+                    inputPath = newPath;
                 } catch (err) {
                     console.error('Dosya yeniden adlandırılamadı:', err);
-                    // Rename başarısız olsa bile devam edelim, belki şans eseri çalışır
                 }
             }
         }
 
-        // --- 2. SENARYO: Dosya MemoryStorage (Buffer) ile geldiyse ---
-        // inputPath henüz yoksa, buffer'ı diske yazmamız gerekiyor.
         if (!inputPath) {
             if (!file.buffer) {
                 throw new InternalServerErrorException('File uploaded but neither path nor buffer found.');
@@ -276,63 +287,30 @@ export class ARModelService {
                 fs.mkdirSync(tempDir, { recursive: true });
             }
 
-            // Dosya ismini güvenli hale getir ve mutlaka UZANTIYI ekle
-            const safeName = (file.originalname || 'temp_cad_model')
-                .replace(/[^a-zA-Z0-9.]/g, '_')
-                .replace(originalExt, ''); // Uzantıyı çiftlememek için siliyoruz, aşağıda ekleyeceğiz
-
-            // Dosya yolunu oluştururken uzantıyı (originalExt) eklemeyi unutmuyoruz
+            const safeName = (file.originalname || 'temp_cad_model').replace(/[^a-zA-Z0-9.]/g, '_').replace(originalExt, '');
             inputPath = path.join(tempDir, `${Date.now()}-${safeName}${originalExt}`);
-
             fs.writeFileSync(inputPath, file.buffer);
         }
 
-        // --- CONVERT İŞLEMİ HAZIRLIK ---
-
         const outputDir = path.dirname(inputPath);
-        // Dosya adını alıp uzantısını değiştiriyoruz
         const fileName = path.basename(inputPath, path.extname(inputPath));
         const glbOutputName = `${fileName}.glb`;
         const glbOutputPath = path.join(outputDir, glbOutputName);
 
-        // Python scriptimizin yolu
         const scriptPath = path.join(process.cwd(), 'scripts', 'convert_cad_to_glb.py');
 
-        // --- BLENDER PROCESS ---
         return new Promise((resolve, reject) => {
-            const blender = spawn('blender', [
-                '-b',           // Background mod (arayüzsüz)
-                '-noaudio',     // Ses sistemini kapat (Docker/Linux hatalarını önler)
-                '-P', scriptPath, // Python scriptini çalıştır
-                '--',           // Script argümanları başlıyor
-                inputPath,      // Girdi dosyası
-                glbOutputPath,  // Çıktı dosyası
-            ]);
-
+            const blender = spawn('blender', ['-b', '-noaudio', '-P', scriptPath, '--', inputPath, glbOutputPath]);
             let combinedLog = '';
-
-            // Hem normal çıktıları (stdout) hem de hataları (stderr) yakalıyoruz
-            // Çünkü Blender bazen hataları normal çıktı gibi basabiliyor.
-            blender.stdout.on('data', (data) => {
-                combinedLog += data.toString();
-            });
-
-            blender.stderr.on('data', (data) => {
-                combinedLog += data.toString();
-            });
-
+            blender.stdout.on('data', (data) => { combinedLog += data.toString(); });
+            blender.stderr.on('data', (data) => { combinedLog += data.toString(); });
             blender.on('close', (code) => {
-                // İşlem bitti ve dosya başarıyla oluştu mu?
                 if (code === 0 && fs.existsSync(glbOutputPath)) {
                     resolve(glbOutputPath);
                 } else {
-                    // Hata durumunda konsola detaylı log basıyoruz
                     console.error(`Blender Process Failed (Code: ${code})`);
                     console.error(`Full Log:\n${combinedLog}`);
-
-                    reject(new InternalServerErrorException(
-                        `CAD conversion failed with code ${code}. Check server logs for details.`
-                    ));
+                    reject(new InternalServerErrorException(`CAD conversion failed with code ${code}. Check server logs for details.`));
                 }
             });
         });

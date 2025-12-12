@@ -1,4 +1,6 @@
 ﻿import { Module } from '@nestjs/common';
+import { ServeStaticModule } from '@nestjs/serve-static'; // EKLENDİ
+import { join } from 'path'; // EKLENDİ
 import { PrismaModule } from './prisma/prisma.module';
 import { UserModule } from './modules/user/user.module';
 import { ProductModule } from './modules/product/product.module';
@@ -8,6 +10,19 @@ import { ARModelModule } from './modules/ar-model/ar-model.module';
 
 @Module({
   imports: [
+    // --- STATİK DOSYA AYARI BAŞLANGIÇ ---
+    // 1. Temp klasörü için (Servisiniz previewUrl olarak '/temp/...' dönüyor)
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads', 'temp'),
+      serveRoot: '/temp', 
+    }),
+    // 2. Genel uploads klasörü için (Thumbnail'ler veya diğer dosyalar için)
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads', 
+    }),
+    // --- STATİK DOSYA AYARI BİTİŞ ---
+
     PrismaModule, 
     AuthModule, 
     UserModule, 
