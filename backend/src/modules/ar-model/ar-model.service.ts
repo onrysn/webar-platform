@@ -315,4 +315,47 @@ export class ARModelService {
             });
         });
     }
+
+    async getModelFileBuffer(model: any, format: 'glb' | 'usdz') {
+        let filePath: string | null;
+        let iv: string | null;
+        let authTag: string | null;
+        let mimeType: string;
+        let ext: string;
+
+        // İstenen formata göre hangi kolonları okuyacağımızı seçiyoruz
+        if (format === 'usdz') {
+            if (!model.usdzFilePath) {
+                throw new NotFoundException('Bu model için USDZ formatı mevcut değil.');
+            }
+            filePath = model.usdzFilePath;
+            iv = model.usdzIv;
+            authTag = model.usdzAuthTag;
+            mimeType = 'model/vnd.usdz+zip';
+            ext = '.usdz';
+        } else {
+            // GLB (Varsayılan)
+            filePath = model.filePath;
+            iv = model.iv;
+            authTag = model.authTag;
+            mimeType = 'model/gltf-binary';
+            ext = '.glb';
+        }
+
+        if (!filePath || !fs.existsSync(filePath)) {
+            throw new NotFoundException('Fiziksel dosya sunucuda bulunamadı.');
+        }
+
+        // Decrypt işlemi
+        const buffer = this.decryptFile(filePath, iv!, authTag!);
+
+        // İndirme sırasında dosya adı düzgün görünsün diye
+        let cleanFileName = model.fileName;
+        if (!cleanFileName.toLowerCase().endsWith(ext)) {
+            cleanFileName += ext;
+        }
+
+        return { buffer, mimeType, filename: cleanFileName };
+    }
+    
 }

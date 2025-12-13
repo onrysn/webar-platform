@@ -1,4 +1,4 @@
-import type { ARModelDto, TempModelResponse, FinalizeModelDto } from "../modules/ar-model/dto/arModel.dto";
+import type { ARModelDto, TempModelResponse, FinalizeModelDto, ModelDetailDto } from "../modules/ar-model/dto/arModel.dto";
 import { apiService } from "./httpService/apiService"; // Yolunu projene göre ayarla
 import type { AxiosProgressEvent } from "axios";
 
@@ -61,7 +61,23 @@ export const arModelService = {
     if (relativePath.startsWith('http')) return relativePath;
     const path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
     return `${API_BASE_URL}${path}`;
+  },
+
+  // 6. [YENİ] Model Detaylarını Getir
+  async getModelDetails(id: number): Promise<ModelDetailDto> {
+    const res = await apiService.get<ModelDetailDto>(`/ar-model/${id}`);
+    return res.data;
+  },
+
+  // 7. [YENİ] Dosyayı Blob Olarak Çek (Preview veya Download için)
+  async getModelFileBlob(id: number, format: 'glb' | 'usdz', mode: 'view' | 'download'): Promise<Blob> {
+    const res = await apiService.get(`/ar-model/${id}/file`, {
+      params: { format, mode },
+      responseType: 'blob', // Binary veri olduğu için çok önemli
+    });
+    return res.data as unknown as Blob;
   }
+
 };
 
 // Kod tekrarını önlemek için helper

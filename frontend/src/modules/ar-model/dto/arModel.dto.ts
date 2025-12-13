@@ -37,3 +37,16 @@ export interface FinalizeModelDto {
   modelName?: string;
   thumbnail?: string; // Base64 string
 }
+
+export interface ModelDetailDto {
+  id: number;
+  fileName: string;
+  description: string; // Backend'den "Şirket Adı tarafından yüklendi" gibi geliyor
+  uploadedBy: string;
+  createdAt: string;
+  thumbnailUrl: string | null;
+  files: {
+    glb: { exists: boolean; size: number; format: 'glb' };
+    usdz: { exists: boolean; size: number; format: 'usdz' };
+  };
+}

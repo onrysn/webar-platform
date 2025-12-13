@@ -1,10 +1,10 @@
 // ar-model.controller.ts
-import { Controller, Post, UseInterceptors, UploadedFile, Req, UseGuards, Query, Get, Param, Res, Body, BadRequestException } from '@nestjs/common';
+import { Controller, Post, UseInterceptors, UploadedFile, Req, UseGuards, Query, Get, Param, Res, Body, BadRequestException, NotFoundException, StreamableFile } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ARModelService } from './ar-model.service';
 import { modelUploadConfig } from 'src/config/multer/ar-model-upload.config';
 import { File as MulterFile } from 'multer';
-import { ApiBearerAuth, ApiTags, ApiConsumes, ApiQuery, ApiBody } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiConsumes, ApiQuery, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
 import type { Response } from 'express';
@@ -119,6 +119,75 @@ export class ARModelController {
         const userId = req.user.userId;
         const { tempId, companyId, modelName, thumbnail } = body;
         return this.arModelService.finalizeTempModel(tempId, +companyId, userId, modelName, thumbnail || null);
+    }
+
+
+    // 1. DETAY EKRANI İÇİN DATA
+    @Get(':id')
+    @ApiOperation({ summary: 'Model detaylarını, dosya boyutlarını ve thumbnail bilgisini döner' })
+    async getModelDetails(@Param('id') id: number) {
+        const model = await this.prisma.aRModel.findUnique({
+            where: { id: +id },
+            include: {
+                company: { select: { name: true } },
+                user: { select: { name: true, email: true } }
+            }
+        });
+
+        if (!model) throw new NotFoundException('Model bulunamadı');
+
+        // Frontend'e temiz, kullanıma hazır bir obje dönüyoruz
+        return {
+            id: model.id,
+            fileName: model.fileName,
+            description: `${model.company.name} tarafından yüklendi.`,
+            uploadedBy: model.user.name,
+            createdAt: model.createdAt,
+            // Thumbnail varsa statik path, yoksa null
+            thumbnailUrl: model.thumbnailPath ? model.thumbnailPath : null,
+            files: {
+                glb: {
+                    exists: true, // GLB her zaman ana dosya olduğu için true
+                    size: model.fileSize, // Byte cinsinden
+                    format: 'glb'
+                },
+                usdz: {
+                    exists: !!model.usdzFilePath,
+                    size: model.usdzFileSize || 0,
+                    format: 'usdz'
+                }
+            }
+        };
+    }
+
+    @Get(':id/file')
+    @ApiOperation({ summary: 'Model dosyasını stream eder (Preview veya Download)' })
+    @ApiQuery({ name: 'format', enum: ['glb', 'usdz'], required: false })
+    @ApiQuery({ name: 'mode', enum: ['view', 'download'], required: false })
+    async getModelFile(
+        @Param('id') id: number,
+        @Query('format') format: 'glb' | 'usdz' = 'glb',
+        @Query('mode') mode: 'view' | 'download' = 'view',
+        @Res({ passthrough: true }) res: Response // 2. passthrough: true ekliyoruz
+    ): Promise<StreamableFile> { // 3. Dönüş tipi StreamableFile
+        
+        const model = await this.prisma.aRModel.findUnique({ where: { id: +id } });
+        if (!model) throw new NotFoundException('Model bulunamadı');
+
+        // Service'den decrypt edilmiş buffer'ı al
+        const { buffer, mimeType, filename } = await this.arModelService.getModelFileBuffer(model, format);
+
+        // Header ayarları
+        res.set({
+            'Content-Type': mimeType,
+            'Content-Length': buffer.length,
+            'Content-Disposition': `${mode === 'download' ? 'attachment' : 'inline'}; filename="${filename}"`,
+            // Cache kontrolü eklemek performansı artırır (opsiyonel)
+            'Cache-Control': 'private, max-age=3600' 
+        });
+
+        // 4. NestJS StreamableFile ile buffer'ı dönüyoruz
+        return new StreamableFile(buffer);
     }
 
 }
