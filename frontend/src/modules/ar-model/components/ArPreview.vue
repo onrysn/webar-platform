@@ -30,8 +30,9 @@ import { USDZLoader } from 'three/examples/jsm/loaders/USDZLoader.js';
 defineOptions({ name: 'ArPreview' });
 
 const props = defineProps<{
-  src?: string | null;  // URL desteği (Backend temp path)
+  src?: string | null;  // URL desteği (Backend temp path veya Blob URL)
   file?: File | null;   // Local dosya desteği
+  format?: 'glb' | 'usdz' | 'fbx'; // Blob URL'ler için manuel format zorlama
 }>();
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -118,7 +119,19 @@ const loadModel = async () => {
   // Eski modeli temizle
   if (currentModel) {
     scene.remove(currentModel);
-    // Cleanup geometry/materials here ideally
+    
+    // Bellek temizliği (Material ve Geometry'leri dispose et)
+    currentModel.traverse((child) => {
+      if ((child as THREE.Mesh).isMesh) {
+        const mesh = child as THREE.Mesh;
+        if (mesh.geometry) mesh.geometry.dispose();
+        if (Array.isArray(mesh.material)) {
+            mesh.material.forEach(m => m.dispose());
+        } else if (mesh.material) {
+            mesh.material.dispose();
+        }
+      }
+    });
     currentModel = null;
   }
 
@@ -126,13 +139,32 @@ const loadModel = async () => {
     let url = '';
     let ext = '';
 
-    // Kaynak belirleme (URL öncelikli, yoksa File)
+    // 1. Kaynak URL'ini belirle
     if (props.src) {
       url = props.src;
-      ext = url.split('.').pop()?.toLowerCase() || 'glb';
     } else if (props.file) {
       url = URL.createObjectURL(props.file);
+    }
+
+    // 2. Formatı (Uzantıyı) Belirle - REVİZE EDİLEN MANTIK
+    if (props.format) {
+      // Eğer prop olarak format geldiyse en güvenilir kaynak budur
+      ext = props.format.toLowerCase();
+    } 
+    else if (props.file) {
+      // Dosya objesi varsa uzantı isminden alınır
       ext = props.file.name.split('.').pop()?.toLowerCase() || 'glb';
+    } 
+    else if (props.src) {
+      // URL var ama format yoksa:
+      if (url.startsWith('blob:')) {
+         // Blob URL'lerde uzantı olmaz, varsayılan olarak GLB kabul et
+         // (Veya parent component format göndermeli)
+         ext = 'glb'; 
+      } else {
+         // Normal URL (http://.../model.fbx)
+         ext = url.split('.').pop()?.toLowerCase() || 'glb';
+      }
     }
 
     let object: THREE.Object3D | null = null;
@@ -142,16 +174,16 @@ const loadModel = async () => {
       const gltf = await loader.loadAsync(url);
       object = gltf.scene;
     } 
-    else if (ext === 'fbx') {
+    else if (ext.includes('fbx')) {
       const loader = new FBXLoader();
       object = await loader.loadAsync(url);
     }
-    else if (ext === 'usdz') {
+    else if (ext.includes('usdz')) {
       const loader = new USDZLoader();
       object = await loader.loadAsync(url);
     }
     else {
-      throw new Error(`Desteklenmeyen format: ${ext}`);
+      throw new Error(`Desteklenmeyen veya algılanamayan format: ${ext}`);
     }
 
     if (object) {
@@ -162,7 +194,7 @@ const loadModel = async () => {
 
   } catch (err: any) {
     console.error("Yükleme hatası:", err);
-    error.value = "Model yüklenemedi. Formatı veya yolu kontrol edin.";
+    error.value = "Model yüklenemedi. Formatı kontrol edin.";
   } finally {
     loading.value = false;
   }
@@ -207,10 +239,14 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (animationId) cancelAnimationFrame(animationId);
   renderer?.dispose();
+  
+  // URL.createObjectURL ile oluşturulan linkleri temizlemek iyi bir pratiktir
+  // Ancak burada hangisinin blob olduğunu bilmek zor olduğu için
+  // Parent component'in revoke yapması daha sağlıklıdır.
 });
 
-// Hem src hem file değiştiğinde tetikle
-watch(() => [props.src, props.file], () => {
+// src, file veya format değiştiğinde yeniden yükle
+watch(() => [props.src, props.file, props.format], () => {
   loadModel();
 });
 </script>

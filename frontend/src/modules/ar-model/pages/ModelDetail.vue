@@ -38,7 +38,7 @@
         <div
           class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden h-[600px] relative group">
 
-          <ArPreview v-if="previewBlobUrl" :src="previewBlobUrl" class="w-full h-full z-10 relative" />
+          <ArPreview v-if="previewBlobUrl" :src="previewBlobUrl" class="w-full h-full z-10 relative" format="glb" />
 
           <div v-else class="absolute inset-0 flex flex-col items-center justify-center bg-gray-50 z-20">
             <svg class="animate-spin h-8 w-8 text-blue-500 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none"
