@@ -1,19 +1,20 @@
 <template>
-    <div class="flex h-screen overflow-hidden bg-gray-900 text-white">
+    <div class="flex h-screen overflow-hidden bg-gray-100 text-gray-900">
 
-        <div class="w-80 flex flex-col border-r border-gray-700 bg-gray-800">
-            <div class="p-4 border-b border-gray-700 flex justify-between items-center">
-                <h2 class="font-bold">{{ sceneData?.name || 'Sahne Yükleniyor...' }}</h2>
-                <button @click="$router.back()" class="text-xs text-gray-400 hover:text-white">Çıkış</button>
+        <div class="w-80 flex flex-col border-r border-gray-300 bg-white shadow-lg z-10">
+            <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                <h2 class="font-bold text-gray-800">{{ sceneData?.name || 'Sahne Yükleniyor...' }}</h2>
+                <button @click="$router.back()"
+                    class="text-xs text-gray-500 hover:text-red-600 font-medium transition-colors">Çıkış</button>
             </div>
 
             <div class="flex-1 overflow-y-auto p-2 space-y-2">
                 <div v-for="item in sceneItems" :key="item.id" @click="selectItemFromTree(item.id)"
-                    class="p-2 rounded cursor-pointer flex justify-between items-center group"
-                    :class="selectedItemId === item.id ? 'bg-blue-600' : 'hover:bg-gray-700'">
-                    <span class="text-sm truncate">{{ item.name }}</span>
+                    class="p-2 rounded cursor-pointer flex justify-between items-center group transition-all border border-transparent"
+                    :class="selectedItemId === item.id ? 'bg-blue-100 border-blue-300 text-blue-700' : 'hover:bg-gray-100 hover:border-gray-200'">
+                    <span class="text-sm truncate font-medium">{{ item.name }}</span>
                     <button @click.stop="deleteItem(item.id)"
-                        class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-200 p-1">
+                        class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 p-1 transition-opacity">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                             stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -23,9 +24,9 @@
                 </div>
             </div>
 
-            <div class="p-4 border-t border-gray-700">
+            <div class="p-4 border-t border-gray-200 bg-gray-50">
                 <button @click="showModelSelector = true"
-                    class="w-full py-2 bg-green-600 hover:bg-green-700 rounded text-sm font-semibold flex items-center justify-center gap-2">
+                    class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded shadow-sm text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path fill-rule="evenodd"
                             d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
@@ -36,40 +37,52 @@
             </div>
         </div>
 
-        <div class="flex-1 relative bg-black">
+        <div class="flex-1 relative bg-gray-200">
             <canvas ref="canvasRef" class="w-full h-full block outline-none"></canvas>
 
-            <div v-if="isLoading" class="absolute inset-0 flex items-center justify-center bg-black/50 z-50">
+            <div v-if="isLoading"
+                class="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-50">
                 <div class="text-center">
-                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-white mx-auto mb-2"></div>
-                    <p>Sahne Hazırlanıyor...</p>
+                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-2"></div>
+                    <p class="text-gray-600 font-medium">Sahne Hazırlanıyor...</p>
                 </div>
             </div>
 
-
-            <div class="absolute top-4 left-4 bg-black/60 p-2 rounded text-xs text-gray-300 pointer-events-none">
-                <p>Sol Tık: Seç / Sürükle</p>
+            <div
+                class="absolute top-4 left-4 bg-white/90 border border-gray-200 p-3 rounded-lg shadow-md text-xs text-gray-600 pointer-events-none">
+                <p class="font-bold text-gray-800 mb-1">Kontroller</p>
+                <p>Sol Tık: Seç / Çevir</p>
+                <p>Sağ Tık: Kaydır</p>
+                <div class="border-t border-gray-200 my-1"></div>
                 <p>Modlar: <b>W</b>: Taşı | <b>E</b>: Döndür | <b>R</b>: Ölçekle</p>
             </div>
         </div>
 
-        <div v-if="showModelSelector" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+        <div v-if="showModelSelector"
+            class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <div
                 class="bg-white text-gray-900 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-                <div class="p-4 border-b flex justify-between items-center">
-                    <h3 class="font-bold text-lg">Kütüphaneden Model Seç</h3>
-                    <button @click="showModelSelector = false" class="text-gray-500 hover:text-black">Kapat</button>
+                <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+                    <h3 class="font-bold text-lg text-gray-800">Kütüphaneden Model Seç</h3>
+                    <button @click="showModelSelector = false"
+                        class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
-                <div class="p-4 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div class="p-4 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-4 bg-gray-50">
                     <div v-for="model in availableModels" :key="model.id" @click="addModelToScene(model)"
-                        class="border rounded-lg p-2 cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition">
-                        <div class="aspect-square bg-gray-100 rounded mb-2 overflow-hidden">
+                        class="bg-white border border-gray-200 rounded-lg p-2 cursor-pointer hover:border-blue-500 hover:shadow-md transition-all">
+                        <div
+                            class="aspect-square bg-gray-100 rounded mb-2 overflow-hidden flex items-center justify-center relative">
                             <img v-if="model.thumbnailPath" :src="getThumbnailUrl(model.thumbnailPath)"
                                 class="w-full h-full object-cover">
-                            <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-xs">No
-                                Image</div>
+                            <div v-else class="text-gray-400 text-xs font-medium">Görsel Yok</div>
                         </div>
-                        <p class="text-xs font-semibold truncate">{{ model.fileName }}</p>
+                        <p class="text-xs font-semibold truncate text-gray-700">{{ model.fileName }}</p>
                     </div>
                 </div>
             </div>
@@ -79,7 +92,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, markRaw } from 'vue'; // markRaw eklendi
+import { ref, onMounted, onBeforeUnmount, nextTick, markRaw } from 'vue';
 import { useRoute } from 'vue-router';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -105,6 +118,11 @@ const selectedItemId = ref<number | null>(null);
 
 // Mouse Takibi
 const mouseStart = new THREE.Vector2();
+
+// --- AYARLAR ---
+// Sahne boyutlarını buradan yönetebilirsiniz
+const SCENE_SIZE_WIDTH = 20; // 20 Metre genişlik
+const SCENE_SIZE_DEPTH = 20; // 20 Metre derinlik
 
 // --- Three.js Globals ---
 let scene: THREE.Scene;
@@ -138,7 +156,6 @@ onMounted(async () => {
 onBeforeUnmount(() => {
     cancelAnimationFrame(animationId);
     renderer?.dispose();
-    // TransformControls dispose edilmeli
     if (transformControl) {
         transformControl.detach();
         transformControl.dispose();
@@ -160,50 +177,79 @@ const initThreeJS = () => {
     if (!canvasRef.value) return;
 
     scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x222222);
+    // 1. AÇIK TEMA RENGİ (Çok açık gri / Beyazımsı)
+    scene.background = new THREE.Color(0xf5f5f5);
 
-    // Grid & Lights
-    scene.add(new THREE.GridHelper(20, 20));
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1);
-    dirLight.position.set(5, 10, 7);
+    // Sis efekti (Opsiyonel: Sonsuzluğu yumuşatır)
+    scene.fog = new THREE.Fog(0xf5f5f5, 10, 50);
+
+    // 2. SAHNE ZEMİNİ (Physical Floor)
+    // Gölgelerin düşmesi için gerçek bir zemin geometrisi
+    const floorGeometry = new THREE.PlaneGeometry(SCENE_SIZE_WIDTH, SCENE_SIZE_DEPTH);
+    const floorMaterial = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.8,
+        metalness: 0.1
+    });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2; // Yatay konuma getir
+    floor.receiveShadow = true; // Zemin gölgeleri kabul etsin
+    scene.add(floor);
+
+    // 3. Grid Helper (Açık tema için renkler koyulaştırıldı)
+    // GridHelper(size, divisions, centerColor, gridColor)
+    const gridHelper = new THREE.GridHelper(Math.max(SCENE_SIZE_WIDTH, SCENE_SIZE_DEPTH), 20, 0x888888, 0xdddddd);
+    gridHelper.position.y = 0.01; // Z-fighting önlemek için zeminden çok az yukarı
+    scene.add(gridHelper);
+
+    // 4. IŞIKLANDIRMA (Açık tema ve gölgeler için optimize edildi)
+    scene.add(new THREE.AmbientLight(0xffffff, 0.6)); // Ortam ışığı
+
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight.position.set(10, 20, 10);
+    dirLight.castShadow = true; // Güneş ışığı gölge yapsın
+
+    // Gölge kalitesi ve alanı ayarları
+    dirLight.shadow.mapSize.width = 2048;
+    dirLight.shadow.mapSize.height = 2048;
+    const d = 15;
+    dirLight.shadow.camera.left = -d;
+    dirLight.shadow.camera.right = d;
+    dirLight.shadow.camera.top = d;
+    dirLight.shadow.camera.bottom = -d;
     scene.add(dirLight);
 
     // Camera
     const width = canvasRef.value.clientWidth;
     const height = canvasRef.value.clientHeight;
     camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(5, 5, 5);
+    camera.position.set(8, 8, 12);
     camera.lookAt(0, 0, 0);
 
-    // Renderer
+    // Renderer (ShadowMap aktif edildi)
     renderer = new THREE.WebGLRenderer({ canvas: canvasRef.value, antialias: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.shadowMap.enabled = true; // <--- GÖLGE MOTORU AKTİF
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     // Controls
     orbit = new OrbitControls(camera, renderer.domElement);
+    orbit.enableDamping = true; // Yumuşak duruş
+    orbit.dampingFactor = 0.05;
+    orbit.maxPolarAngle = Math.PI / 2 - 0.05; // Kameranın zeminin altına girmesini engelle
     orbit.update();
 
-    // Transform Controls - markRaw kullanarak Vue proxy'sinden koruyoruz
+    // Transform Controls
     transformControl = markRaw(new TransformControls(camera, renderer.domElement));
-
-    // 1. Orbit Çakışmasını Önle
     transformControl.addEventListener('dragging-changed', (event) => {
         orbit.enabled = !event.value;
     });
-
-    // 2. Kaydetme
     transformControl.addEventListener('mouseUp', async () => {
         if (transformControl.object && selectedItemId.value) {
             await saveTransform(selectedItemId.value, transformControl.object);
         }
     });
-
-    // 3. Sahneye Ekle (STANDART YÖNTEM)
-    // 'as unknown as THREE.Object3D' kullanımı TypeScript hatasını susturur ama
-    // çalışma zamanında nesne bozuksa yine hata verir. 
-    // NOT: Eğer burada "object not an instance" hatası alırsanız aşağıdaki Terminal komutunu uygulayın.
     scene.add(transformControl.getHelper());
 
     // Raycaster
@@ -230,6 +276,7 @@ const handleResize = () => {
 
 const animate = () => {
     animationId = requestAnimationFrame(animate);
+    orbit.update(); // Damping için gerekli
     renderer.render(scene, camera);
 };
 
@@ -244,6 +291,14 @@ const loadSceneObjects = async () => {
             const url = URL.createObjectURL(blob);
             const gltf = await loader.loadAsync(url);
             const model = gltf.scene;
+
+            // Gölge Özelliğini Aç (Mevcut modeller için)
+            model.traverse((child) => {
+                if ((child as THREE.Mesh).isMesh) {
+                    child.castShadow = true;
+                    child.receiveShadow = true;
+                }
+            });
 
             const pos = item.position as any;
             const rot = item.rotation as any;
@@ -267,60 +322,61 @@ const addModelToScene = async (arModel: ARModelDto) => {
     showModelSelector.value = false;
 
     try {
-        // 1. Modeli yükle (Henüz sahneye eklemiyoruz)
+        // 1. Modeli yükle
         const loader = new GLTFLoader();
         const blob = await arModelService.getModelFileBlob(arModel.id, 'glb', 'view');
         const url = URL.createObjectURL(blob);
         const gltf = await loader.loadAsync(url);
         const model = gltf.scene;
 
-        // 2. Modelin Transformlarını Sıfırla ve Matrisleri Güncelle
-        // (Bu adım, hesaplamanın doğru yapılması için kritiktir)
+        // 2. Reset Transform & Update Matrix
         model.position.set(0, 0, 0);
         model.rotation.set(0, 0, 0);
         model.scale.set(1, 1, 1);
         model.updateMatrixWorld(true);
 
-        // 3. Bounding Box (Sınır Kutusu) Hesapla
+        // 3. Gölge Ayarlarını Aç
+        model.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+                child.castShadow = true;
+                child.receiveShadow = true;
+            }
+        });
+
+        // 4. Bounding Box & Merkezleme Mantığı
         const box = new THREE.Box3().setFromObject(model);
 
-        // Kutunun boyutları geçerli mi kontrol et (Boş model hatasını önler)
         if (box.isEmpty()) {
-            console.warn("Model boyutu hesaplanamadı, varsayılan pozisyon kullanılıyor.");
+            console.warn("Model boyutu hesaplanamadı.");
         }
 
         const center = new THREE.Vector3();
-        box.getCenter(center); // Görsel merkez noktası
-        const size = new THREE.Vector3();
-        box.getSize(size);
+        box.getCenter(center);
 
-        // 4. Yeni Pozisyonu Hesapla (Merkezleme Mantığı)
-        // X ve Z: Modelin görsel merkezini (0,0) noktasına getirmek için tersi kadar öteliyoruz.
-        // Y: Modelin en alt noktasını (min.y) zemine (0) oturtmak için tersi kadar öteliyoruz.
+        // X ve Z: Ortala
+        // Y: Zemine Oturt
         const newX = -center.x;
         const newY = -box.min.y;
         const newZ = -center.z;
 
-        // Görsel olarak uygula
+        // Görsel uygula
         model.position.set(newX, newY, newZ);
 
-        // 5. Backend'e HESAPLANAN bu yeni koordinatları gönder
-        // Böylece sayfa yenilendiğinde model yine merkezde ve zeminde olur.
+        // 5. Backend'e Hesaplanan Koordinatları Gönder
         const newItem = await arSceneService.addItem({
             sceneId: sceneId,
             modelId: arModel.id,
             name: arModel.fileName,
-            position: { x: newX, y: newY, z: newZ } // <--- Kritik nokta burası
+            position: { x: newX, y: newY, z: newZ }
         });
 
         sceneItems.value.push(newItem);
 
-        // 6. Sahneye Ekle ve Yapılandır
+        // 6. Sahneye Ekle
         model.userData = { isSceneItem: true, itemId: newItem.id };
         scene.add(model);
         itemsMap.set(newItem.id, model);
 
-        // Eklenen objeyi seçili hale getir
         selectItemFromTree(newItem.id);
 
     } catch (err) {
@@ -348,7 +404,6 @@ const onMouseUp = (event: MouseEvent) => {
 
     raycaster.setFromCamera(mouse, camera);
 
-    // Gizmo Kontrolü (Type Casting ile güvenli hale getirildi)
     if (selectedItemId.value && transformControl) {
         const gizmoChildren = (transformControl as any).children || [];
         if (gizmoChildren.length > 0) {
