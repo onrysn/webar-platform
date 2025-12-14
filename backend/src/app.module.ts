@@ -7,6 +7,7 @@ import { ProductModule } from './modules/product/product.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CompanyModule } from './modules/company/company.module';
 import { ARModelModule } from './modules/ar-model/ar-model.module';
+import { ARSceneModule } from './modules/ar-scene/ar-scene.module';
 
 @Module({
   imports: [
@@ -32,7 +33,8 @@ import { ARModelModule } from './modules/ar-model/ar-model.module';
     UserModule,
     ProductModule,
     CompanyModule,
-    ARModelModule
+    ARModelModule,
+    ARSceneModule
   ],
 })
 export class AppModule { }

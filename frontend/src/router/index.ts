@@ -19,14 +19,28 @@ import CompanyApiKey from '../modules/companies/pages/CompanyApiKey.vue';
 // Auth sayfaları
 import Login from '../modules/auth/pages/Login.vue';
 import Register from '../modules/auth/pages/Register.vue';
+
+// AR Model sayfaları
 import ModelList from '../modules/ar-model/pages/ModelList.vue';
 import UploadModel from '../modules/ar-model/pages/UploadModel.vue';
 import ModelDetail from '../modules/ar-model/pages/ModelDetail.vue';
+
+// AR Scene sayfaları
+import SceneList from '../modules/ar-scene/pages/SceneList.vue';
+import SceneEditor from '../modules/ar-scene/pages/SceneEditor.vue'; // <--- Import Edildi
 
 const routes = [
   { path: '/', redirect: '/login' },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
+  {
+    path: '/editor/scene/:id',
+    name: 'SceneEditor',
+    component: SceneEditor,
+    meta: { requiresAuth: true }
+  },
+
+  // --- 2. DASHBOARD ROTASI ---
   {
     path: '/dashboard',
     component: MainLayout,
@@ -38,22 +52,25 @@ const routes = [
       { path: 'settings', component: Settings },  // /dashboard/settings
 
       // Companies
-      { path: 'companies', component: CompaniesList, meta: { adminOnly: true } },           // /dashboard/companies
-      { path: 'companies/create', component: CompanyCreate, meta: { adminOnly: true } },    // /dashboard/companies/create
+      { path: 'companies', component: CompaniesList, meta: { adminOnly: true } },
+      { path: 'companies/create', component: CompanyCreate, meta: { adminOnly: true } },
       {
         path: 'companies/:id',
-        component: CompanyDetail,                               // Şirket detay
+        component: CompanyDetail,
         children: [
-          { path: 'update', component: CompanyUpdate, meta: { adminOnly: true } },         // /dashboard/companies/:id/update
-          { path: 'manage-users', component: CompanyManageUsers, meta: { adminOnly: true } }, // /dashboard/companies/:id/manage-users
-          { path: 'api-key', component: CompanyApiKey, meta: { adminOnly: true } },        // /dashboard/companies/:id/api-key
+          { path: 'update', component: CompanyUpdate, meta: { adminOnly: true } },
+          { path: 'manage-users', component: CompanyManageUsers, meta: { adminOnly: true } },
+          { path: 'api-key', component: CompanyApiKey, meta: { adminOnly: true } },
         ],
       },
 
+      // AR Models
       { path: 'ar-model', name: 'ModelList', component: ModelList },
       { path: 'ar-model/upload', name: 'UploadModel', component: UploadModel, meta: { adminOnly: true }  },
       { path: 'ar-model/:id', name: 'ModelDetail', component: ModelDetail },
 
+      // AR Scenes (LİSTE) -> Dashboard içinde kalıyor
+      { path: 'ar-scene', name: 'SceneList', component: SceneList },
     ],
   },
 ];
@@ -63,6 +80,7 @@ const router = createRouter({
   routes,
 });
 
+// ... (Router Guard kısmı aynen kalacak) ...
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
   auth.loadFromStorage();

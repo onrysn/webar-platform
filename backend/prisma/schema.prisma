@@ -79,21 +79,41 @@ model ARModel {
 
   company     Company    @relation(fields: [companyId], references: [id])
   user        User       @relation(fields: [uploadedBy], references: [id])
-  scenes      ARScene[]
+  sceneItems  SceneItem[]
 }
 
 model ARScene {
   id        Int      @id @default(autoincrement())
   name      String
-  modelId   Int
   companyId Int
+  
+  settings  Json?    @default("{}") 
 
-  position  Json     @default("{}")
-  rotation  Json     @default("{}")
-  scale     Json     @default("{}")
   createdAt DateTime @default(now())
-  isDeleted Boolean @default(false)
+  updatedAt DateTime @updatedAt
+  isDeleted Boolean  @default(false)
 
-  model     ARModel  @relation(fields: [modelId], references: [id])
   company   Company  @relation(fields: [companyId], references: [id])
+  
+  // Bir sahnenin içinde birden fazla eşya (SceneItem) olabilir
+  items     SceneItem[]
+}
+
+// Ara Tablo
+model SceneItem {
+  id        Int      @id @default(autoincrement())
+  sceneId   Int
+  modelId   Int
+  
+  name      String?  
+  position  Json     @default("{\"x\": 0, \"y\": 0, \"z\": 0}")
+  rotation  Json     @default("{\"x\": 0, \"y\": 0, \"z\": 0}")
+  scale     Json     @default("{\"x\": 1, \"y\": 1, \"z\": 1}")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // İlişkiler
+  scene     ARScene  @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  model     ARModel  @relation(fields: [modelId], references: [id])
 }
