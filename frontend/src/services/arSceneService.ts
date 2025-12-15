@@ -1,5 +1,12 @@
 import { apiService } from "./httpService/apiService";
-import type { ARSceneDto, CreateSceneDto, AddSceneItemDto, UpdateSceneItemDto, SceneItemDto } from "../modules/ar-scene/dto/arScene.dto";
+import type { 
+  ARSceneDto, 
+  CreateSceneDto, 
+  UpdateSceneDto, // <--- YENİ: Import eklendi
+  AddSceneItemDto, 
+  UpdateSceneItemDto, 
+  SceneItemDto 
+} from "../modules/ar-scene/dto/arScene.dto";
 
 export const arSceneService = {
   // 1. Sahne Oluştur
@@ -8,31 +15,40 @@ export const arSceneService = {
     return res.data;
   },
 
-  // 2. Listele
+  // 2. Sahne Güncelle (YENİ - Ad veya Ayarlar için)
+  // Backend: PATCH /ar-scene/:id
+  async updateScene(id: number, data: UpdateSceneDto): Promise<ARSceneDto> {
+    const res = await apiService.patch<ARSceneDto>(`/ar-scene/${id}`, data);
+    return res.data;
+  },
+
+  // 3. Listele
   async listScenes(companyId: number): Promise<ARSceneDto[]> {
     const res = await apiService.get<ARSceneDto[]>('/ar-scene/list', { params: { companyId } });
     return res.data;
   },
 
-  // 3. Detay (Editör için full data)
+  // 4. Detay (Editör için full data - Items ve Settings dahil)
   async getScene(id: number): Promise<ARSceneDto> {
     const res = await apiService.get<ARSceneDto>(`/ar-scene/${id}`);
     return res.data;
   },
 
-  // 4. Eşya Ekle
+  // --- ITEM İŞLEMLERİ ---
+
+  // 5. Eşya Ekle
   async addItem(data: AddSceneItemDto): Promise<SceneItemDto> {
     const res = await apiService.post<SceneItemDto>('/ar-scene/item', data);
     return res.data;
   },
 
-  // 5. Eşya Güncelle (Pozisyon/Rotasyon)
+  // 6. Eşya Güncelle (Pozisyon/Rotasyon/Ölçek)
   async updateItem(itemId: number, data: UpdateSceneItemDto): Promise<SceneItemDto> {
     const res = await apiService.patch<SceneItemDto>(`/ar-scene/item/${itemId}`, data);
     return res.data;
   },
 
-  // 6. Eşya Sil
+  // 7. Eşya Sil
   async removeItem(itemId: number): Promise<void> {
     await apiService.delete(`/ar-scene/item/${itemId}`);
   }

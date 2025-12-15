@@ -1,14 +1,39 @@
 import type { ARModelDto } from "../../ar-model/dto/arModel.dto";
 
+// --- ORTAK TİPLER (Helpers) ---
+
+export interface Vector3 {
+  x: number;
+  y: number;
+  z: number;
+}
+
+export interface FloorPoint {
+  x: number;
+  z: number;
+}
+
+export interface SceneSettings {
+  floorType?: 'rectangle' | 'custom';
+  width?: number;       // Örn: 20
+  depth?: number;       // Örn: 15
+  floorPoints?: FloorPoint[];
+  backgroundColor?: string;
+  gridVisible?: boolean;
+  floorColor?: string;
+}
+
+// --- ANA VERİ MODELLERİ (Response Types) ---
+
 export interface SceneItemDto {
   id: number;
   sceneId: number;
   modelId: number;
   name?: string;
-  position: { x: number; y: number; z: number };
-  rotation: { x: number; y: number; z: number };
-  scale: { x: number; y: number; z: number };
-  model: ARModelDto; // Backend include: { model: true } dönüyor
+  position: Vector3;
+  rotation: Vector3;
+  scale: Vector3;
+  model: ARModelDto; 
 }
 
 export interface ARSceneDto {
@@ -16,26 +41,39 @@ export interface ARSceneDto {
   name: string;
   companyId: number;
   createdAt: string;
+  updatedAt?: string;
   items: SceneItemDto[];
+  settings: SceneSettings; // <--- YENİ: Backend'den gelen JSON ayarları
 }
 
-// Create Payload
+// --- PAYLOADS (Request Types) ---
+
+// 1. Yeni Sahne Oluşturma
 export interface CreateSceneDto {
   name: string;
   companyId: number;
+  settings?: SceneSettings; // <--- YENİ: Oluştururken ayar gönderebiliriz
 }
 
-// Add Item Payload
+// 2. Sahne Güncelleme (YENİ)
+export interface UpdateSceneDto {
+  name?: string;
+  settings?: SceneSettings;
+}
+
+// 3. Eşya Ekleme
 export interface AddSceneItemDto {
   sceneId: number;
   modelId: number;
   name?: string;
-  position?: { x: number; y: number; z: number };
+  position?: Vector3;
+  rotation?: Vector3;
+  scale?: Vector3;
 }
 
-// Update Item Payload
+// 4. Eşya Güncelleme
 export interface UpdateSceneItemDto {
-  position?: { x: number; y: number; z: number };
-  rotation?: { x: number; y: number; z: number };
-  scale?: { x: number; y: number; z: number };
+  position?: Vector3;
+  rotation?: Vector3;
+  scale?: Vector3;
 }

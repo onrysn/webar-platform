@@ -3,7 +3,14 @@
 
         <div class="w-80 flex flex-col border-r border-gray-300 bg-white shadow-lg z-10">
             <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                <h2 class="font-bold text-gray-800">{{ sceneData?.name || 'Sahne Yükleniyor...' }}</h2>
+                <div>
+                    <h2 class="font-bold text-gray-800 truncate w-48" :title="sceneData?.name">
+                        {{ sceneData?.name || 'Yükleniyor...' }}
+                    </h2>
+                    <p v-if="sceneData?.settings" class="text-[10px] text-gray-500">
+                        {{ sceneData.settings.width }}m x {{ sceneData.settings.depth }}m
+                    </p>
+                </div>
                 <button @click="$router.back()"
                     class="text-xs text-gray-500 hover:text-red-600 font-medium transition-colors">Çıkış</button>
             </div>
@@ -49,7 +56,7 @@
             </div>
 
             <div
-                class="absolute top-4 left-4 bg-white/90 border border-gray-200 p-3 rounded-lg shadow-md text-xs text-gray-600 pointer-events-none">
+                class="absolute top-4 left-4 bg-white/90 border border-gray-200 p-3 rounded-lg shadow-md text-xs text-gray-600 pointer-events-none select-none">
                 <p class="font-bold text-gray-800 mb-1">Kontroller</p>
                 <p>Sol Tık: Seç / Çevir</p>
                 <p>Sağ Tık: Kaydır</p>
@@ -119,11 +126,6 @@ const selectedItemId = ref<number | null>(null);
 // Mouse Takibi
 const mouseStart = new THREE.Vector2();
 
-// --- AYARLAR ---
-// Sahne boyutlarını buradan yönetebilirsiniz
-const SCENE_SIZE_WIDTH = 20; // 20 Metre genişlik
-const SCENE_SIZE_DEPTH = 20; // 20 Metre derinlik
-
 // --- Three.js Globals ---
 let scene: THREE.Scene;
 let camera: THREE.PerspectiveCamera;
@@ -172,79 +174,180 @@ const loadSceneData = async () => {
 
 const getThumbnailUrl = (path: string) => arModelService.getPreviewUrl(path);
 
-// --- Three.js Logic ---
+// --- YARDIMCI FONKSİYON: Dinamik Grid Dokusu ---
+// Bunu script setup içinde en üste (importların altına) ekleyin
+// Grid dokusunu daha belirgin hale getirdik
+const createGridTexture = () => {
+    const size = 1024;
+    const canvas = document.createElement('canvas');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    // Tamamen şeffaf arkaplan
+    ctx.clearRect(0, 0, size, size);
+
+    // Çizgi Ayarları
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)'; // Siyahın %25 tonu
+    ctx.lineWidth = 4;
+
+    // Sadece kutunun kenarlarını çiziyoruz (İçi boş)
+    ctx.strokeRect(0, 0, size, size);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.minFilter = THREE.LinearFilter; // Daha keskin görünüm için
+
+    return texture;
+};
+
 const initThreeJS = () => {
     if (!canvasRef.value) return;
 
+    // --- 1. AYARLARI OKU ---
+    const settings = sceneData.value?.settings || {};
+    const sceneWidth = settings.width || 20;
+    const sceneDepth = settings.depth || 20;
+    const bgColor = settings.backgroundColor || '#f5f5f5';
+    const floorColor = settings.floorColor || '#ffffff';
+    const floorType = settings.floorType || 'rectangle';
+    const points = settings.floorPoints || [];
+
+    // Sahne Kurulumu
     scene = new THREE.Scene();
-    // 1. AÇIK TEMA RENGİ (Çok açık gri / Beyazımsı)
-    scene.background = new THREE.Color(0xf5f5f5);
+    scene.background = new THREE.Color(bgColor);
+    const maxDim = Math.max(sceneWidth, sceneDepth);
+    scene.fog = new THREE.Fog(bgColor, maxDim * 0.5, maxDim * 5);
 
-    // Sis efekti (Opsiyonel: Sonsuzluğu yumuşatır)
-    scene.fog = new THREE.Fog(0xf5f5f5, 10, 50);
+    // Işıklandırma
+    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
+    dirLight.position.set(15, 30, 15);
+    dirLight.castShadow = true;
 
-    // 2. SAHNE ZEMİNİ (Physical Floor)
-    // Gölgelerin düşmesi için gerçek bir zemin geometrisi
-    const floorGeometry = new THREE.PlaneGeometry(SCENE_SIZE_WIDTH, SCENE_SIZE_DEPTH);
-    const floorMaterial = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        roughness: 0.8,
-        metalness: 0.1
-    });
-    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
-    floor.rotation.x = -Math.PI / 2; // Yatay konuma getir
-    floor.receiveShadow = true; // Zemin gölgeleri kabul etsin
-    scene.add(floor);
-
-    // 3. Grid Helper (Açık tema için renkler koyulaştırıldı)
-    // GridHelper(size, divisions, centerColor, gridColor)
-    const gridHelper = new THREE.GridHelper(Math.max(SCENE_SIZE_WIDTH, SCENE_SIZE_DEPTH), 20, 0x888888, 0xdddddd);
-    gridHelper.position.y = 0.01; // Z-fighting önlemek için zeminden çok az yukarı
-    scene.add(gridHelper);
-
-    // 4. IŞIKLANDIRMA (Açık tema ve gölgeler için optimize edildi)
-    scene.add(new THREE.AmbientLight(0xffffff, 0.6)); // Ortam ışığı
-
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    dirLight.position.set(10, 20, 10);
-    dirLight.castShadow = true; // Güneş ışığı gölge yapsın
-
-    // Gölge kalitesi ve alanı ayarları
-    dirLight.shadow.mapSize.width = 2048;
-    dirLight.shadow.mapSize.height = 2048;
-    const d = 15;
-    dirLight.shadow.camera.left = -d;
-    dirLight.shadow.camera.right = d;
-    dirLight.shadow.camera.top = d;
-    dirLight.shadow.camera.bottom = -d;
+    const d = maxDim * 1.2;
+    dirLight.shadow.camera.left = -d; dirLight.shadow.camera.right = d;
+    dirLight.shadow.camera.top = d; dirLight.shadow.camera.bottom = -d;
+    dirLight.shadow.mapSize.set(2048, 2048);
     scene.add(dirLight);
 
-    // Camera
+    // --- 2. GEOMETRİ OLUŞTURMA ---
+    let geometry: THREE.BufferGeometry;
+
+    if (floorType === 'custom' && points.length > 2) {
+        const shape = new THREE.Shape();
+
+        // TypeScript hatasını önlemek için güvenli erişim
+        const p0 = points[0];
+        if (p0) shape.moveTo(p0.x, p0.z);
+
+        for (let i = 1; i < points.length; i++) {
+            const p = points[i];
+            if (p) shape.lineTo(p.x, p.z);
+        }
+        shape.closePath();
+        geometry = new THREE.ShapeGeometry(shape);
+    } else {
+        geometry = new THREE.PlaneGeometry(sceneWidth, sceneDepth);
+    }
+
+    // Geometriyi merkeze taşı
+    geometry.center();
+
+    // --- 3. UV HARİTASI HESAPLAMA (DÜZELTİLMİŞ KISIM) ---
+    geometry.computeBoundingBox();
+    const box = geometry.boundingBox!; // '!' ile null olmadığını garanti ediyoruz
+
+    // TypeScript için tip dönüşümü (Type Casting) yapıyoruz
+    const posAttribute = geometry.attributes.position as THREE.BufferAttribute;
+    const uvAttribute = geometry.attributes.uv as THREE.BufferAttribute;
+
+    // Attributes var mı kontrol et
+    if (posAttribute && uvAttribute) {
+        for (let i = 0; i < posAttribute.count; i++) {
+            const x = posAttribute.getX(i);
+            const y = posAttribute.getY(i);
+
+            // Grid'in metre bazlı oturması için world pozisyonunu kullanıyoruz
+            const u = (x - box.min.x);
+            const v = (y - box.min.y);
+
+            uvAttribute.setXY(i, u, v);
+        }
+        uvAttribute.needsUpdate = true;
+    }
+
+    // --- 4. ZEMİN MESH ---
+    const baseMaterial = new THREE.MeshStandardMaterial({
+        color: floorColor,
+        roughness: 0.8,
+        metalness: 0.1,
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1
+    });
+
+    const baseMesh = new THREE.Mesh(geometry, baseMaterial);
+    baseMesh.receiveShadow = true;
+
+    // --- 5. GRID MESH ---
+    const gridTexture = createGridTexture();
+    if (gridTexture) {
+        gridTexture.repeat.set(1, 1);
+    }
+
+    const gridMaterial = new THREE.MeshBasicMaterial({
+        map: gridTexture,
+        transparent: true,
+        opacity: 0.6,
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+
+    const gridMesh = new THREE.Mesh(geometry, gridMaterial);
+
+    // --- 6. GRUPLAMA VE ROTASYON ---
+    const floorGroup = new THREE.Group();
+    floorGroup.add(baseMesh);
+    floorGroup.add(gridMesh);
+
+    if (floorType === 'custom') {
+        floorGroup.rotation.x = Math.PI / 2;
+        floorGroup.scale.y = -1;
+    } else {
+        floorGroup.rotation.x = -Math.PI / 2;
+    }
+
+    scene.add(floorGroup);
+
+    // --- 7. KAMERA VE RENDERER ---
     const width = canvasRef.value.clientWidth;
     const height = canvasRef.value.clientHeight;
     camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    camera.position.set(8, 8, 12);
+
+    const camDist = maxDim * 1.0;
+    camera.position.set(camDist, camDist * 1.2, camDist);
     camera.lookAt(0, 0, 0);
 
-    // Renderer (ShadowMap aktif edildi)
     renderer = new THREE.WebGLRenderer({ canvas: canvasRef.value, antialias: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(window.devicePixelRatio);
-    renderer.shadowMap.enabled = true; // <--- GÖLGE MOTORU AKTİF
+    renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // Controls
+    // --- 8. KONTROLLER ---
     orbit = new OrbitControls(camera, renderer.domElement);
-    orbit.enableDamping = true; // Yumuşak duruş
+    orbit.enableDamping = true;
     orbit.dampingFactor = 0.05;
-    orbit.maxPolarAngle = Math.PI / 2 - 0.05; // Kameranın zeminin altına girmesini engelle
+    orbit.maxPolarAngle = Math.PI / 2 - 0.02;
+    orbit.target.set(0, 0, 0);
     orbit.update();
 
-    // Transform Controls
     transformControl = markRaw(new TransformControls(camera, renderer.domElement));
-    transformControl.addEventListener('dragging-changed', (event) => {
-        orbit.enabled = !event.value;
-    });
+    transformControl.addEventListener('dragging-changed', (event) => { orbit.enabled = !event.value; });
     transformControl.addEventListener('mouseUp', async () => {
         if (transformControl.object && selectedItemId.value) {
             await saveTransform(selectedItemId.value, transformControl.object);
@@ -252,9 +355,7 @@ const initThreeJS = () => {
     });
     scene.add(transformControl.getHelper());
 
-    // Raycaster
     raycaster = new THREE.Raycaster();
-    raycaster.params.Line.threshold = 0.5;
     mouse = new THREE.Vector2();
 
     canvasRef.value.addEventListener('mousedown', onMouseDown);
@@ -276,7 +377,7 @@ const handleResize = () => {
 
 const animate = () => {
     animationId = requestAnimationFrame(animate);
-    orbit.update(); // Damping için gerekli
+    orbit.update();
     renderer.render(scene, camera);
 };
 
@@ -292,7 +393,6 @@ const loadSceneObjects = async () => {
             const gltf = await loader.loadAsync(url);
             const model = gltf.scene;
 
-            // Gölge Özelliğini Aç (Mevcut modeller için)
             model.traverse((child) => {
                 if ((child as THREE.Mesh).isMesh) {
                     child.castShadow = true;
@@ -322,20 +422,17 @@ const addModelToScene = async (arModel: ARModelDto) => {
     showModelSelector.value = false;
 
     try {
-        // 1. Modeli yükle
         const loader = new GLTFLoader();
         const blob = await arModelService.getModelFileBlob(arModel.id, 'glb', 'view');
         const url = URL.createObjectURL(blob);
         const gltf = await loader.loadAsync(url);
         const model = gltf.scene;
 
-        // 2. Reset Transform & Update Matrix
         model.position.set(0, 0, 0);
         model.rotation.set(0, 0, 0);
         model.scale.set(1, 1, 1);
         model.updateMatrixWorld(true);
 
-        // 3. Gölge Ayarlarını Aç
         model.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
                 child.castShadow = true;
@@ -343,26 +440,18 @@ const addModelToScene = async (arModel: ARModelDto) => {
             }
         });
 
-        // 4. Bounding Box & Merkezleme Mantığı
         const box = new THREE.Box3().setFromObject(model);
-
-        if (box.isEmpty()) {
-            console.warn("Model boyutu hesaplanamadı.");
-        }
+        if (box.isEmpty()) console.warn("Model boyutu hesaplanamadı.");
 
         const center = new THREE.Vector3();
         box.getCenter(center);
 
-        // X ve Z: Ortala
-        // Y: Zemine Oturt
         const newX = -center.x;
         const newY = -box.min.y;
         const newZ = -center.z;
 
-        // Görsel uygula
         model.position.set(newX, newY, newZ);
 
-        // 5. Backend'e Hesaplanan Koordinatları Gönder
         const newItem = await arSceneService.addItem({
             sceneId: sceneId,
             modelId: arModel.id,
@@ -372,11 +461,9 @@ const addModelToScene = async (arModel: ARModelDto) => {
 
         sceneItems.value.push(newItem);
 
-        // 6. Sahneye Ekle
         model.userData = { isSceneItem: true, itemId: newItem.id };
         scene.add(model);
         itemsMap.set(newItem.id, model);
-
         selectItemFromTree(newItem.id);
 
     } catch (err) {
