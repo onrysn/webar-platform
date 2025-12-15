@@ -4,15 +4,28 @@
         <div class="w-80 flex flex-col border-r border-gray-300 bg-white shadow-lg z-10">
             <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
                 <div>
-                    <h2 class="font-bold text-gray-800 truncate w-48" :title="sceneData?.name">
+                    <h2 class="font-bold text-gray-800 truncate w-32" :title="sceneData?.name">
                         {{ sceneData?.name || 'Yükleniyor...' }}
                     </h2>
                     <p v-if="sceneData?.settings" class="text-[10px] text-gray-500">
                         {{ sceneData.settings.width }}m x {{ sceneData.settings.depth }}m
                     </p>
                 </div>
-                <button @click="$router.back()"
-                    class="text-xs text-gray-500 hover:text-red-600 font-medium transition-colors">Çıkış</button>
+
+                <div class="flex items-center gap-2">
+                    <button @click="exportScene"
+                        class="text-xs flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-gray-700 transition-colors"
+                        title="GLB Olarak İndir">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        İndir
+                    </button>
+                    <button @click="$router.back()"
+                        class="text-xs text-gray-500 hover:text-red-600 font-medium transition-colors">Çıkış</button>
+                </div>
             </div>
 
             <div class="flex-1 overflow-y-auto p-2 space-y-2">
@@ -105,6 +118,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'; // Export Kütüphanesi
 
 import { arSceneService } from '../../../services/arSceneService';
 import { arModelService } from '../../../services/arModelService';
@@ -175,8 +189,6 @@ const loadSceneData = async () => {
 const getThumbnailUrl = (path: string) => arModelService.getPreviewUrl(path);
 
 // --- YARDIMCI FONKSİYON: Dinamik Grid Dokusu ---
-// Bunu script setup içinde en üste (importların altına) ekleyin
-// Grid dokusunu daha belirgin hale getirdik
 const createGridTexture = () => {
     const size = 1024;
     const canvas = document.createElement('canvas');
@@ -185,28 +197,76 @@ const createGridTexture = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return null;
 
-    // Tamamen şeffaf arkaplan
     ctx.clearRect(0, 0, size, size);
-
-    // Çizgi Ayarları
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)'; // Siyahın %25 tonu
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
     ctx.lineWidth = 4;
-
-    // Sadece kutunun kenarlarını çiziyoruz (İçi boş)
     ctx.strokeRect(0, 0, size, size);
 
     const texture = new THREE.CanvasTexture(canvas);
     texture.wrapS = THREE.RepeatWrapping;
     texture.wrapT = THREE.RepeatWrapping;
-    texture.minFilter = THREE.LinearFilter; // Daha keskin görünüm için
+    texture.minFilter = THREE.LinearFilter;
 
     return texture;
 };
 
+// --- EXPORT FONKSİYONU ---
+const exportScene = () => {
+    if (!scene) return;
+
+    const exporter = new GLTFExporter();
+
+    // --- 1. TransformControls Gizleme ---
+    // TypeScript hatasını aşmak için objeyi THREE.Object3D olarak tanıtıyoruz
+    const controlsObj = transformControl as unknown as THREE.Object3D;
+    const prevControlsVisible = controlsObj.visible;
+    controlsObj.visible = false;
+
+    // --- 2. Grid'i Gizleme ---
+    // initThreeJS fonksiyonunda grid'e "GridMesh" adını vermiştik.
+    // getObjectByName ile doğrudan bulabiliriz, döngüye gerek yok.
+    const gridMesh = scene.getObjectByName("GridMesh");
+    let prevGridVisible = true;
+
+    if (gridMesh) {
+        prevGridVisible = gridMesh.visible;
+        gridMesh.visible = false; // Grid'i gizle ki .glb dosyasında çıkmasın
+    }
+
+    // --- 3. Export İşlemi ---
+    exporter.parse(
+        scene,
+        (gltf) => {
+            const blob = new Blob([gltf as ArrayBuffer], { type: 'application/octet-stream' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `${sceneData.value?.name || 'sahne'}.glb`;
+            link.click();
+            URL.revokeObjectURL(link.href);
+
+            // --- 4. Görünürlüğü Geri Yükle (Başarılı) ---
+            controlsObj.visible = prevControlsVisible;
+            if (gridMesh) gridMesh.visible = prevGridVisible;
+        },
+        (error) => {
+            console.error('Export error:', error);
+            alert('Export başarısız.');
+
+            // --- 5. Görünürlüğü Geri Yükle (Hata Durumu) ---
+            controlsObj.visible = prevControlsVisible;
+            if (gridMesh) gridMesh.visible = prevGridVisible;
+        },
+        {
+            binary: true,
+            onlyVisible: true // Sadece görünür (visible=true) objeleri dosyaya yazar
+        }
+    );
+};
+
+// --- Three.js Logic ---
 const initThreeJS = () => {
     if (!canvasRef.value) return;
 
-    // --- 1. AYARLARI OKU ---
     const settings = sceneData.value?.settings || {};
     const sceneWidth = settings.width || 20;
     const sceneDepth = settings.depth || 20;
@@ -215,13 +275,11 @@ const initThreeJS = () => {
     const floorType = settings.floorType || 'rectangle';
     const points = settings.floorPoints || [];
 
-    // Sahne Kurulumu
     scene = new THREE.Scene();
     scene.background = new THREE.Color(bgColor);
     const maxDim = Math.max(sceneWidth, sceneDepth);
-    scene.fog = new THREE.Fog(bgColor, maxDim * 0.5, maxDim * 5);
+    scene.fog = new THREE.Fog(bgColor, 30, maxDim * 8);
 
-    // Işıklandırma
     scene.add(new THREE.AmbientLight(0xffffff, 0.7));
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
     dirLight.position.set(15, 30, 15);
@@ -233,16 +291,13 @@ const initThreeJS = () => {
     dirLight.shadow.mapSize.set(2048, 2048);
     scene.add(dirLight);
 
-    // --- 2. GEOMETRİ OLUŞTURMA ---
+    // --- GEOMETRİ ---
     let geometry: THREE.BufferGeometry;
 
     if (floorType === 'custom' && points.length > 2) {
         const shape = new THREE.Shape();
-
-        // TypeScript hatasını önlemek için güvenli erişim
         const p0 = points[0];
         if (p0) shape.moveTo(p0.x, p0.z);
-
         for (let i = 1; i < points.length; i++) {
             const p = points[i];
             if (p) shape.lineTo(p.x, p.z);
@@ -253,33 +308,26 @@ const initThreeJS = () => {
         geometry = new THREE.PlaneGeometry(sceneWidth, sceneDepth);
     }
 
-    // Geometriyi merkeze taşı
     geometry.center();
 
-    // --- 3. UV HARİTASI HESAPLAMA (DÜZELTİLMİŞ KISIM) ---
+    // --- UV MAP ---
     geometry.computeBoundingBox();
-    const box = geometry.boundingBox!; // '!' ile null olmadığını garanti ediyoruz
-
-    // TypeScript için tip dönüşümü (Type Casting) yapıyoruz
+    const box = geometry.boundingBox!;
     const posAttribute = geometry.attributes.position as THREE.BufferAttribute;
     const uvAttribute = geometry.attributes.uv as THREE.BufferAttribute;
 
-    // Attributes var mı kontrol et
     if (posAttribute && uvAttribute) {
         for (let i = 0; i < posAttribute.count; i++) {
             const x = posAttribute.getX(i);
             const y = posAttribute.getY(i);
-
-            // Grid'in metre bazlı oturması için world pozisyonunu kullanıyoruz
             const u = (x - box.min.x);
             const v = (y - box.min.y);
-
             uvAttribute.setXY(i, u, v);
         }
         uvAttribute.needsUpdate = true;
     }
 
-    // --- 4. ZEMİN MESH ---
+    // --- ZEMİN ---
     const baseMaterial = new THREE.MeshStandardMaterial({
         color: floorColor,
         roughness: 0.8,
@@ -289,15 +337,13 @@ const initThreeJS = () => {
         polygonOffsetFactor: 1,
         polygonOffsetUnits: 1
     });
-
     const baseMesh = new THREE.Mesh(geometry, baseMaterial);
     baseMesh.receiveShadow = true;
+    baseMesh.name = "BaseFloor";
 
-    // --- 5. GRID MESH ---
+    // --- GRID ---
     const gridTexture = createGridTexture();
-    if (gridTexture) {
-        gridTexture.repeat.set(1, 1);
-    }
+    if (gridTexture) gridTexture.repeat.set(1, 1);
 
     const gridMaterial = new THREE.MeshBasicMaterial({
         map: gridTexture,
@@ -306,10 +352,9 @@ const initThreeJS = () => {
         side: THREE.DoubleSide,
         depthWrite: false
     });
-
     const gridMesh = new THREE.Mesh(geometry, gridMaterial);
+    gridMesh.name = "GridMesh"; // Export ederken bulmak için isim verdik
 
-    // --- 6. GRUPLAMA VE ROTASYON ---
     const floorGroup = new THREE.Group();
     floorGroup.add(baseMesh);
     floorGroup.add(gridMesh);
@@ -320,14 +365,12 @@ const initThreeJS = () => {
     } else {
         floorGroup.rotation.x = -Math.PI / 2;
     }
-
     scene.add(floorGroup);
 
-    // --- 7. KAMERA VE RENDERER ---
+    // --- KAMERA & RENDERER ---
     const width = canvasRef.value.clientWidth;
     const height = canvasRef.value.clientHeight;
     camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-
     const camDist = maxDim * 1.0;
     camera.position.set(camDist, camDist * 1.2, camDist);
     camera.lookAt(0, 0, 0);
@@ -338,7 +381,7 @@ const initThreeJS = () => {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // --- 8. KONTROLLER ---
+    // --- KONTROLLER ---
     orbit = new OrbitControls(camera, renderer.domElement);
     orbit.enableDamping = true;
     orbit.dampingFactor = 0.05;
