@@ -190,4 +190,29 @@ export class ARModelController {
         return new StreamableFile(buffer);
     }
 
+    @Post('convert-glb-to-usdz')
+    @ApiOperation({ summary: 'GLB yükler, converter servisi ile USDZ oluşturur ve temp bilgilerini döner.' })
+    @UseInterceptors(FileInterceptor('file', modelUploadConfig))
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({ 
+        schema: { 
+            type: 'object', 
+            properties: { 
+                file: { type: 'string', format: 'binary', description: 'Sadece .glb dosyası yükleyin' } 
+            } 
+        } 
+    })
+    async convertGlbToUsdz(@UploadedFile() file: MulterFile, @Req() req: any) {
+        if (!file) throw new BadRequestException('Dosya gereklidir.');
+        
+        // Basit bir uzantı kontrolü
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (ext !== '.glb') {
+            throw new BadRequestException('Sadece .glb uzantılı dosyalar desteklenmektedir.');
+        }
+
+        const userId = req.user.userId;
+        return this.arModelService.convertGlbToUsdzTemp(file, userId);
+    }
+
 }

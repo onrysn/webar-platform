@@ -76,7 +76,19 @@ export const arModelService = {
       responseType: 'blob', // Binary veri olduğu için çok önemli
     });
     return res.data as unknown as Blob;
-  }
+  },
+
+  // 8. [YENİ] GLB'den USDZ'ye Dönüştür
+  async convertGlbToUsdz(file: Blob, fileName: string): Promise<TempModelResponse> {
+    const formData = new FormData();
+    // Blob'u dosyaya çevirip ekliyoruz
+    formData.append('file', file, fileName);
+
+    const res = await apiService.post<TempModelResponse>('/ar-model/convert-glb-to-usdz', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
 
 };
 

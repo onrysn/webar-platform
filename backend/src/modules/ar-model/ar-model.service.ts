@@ -357,5 +357,77 @@ export class ARModelService {
 
         return { buffer, mimeType, filename: cleanFileName };
     }
+
+    async convertGlbToUsdzTemp(file: MulterFile, userId?: number) {
+        // 1. Temp ID ve Klasör Oluştur
+        const tempId = `${Date.now()}_${uuidv4()}`;
+        const tempDir = this.ensureTempDir(tempId);
+
+        // 2. Gelen GLB dosyasını Temp'e kaydet
+        const baseName = path.basename(file.originalname, path.extname(file.originalname));
+        const glbName = `${baseName}.glb`;
+        const glbPath = path.join(tempDir, glbName);
+
+        if (file.buffer) {
+            fs.writeFileSync(glbPath, file.buffer);
+        } else if (file.path && fs.existsSync(file.path)) {
+            fs.copyFileSync(file.path, glbPath);
+        } else {
+            throw new InternalServerErrorException('GLB dosyası buffer veya path içermiyor.');
+        }
+
+        // 3. GLB -> USDZ Converter Servisine İstek At
+        // Mevcut converterUrl yapısını kullanıyoruz
+        const formData = new FormData();
+        formData.append('file', fs.createReadStream(glbPath), { 
+            filename: glbName, 
+            contentType: 'model/gltf-binary' 
+        });
+
+        const convertResp = await fetch(`${this.converterUrl}/api/convert`, {
+            method: 'POST',
+            body: formData,
+            headers: formData.getHeaders(),
+        });
+
+        if (!convertResp.ok) {
+            const text = await convertResp.text();
+            throw new InternalServerErrorException('Converter servisi hatası: ' + text);
+        }
+
+        const convertJson = await convertResp.json();
+        const { id, name } = convertJson as { id: string; name: string };
+
+        // 4. Oluşan USDZ dosyasını indir
+        const downloadUrl = `${this.converterUrl}/api/download?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`;
+        const usdzResp = await fetch(downloadUrl);
+        
+        if (!usdzResp.ok) {
+            throw new InternalServerErrorException('USDZ indirme hatası: ' + (await usdzResp.text()));
+        }
+        
+        const usdzBuffer = await usdzResp.buffer();
+        const usdzName = `${baseName}.usdz`;
+        const usdzPath = path.join(tempDir, usdzName);
+
+        fs.writeFileSync(usdzPath, usdzBuffer);
+
+        // 5. Sonuçları Dön (Frontend finalize endpointine bu tempId ile gidecek)
+        return {
+            tempId,
+            glb: { 
+                filename: glbName, 
+                url: `/temp/${tempId}/${glbName}`, 
+                path: glbPath, 
+                size: fs.statSync(glbPath).size 
+            },
+            usdz: { 
+                filename: usdzName, 
+                url: `/temp/${tempId}/${usdzName}`, 
+                path: usdzPath, 
+                size: fs.statSync(usdzPath).size 
+            },
+        };
+    }
     
 }

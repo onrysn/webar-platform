@@ -13,16 +13,34 @@
                 </div>
 
                 <div class="flex items-center gap-2">
-                    <button @click="exportScene"
-                        class="text-xs flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-gray-700 transition-colors"
-                        title="GLB Olarak İndir">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
-                        İndir
-                    </button>
+                    
+                    <div class="relative">
+                        <button @click="showDownloadMenu = !showDownloadMenu"
+                            :disabled="isExporting"
+                            class="text-xs flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-gray-700 transition-colors disabled:opacity-50">
+                            <svg v-if="!isExporting" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <svg v-else class="animate-spin h-3 w-3 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            {{ isExporting ? 'Hazırlanıyor...' : 'İndir' }}
+                        </button>
+
+                        <div v-if="showDownloadMenu" 
+                             class="absolute right-0 top-full mt-1 w-32 bg-white border border-gray-200 rounded shadow-lg z-50 flex flex-col py-1">
+                            <button @click="handleExport('glb')" class="text-left px-3 py-2 text-xs hover:bg-gray-100 text-gray-700 w-full">
+                                .GLB (Android)
+                            </button>
+                            <button @click="handleExport('usdz')" class="text-left px-3 py-2 text-xs hover:bg-gray-100 text-gray-700 w-full">
+                                .USDZ (iOS)
+                            </button>
+                        </div>
+                        
+                        <div v-if="showDownloadMenu" @click="showDownloadMenu = false" class="fixed inset-0 z-40 cursor-default"></div>
+                    </div>
+
                     <button @click="$router.back()"
                         class="text-xs text-gray-500 hover:text-red-600 font-medium transition-colors">Çıkış</button>
                 </div>
@@ -131,6 +149,8 @@ const sceneId = Number(route.params.id);
 // --- State ---
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const isLoading = ref(true);
+const isExporting = ref(false); // Export işlemi sırasında loading göstermek için
+const showDownloadMenu = ref(false); // Menü aç/kapa
 const sceneData = ref<ARSceneDto | null>(null);
 const sceneItems = ref<SceneItemDto[]>([]);
 const showModelSelector = ref(false);
@@ -210,60 +230,124 @@ const createGridTexture = () => {
     return texture;
 };
 
-// --- EXPORT FONKSİYONU ---
-const exportScene = () => {
-    if (!scene) return;
+// =======================================================
+// EXPORT & CONVERT LOGIC
+// =======================================================
 
-    const exporter = new GLTFExporter();
-
-    // --- 1. TransformControls Gizleme ---
-    // TypeScript hatasını aşmak için objeyi THREE.Object3D olarak tanıtıyoruz
-    const controlsObj = transformControl as unknown as THREE.Object3D;
-    const prevControlsVisible = controlsObj.visible;
-    controlsObj.visible = false;
-
-    // --- 2. Grid'i Gizleme ---
-    // initThreeJS fonksiyonunda grid'e "GridMesh" adını vermiştik.
-    // getObjectByName ile doğrudan bulabiliriz, döngüye gerek yok.
-    const gridMesh = scene.getObjectByName("GridMesh");
-    let prevGridVisible = true;
-
-    if (gridMesh) {
-        prevGridVisible = gridMesh.visible;
-        gridMesh.visible = false; // Grid'i gizle ki .glb dosyasında çıkmasın
-    }
-
-    // --- 3. Export İşlemi ---
-    exporter.parse(
-        scene,
-        (gltf) => {
-            const blob = new Blob([gltf as ArrayBuffer], { type: 'application/octet-stream' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = `${sceneData.value?.name || 'sahne'}.glb`;
-            link.click();
-            URL.revokeObjectURL(link.href);
-
-            // --- 4. Görünürlüğü Geri Yükle (Başarılı) ---
-            controlsObj.visible = prevControlsVisible;
-            if (gridMesh) gridMesh.visible = prevGridVisible;
-        },
-        (error) => {
-            console.error('Export error:', error);
-            alert('Export başarısız.');
-
-            // --- 5. Görünürlüğü Geri Yükle (Hata Durumu) ---
-            controlsObj.visible = prevControlsVisible;
-            if (gridMesh) gridMesh.visible = prevGridVisible;
-        },
-        {
-            binary: true,
-            onlyVisible: true // Sadece görünür (visible=true) objeleri dosyaya yazar
+// 1. Sahneyi GLB Blob olarak alma (Promise)
+const getSceneAsBlob = (): Promise<Blob> => {
+    return new Promise((resolve, reject) => {
+        if (!scene) {
+            reject("Sahne bulunamadı");
+            return;
         }
-    );
+
+        const exporter = new GLTFExporter();
+
+        // Geçici Gizleme İşlemleri
+        const controlsObj = transformControl as unknown as THREE.Object3D;
+        const prevControlsVisible = controlsObj.visible;
+        controlsObj.visible = false;
+
+        const gridMesh = scene.getObjectByName("GridMesh");
+        let prevGridVisible = true;
+        if (gridMesh) {
+            prevGridVisible = gridMesh.visible;
+            gridMesh.visible = false;
+        }
+
+        // Export
+        exporter.parse(
+            scene,
+            (gltf) => {
+                const blob = new Blob([gltf as ArrayBuffer], { type: 'model/gltf-binary' });
+                
+                // Görünürlükleri geri yükle
+                controlsObj.visible = prevControlsVisible;
+                if (gridMesh) gridMesh.visible = prevGridVisible;
+                
+                resolve(blob);
+            },
+            (error) => {
+                // Hata durumunda da görünürlükleri geri yükle
+                controlsObj.visible = prevControlsVisible;
+                if (gridMesh) gridMesh.visible = prevGridVisible;
+                
+                reject(error);
+            },
+            {
+                binary: true,
+                onlyVisible: true
+            }
+        );
+    });
 };
 
-// --- Three.js Logic ---
+// 2. Ana Handler
+const handleExport = async (format: 'glb' | 'usdz') => {
+    if (isExporting.value) return;
+    
+    showDownloadMenu.value = false;
+    isExporting.value = true;
+
+    try {
+        // Aşam 1: Tarayıcıda GLB oluştur
+        const glbBlob = await getSceneAsBlob();
+        const fileName = sceneData.value?.name || 'sahne';
+
+        if (format === 'glb') {
+            // Sadece GLB ise direkt indir
+            triggerDownload(glbBlob, `${fileName}.glb`);
+        } else {
+            // USDZ ise Backend'e gönderip çevirt
+            await convertAndDownloadUsdz(glbBlob, fileName);
+        }
+
+    } catch (error) {
+        console.error("Export hatası:", error);
+        alert("Export sırasında bir hata oluştu: " + error);
+    } finally {
+        isExporting.value = false;
+    }
+};
+
+const convertAndDownloadUsdz = async (glbBlob: Blob, baseName: string) => {
+    // Servis üzerinden isteği atıyoruz (Token otomatik eklenir)
+    // Blob'u gönderirken dosya adını da (.glb uzantılı) iletiyoruz.
+    const data = await arModelService.convertGlbToUsdz(glbBlob, `${baseName}.glb`);
+
+    // Gelen data yapısı: { tempId, glb: {...}, usdz: { url: '...' } }
+    
+    if (data.usdz && data.usdz.url) {
+        // Servisteki helper ile tam URL'i alıyoruz (http://localhost:3000/temp/...)
+        const downloadUrl = arModelService.getPreviewUrl(data.usdz.url);
+        
+        // Link oluşturup indirmeyi tetikliyoruz
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = `${baseName}.usdz`; 
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } else {
+        throw new Error("Sunucudan USDZ linki alınamadı.");
+    }
+};
+
+// 4. Basit Blob İndirme Tetikleyici
+const triggerDownload = (blob: Blob, filename: string) => {
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+};
+
+
+// =======================================================
+// THREE.JS SETUP & EVENTS (MEVCUT KODLARIN AYNI KALMASI)
+// =======================================================
+
 const initThreeJS = () => {
     if (!canvasRef.value) return;
 
