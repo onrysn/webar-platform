@@ -19,7 +19,7 @@ export class Vector3Dto {
   z: number;
 }
 
-// 2. Özel Şekil (Poligon) Noktaları için (Sadece X ve Z yeterli, Y zemindir)
+// 2. Özel Şekil (Poligon) Noktaları için
 export class FloorPointDto {
   @ApiProperty({ example: 0 })
   @IsNumber()
@@ -64,6 +64,12 @@ export class SceneSettingsDto {
   @IsString()
   floorColor?: string; 
 
+  // ---> YENİ EKLENEN ALAN <---
+  @ApiPropertyOptional({ example: '/textures/wood.jpg', description: 'Zemin dokusu URL' })
+  @IsOptional()
+  @IsString()
+  floorTextureUrl?: string; 
+
   @ApiPropertyOptional({ description: 'Izgara görünsün mü?' })
   @IsOptional()
   @IsBoolean()
@@ -83,7 +89,6 @@ export class CreateSceneDto {
   @IsNumber()
   companyId: number;
 
-  // Sahne oluşturulurken varsayılan ayarlar gönderilebilir
   @ApiPropertyOptional({ type: SceneSettingsDto })
   @IsOptional()
   @ValidateNested()
@@ -91,7 +96,7 @@ export class CreateSceneDto {
   settings?: SceneSettingsDto;
 }
 
-// 2. Sahne Ayarlarını Güncelle (YENİ - Settings'i güncellemek için)
+// 2. Sahne Ayarlarını Güncelle
 export class UpdateSceneDto {
   @ApiPropertyOptional()
   @IsOptional()
@@ -158,4 +163,25 @@ export class UpdateSceneItemDto {
   @ValidateNested()
   @Type(() => Vector3Dto)
   scale?: Vector3Dto;
+}
+
+// 5. Texture Oluşturma DTO
+export class CreateFloorTextureDto {
+  @ApiProperty({ example: 'Ahşap Parke' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ example: '/textures/wood.jpg' })
+  @IsString()
+  textureUrl: string;
+
+  @ApiProperty({ example: '/textures/wood-thumb.jpg', required: false })
+  @IsString()
+  @IsOptional()
+  thumbnailUrl?: string;
+
+  @ApiProperty({ example: true, required: false })
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
 }

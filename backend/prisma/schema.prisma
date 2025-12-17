@@ -117,3 +117,14 @@ model SceneItem {
   scene     ARScene  @relation(fields: [sceneId], references: [id], onDelete: Cascade)
   model     ARModel  @relation(fields: [modelId], references: [id])
 }
+
+model FloorTexture {
+  id           Int      @id @default(autoincrement())
+  name         String   // Örn: "Ahşap Parke"
+  thumbnailUrl String   // Listede görünecek küçük resim (opsiyonel, aynısı da olabilir)
+  textureUrl   String   // Zemine döşenecek asıl resim yolu
+  isActive     Boolean  @default(true) // Listede gösterilip gösterilmeyeceği
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}

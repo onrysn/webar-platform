@@ -4,7 +4,8 @@ import {
   CreateSceneDto, 
   UpdateSceneDto, 
   AddSceneItemDto, 
-  UpdateSceneItemDto 
+  UpdateSceneItemDto, 
+  CreateFloorTextureDto
 } from './dto/ar-scene.dto';
 
 @Injectable()
@@ -117,6 +118,26 @@ export class ARSceneService {
   async removeItem(itemId: number) {
     return this.prisma.sceneItem.delete({
       where: { id: itemId }
+    });
+  }
+
+  // 8. Aktif Dokuları Listele
+  async listFloorTextures() {
+    return this.prisma.floorTexture.findMany({
+      where: { isActive: true },
+      orderBy: { name: 'asc' }, // İsme göre sıralı gelsin
+    });
+  }
+
+  // 9. Yeni Doku Ekle (Admin/Seed için)
+  async createFloorTexture(data: CreateFloorTextureDto) {
+    return this.prisma.floorTexture.create({
+      data: {
+        name: data.name,
+        textureUrl: data.textureUrl,
+        thumbnailUrl: data.thumbnailUrl || data.textureUrl,
+        isActive: data.isActive ?? true,
+      },
     });
   }
 }

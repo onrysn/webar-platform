@@ -1,6 +1,22 @@
 import type { ARModelDto } from "../../ar-model/dto/arModel.dto";
 
-// --- ORTAK TİPLER (Helpers) ---
+// --- YENİ EKLENEN TİPLER (Texture için) ---
+export interface FloorTextureDto {
+  id: number;
+  name: string;
+  thumbnailUrl: string;
+  textureUrl: string;
+  isActive: boolean;
+}
+
+export interface CreateFloorTextureDto {
+  name: string;
+  thumbnailUrl?: string;
+  textureUrl: string;
+  isActive?: boolean;
+}
+
+// --- MEVCUT TİPLER (Aynen kalıyor) ---
 
 export interface Vector3 {
   x: number;
@@ -21,6 +37,7 @@ export interface SceneSettings {
   backgroundColor?: string;
   gridVisible?: boolean;
   floorColor?: string;
+  floorTextureUrl?: string;
 }
 
 // --- ANA VERİ MODELLERİ (Response Types) ---

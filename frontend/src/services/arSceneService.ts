@@ -5,7 +5,9 @@ import type {
   UpdateSceneDto, // <--- YENİ: Import eklendi
   AddSceneItemDto, 
   UpdateSceneItemDto, 
-  SceneItemDto 
+  SceneItemDto, 
+  FloorTextureDto,
+  CreateFloorTextureDto
 } from "../modules/ar-scene/dto/arScene.dto";
 
 export const arSceneService = {
@@ -51,5 +53,16 @@ export const arSceneService = {
   // 7. Eşya Sil
   async removeItem(itemId: number): Promise<void> {
     await apiService.delete(`/ar-scene/item/${itemId}`);
-  }
+  },
+
+  async listFloorTextures(): Promise<FloorTextureDto[]> {
+    const res = await apiService.get<FloorTextureDto[]>('/ar-scene/textures');
+    return res.data;
+  },
+
+  // Backend: POST /ar-scene/textures (İleride admin paneli yaparsan lazım olur)
+  async createFloorTexture(data: CreateFloorTextureDto): Promise<FloorTextureDto> {
+    const res = await apiService.post<FloorTextureDto>('/ar-scene/textures', data);
+    return res.data;
+  },
 };

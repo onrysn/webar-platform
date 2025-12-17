@@ -4,7 +4,8 @@ import {
   CreateSceneDto, 
   UpdateSceneDto, 
   AddSceneItemDto, 
-  UpdateSceneItemDto 
+  UpdateSceneItemDto, 
+  CreateFloorTextureDto
 } from './dto/ar-scene.dto';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -16,21 +17,20 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 export class ARSceneController {
   constructor(private readonly arSceneService: ARSceneService) {}
 
-  // --- SAHNE ENDPOINTLERİ ---
+  // =================================================================
+  // 1. ÖZEL ENDPOINTLER (STATIC ROUTES) - EN ÜSTTE OLMALI
+  // =================================================================
 
-  @Post()
-  @ApiOperation({ summary: 'Yeni bir sahne oluşturur (İsteğe bağlı settings ile)' })
-  createScene(@Body() dto: CreateSceneDto) {
-    return this.arSceneService.createScene(dto);
+  @Get('textures')
+  @ApiOperation({ summary: 'Kullanılabilir zemin dokularını listeler' })
+  listTextures() {
+    return this.arSceneService.listFloorTextures();
   }
 
-  @Patch(':id')
-  @ApiOperation({ summary: 'Sahne bilgilerini (ad, zemin ayarları, vb.) günceller' })
-  updateScene(
-    @Param('id', ParseIntPipe) id: number, 
-    @Body() dto: UpdateSceneDto
-  ) {
-    return this.arSceneService.updateScene(id, dto);
+  @Post('textures')
+  @ApiOperation({ summary: 'Yeni zemin dokusu tanımlar (Admin)' })
+  createTexture(@Body() dto: CreateFloorTextureDto) {
+    return this.arSceneService.createFloorTexture(dto);
   }
 
   @Get('list')
@@ -40,13 +40,9 @@ export class ARSceneController {
     return this.arSceneService.listScenes(companyId);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Sahne detayını ve içindeki tüm objeleri getirir (Editor için)' })
-  getScene(@Param('id', ParseIntPipe) id: number) {
-    return this.arSceneService.getScene(id);
-  }
-
-  // --- ITEM (OBJE) ENDPOINTLERİ ---
+  // =================================================================
+  // 2. ITEM (OBJE) ENDPOINTLERİ
+  // =================================================================
 
   @Post('item')
   @ApiOperation({ summary: 'Mevcut bir sahneye model ekler' })
@@ -67,5 +63,30 @@ export class ARSceneController {
   @ApiOperation({ summary: 'Sahneden bir objeyi siler' })
   removeItem(@Param('itemId', ParseIntPipe) itemId: number) {
     return this.arSceneService.removeItem(itemId);
+  }
+
+  // =================================================================
+  // 3. GENEL SAHNE ENDPOINTLERİ (DYNAMIC ROUTES) - EN ALTTA OLMALI
+  // =================================================================
+
+  @Post()
+  @ApiOperation({ summary: 'Yeni bir sahne oluşturur (İsteğe bağlı settings ile)' })
+  createScene(@Body() dto: CreateSceneDto) {
+    return this.arSceneService.createScene(dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Sahne bilgilerini (ad, zemin ayarları, vb.) günceller' })
+  updateScene(
+    @Param('id', ParseIntPipe) id: number, 
+    @Body() dto: UpdateSceneDto
+  ) {
+    return this.arSceneService.updateScene(id, dto);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Sahne detayını ve içindeki tüm objeleri getirir (Editor için)' })
+  getScene(@Param('id', ParseIntPipe) id: number) {
+    return this.arSceneService.getScene(id);
   }
 }

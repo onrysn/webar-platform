@@ -128,6 +128,34 @@ async function main() {
 
   console.log("✓ UserCompany ilişkileri oluşturuldu");
 
+  const textures = [
+    { name: 'Ahşap Parke', url: '/textures/wood.jpg' },
+    { name: 'Seramik', url: '/textures/tiles.jpg' },
+    { name: 'Çim', url: '/textures/grass.jpg' },
+    { name: 'Kauçuk Zemin', url: '/textures/rubber.jpg' },
+  ];
+
+  console.log('Zemin dokuları yükleniyor...');
+
+  for (const tex of textures) {
+    // Aynı isimde varsa tekrar ekleme
+    const exists = await prisma.floorTexture.findFirst({ where: { name: tex.name } });
+    
+    if (!exists) {
+      await prisma.floorTexture.create({
+        data: {
+          name: tex.name,
+          textureUrl: tex.url,
+          thumbnailUrl: tex.url,
+          isActive: true,
+        },
+      });
+      console.log(`+ Eklendi: ${tex.name}`);
+    } else {
+      console.log(`- Zaten var: ${tex.name}`);
+    }
+  }
+
   console.log("🌱 Seed başarıyla tamamlandı!");
 }
 

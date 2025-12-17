@@ -137,6 +137,7 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'; // Export Kütüphanesi
+import { TextureLoader } from 'three';
 
 import { arSceneService } from '../../../services/arSceneService';
 import { arModelService } from '../../../services/arModelService';
@@ -348,6 +349,8 @@ const triggerDownload = (blob: Blob, filename: string) => {
 // THREE.JS SETUP & EVENTS (MEVCUT KODLARIN AYNI KALMASI)
 // =======================================================
 
+// initThreeJS fonksiyonunun güncellenmiş hali:
+
 const initThreeJS = () => {
     if (!canvasRef.value) return;
 
@@ -357,6 +360,7 @@ const initThreeJS = () => {
     const bgColor = settings.backgroundColor || '#f5f5f5';
     const floorColor = settings.floorColor || '#ffffff';
     const floorType = settings.floorType || 'rectangle';
+    const floorTextureUrl = settings.floorTextureUrl; // Backend'den gelen Texture URL
     const points = settings.floorPoints || [];
 
     scene = new THREE.Scene();
@@ -394,7 +398,8 @@ const initThreeJS = () => {
 
     geometry.center();
 
-    // --- UV MAP ---
+    // --- UV MAP (Texture'ın düzgün yayılması için kritik) ---
+    // Bu işlem sayesinde texture, metre başına orantılı olarak yayılır (stretch olmaz)
     geometry.computeBoundingBox();
     const box = geometry.boundingBox!;
     const posAttribute = geometry.attributes.position as THREE.BufferAttribute;
@@ -404,6 +409,7 @@ const initThreeJS = () => {
         for (let i = 0; i < posAttribute.count; i++) {
             const x = posAttribute.getX(i);
             const y = posAttribute.getY(i);
+            // UV koordinatlarını dünya koordinatlarına eşliyoruz
             const u = (x - box.min.x);
             const v = (y - box.min.y);
             uvAttribute.setXY(i, u, v);
@@ -411,21 +417,54 @@ const initThreeJS = () => {
         uvAttribute.needsUpdate = true;
     }
 
-    // --- ZEMİN ---
-    const baseMaterial = new THREE.MeshStandardMaterial({
-        color: floorColor,
-        roughness: 0.8,
-        metalness: 0.1,
-        side: THREE.DoubleSide,
-        polygonOffset: true,
-        polygonOffsetFactor: 1,
-        polygonOffsetUnits: 1
-    });
+    // --- ZEMİN MATERYALİ (Texture Kontrolü) ---
+    let baseMaterial: THREE.MeshStandardMaterial;
+
+    if (floorTextureUrl) {
+        // DOKULU ZEMİN
+        const loader = new TextureLoader;
+        const texture = loader.load(floorTextureUrl);
+        
+        // Dokunun tekrar etmesini sağla
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        
+        // Dokunun sıklığını ayarla. 
+        // UV'ler dünya koordinatlarında (metre) olduğu için, 
+        // repeat(0.5, 0.5) demek resmi her 2 metrede bir tekrar et demektir.
+        // Bu değeri zevkinize göre 0.3 ile 1.0 arasında değiştirebilirsiniz.
+        texture.repeat.set(0.5, 0.5); 
+        
+        // Renk uzayını ayarla (ThreeJS versiyonuna göre gerekebilir)
+        texture.colorSpace = THREE.SRGBColorSpace;
+
+        baseMaterial = new THREE.MeshStandardMaterial({
+            map: texture,
+            roughness: 0.8,
+            metalness: 0.1,
+            side: THREE.DoubleSide,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
+        });
+    } else {
+        // DÜZ RENKLİ ZEMİN
+        baseMaterial = new THREE.MeshStandardMaterial({
+            color: floorColor,
+            roughness: 0.8,
+            metalness: 0.1,
+            side: THREE.DoubleSide,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            polygonOffsetUnits: 1
+        });
+    }
+
     const baseMesh = new THREE.Mesh(geometry, baseMaterial);
     baseMesh.receiveShadow = true;
     baseMesh.name = "BaseFloor";
 
-    // --- GRID ---
+    // --- GRID (Izgara) ---
     const gridTexture = createGridTexture();
     if (gridTexture) gridTexture.repeat.set(1, 1);
 
@@ -437,7 +476,10 @@ const initThreeJS = () => {
         depthWrite: false
     });
     const gridMesh = new THREE.Mesh(geometry, gridMaterial);
-    gridMesh.name = "GridMesh"; // Export ederken bulmak için isim verdik
+    gridMesh.name = "GridMesh";
+    
+    // Grid görünürlüğü ayarı (Settings'den)
+    gridMesh.visible = settings.gridVisible !== false; 
 
     const floorGroup = new THREE.Group();
     floorGroup.add(baseMesh);
