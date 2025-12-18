@@ -135,9 +135,22 @@ const handleSaveFromModal = async (payload: any) => {
 };
 
 const deleteScene = async (id: number) => {
-  if (!confirm('Silmek istediğinize emin misiniz?')) return;
-  // await arSceneService.deleteScene(id);
-  console.log("Deleted", id);
+  if (!confirm('Bu sahneyi silmek istediğinize emin misiniz?')) return;
+
+  loading.value = true;
+  try {
+    await arSceneService.deleteScene(id);
+    
+    scenes.value = scenes.value.filter(s => s.id !== id);
+    
+    console.log("Sahne başarıyla silindi.");
+  } catch (err: any) {
+    console.error("Silme hatası:", err);
+    const msg = err.response?.data?.message || "Sahne silinirken bir hata oluştu.";
+    alert("Hata: " + msg);
+  } finally {
+    loading.value = false;
+  }
 };
 
 const goToEditor = (id: number) => router.push(`/editor/scene/${id}`);

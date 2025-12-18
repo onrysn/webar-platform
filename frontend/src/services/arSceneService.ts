@@ -1,11 +1,11 @@
 import { apiService } from "./httpService/apiService";
-import type { 
-  ARSceneDto, 
-  CreateSceneDto, 
+import type {
+  ARSceneDto,
+  CreateSceneDto,
   UpdateSceneDto, // <--- YENİ: Import eklendi
-  AddSceneItemDto, 
-  UpdateSceneItemDto, 
-  SceneItemDto, 
+  AddSceneItemDto,
+  UpdateSceneItemDto,
+  SceneItemDto,
   FloorTextureDto,
   CreateFloorTextureDto
 } from "../modules/ar-scene/dto/arScene.dto";
@@ -64,5 +64,10 @@ export const arSceneService = {
   async createFloorTexture(data: CreateFloorTextureDto): Promise<FloorTextureDto> {
     const res = await apiService.post<FloorTextureDto>('/ar-scene/textures', data);
     return res.data;
+  },
+
+  // 8. Sahne Sil (Soft Delete) Backend: DELETE /ar-scene/:id
+  async deleteScene(id: number): Promise<void> {
+    await apiService.delete(`/ar-scene/${id}`);
   },
 };

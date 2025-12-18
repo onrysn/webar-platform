@@ -65,6 +65,12 @@ export class ARSceneController {
     return this.arSceneService.removeItem(itemId);
   }
 
+  @Delete(':id')
+  @ApiOperation({ summary: 'Sahneyi siler (Soft Delete)' })
+  deleteScene(@Param('id', ParseIntPipe) id: number) {
+    return this.arSceneService.deleteScene(id);
+  }
+
   // =================================================================
   // 3. GENEL SAHNE ENDPOINTLERİ (DYNAMIC ROUTES) - EN ALTTA OLMALI
   // =================================================================

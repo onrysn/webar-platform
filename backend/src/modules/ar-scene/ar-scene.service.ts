@@ -140,4 +140,20 @@ export class ARSceneService {
       },
     });
   }
+
+  // 10. Sahne Sil
+  async deleteScene(id: number) {
+    const scene = await this.prisma.aRScene.findUnique({ 
+      where: { id } 
+    });
+
+    if (!scene || scene.isDeleted) {
+      throw new NotFoundException('Silinmek istenen sahne bulunamadı.');
+    }
+
+    return this.prisma.aRScene.update({
+      where: { id },
+      data: { isDeleted: true },
+    });
+  }
 }
