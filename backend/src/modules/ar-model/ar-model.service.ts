@@ -183,12 +183,16 @@ export class ARModelService {
         return path.basename(fileName, path.extname(fileName));
     }
 
-    // finalize: check both files exist, encrypt & move to final storage, create DB row
-    async finalizeTempModel(tempId: string, companyId: number, uploadedBy: number, modelName?: string, thumbnailBase64?: string | null) {
+    async finalizeTempModel(
+        tempId: string,
+        companyId: number,
+        uploadedBy: number,
+        modelName?: string,
+        thumbnailFile?: MulterFile
+    ) {
         const tempDir = path.join(this.TEMP_ROOT, tempId);
         if (!fs.existsSync(tempDir)) throw new NotFoundException('Temp folder not found');
 
-        // look for glb and usdz files inside temp
         const files = fs.readdirSync(tempDir);
         const glbFile = files.find(f => f.toLowerCase().endsWith('.glb'));
         const usdzFile = files.find(f => f.toLowerCase().endsWith('.usdz'));
@@ -197,48 +201,46 @@ export class ARModelService {
             throw new BadRequestException('Both GLB and USDZ must be present to finalize.');
         }
 
-        // read glb data and encrypt + save to final
         const glbBuffer = fs.readFileSync(path.join(tempDir, glbFile));
         const { encrypted: glbEncrypted, iv: glbIv, authTag: glbAuth } = this.encrypt(glbBuffer);
         const glbFinalName = `${Date.now()}-${uuidv4()}-${glbFile}.enc`;
         const glbFinalPath = path.join(this.FINAL_ROOT, glbFinalName);
         fs.writeFileSync(glbFinalPath, glbEncrypted);
 
-        // read usdz and encrypt + save
         const usdzBuffer = fs.readFileSync(path.join(tempDir, usdzFile));
         const { encrypted: usdzEncrypted, iv: usdzIv, authTag: usdzAuth } = this.encrypt(usdzBuffer);
         const usdzFinalName = `${Date.now()}-${uuidv4()}-${usdzFile}.enc`;
         const usdzFinalPath = path.join(this.FINAL_ROOT, usdzFinalName);
         fs.writeFileSync(usdzFinalPath, usdzEncrypted);
 
-        // optional thumbnail save
         let thumbnailPath: string | null = null;
-        if (thumbnailBase64) {
+        if (thumbnailFile) {
             const thumbDir = path.join(process.cwd(), 'uploads', 'thumbnails');
             if (!fs.existsSync(thumbDir)) fs.mkdirSync(thumbDir, { recursive: true });
-            const thumbFileName = `${Date.now()}-${Math.round(Math.random() * 1e9)}.png`;
+
+            const thumbExt = path.extname(thumbnailFile.originalname) || '.png';
+            const thumbFileName = `${Date.now()}-${uuidv4()}${thumbExt}`;
             thumbnailPath = path.join(thumbDir, thumbFileName);
-            const base64Data = thumbnailBase64.replace(/^data:image\/\w+;base64,/, '');
-            fs.writeFileSync(thumbnailPath, Buffer.from(base64Data, 'base64'));
+
+            if (thumbnailFile.buffer) {
+                fs.writeFileSync(thumbnailPath, thumbnailFile.buffer);
+            } else if (thumbnailFile.path) {
+                fs.copyFileSync(thumbnailFile.path, thumbnailPath);
+            }
         }
 
-        // create DB row: keep one row representing the model that references both files
         const fileHash = crypto.createHash('sha256').update(glbBuffer).digest('hex');
         const created = await this.prisma.aRModel.create({
             data: {
                 fileName: modelName || this.getFileNameWithoutExt(glbFile),
                 fileType: '.glb/.usdz',
-                filePath: glbFinalPath, // store the glb encrypted path as primary filePath (you may want to change schema to store both)
+                filePath: glbFinalPath,
                 fileSize: glbEncrypted.length,
                 fileHash,
                 companyId,
                 uploadedBy,
                 iv: glbIv.toString('hex'),
                 authTag: glbAuth.toString('hex'),
-                // store usd additional fields in metadata columns if available; otherwise create second table. For simplicity:
-                // You can add extra columns to schema for second file's path, iv, authTag. Example below assumes you added them:
-                // usdzFilePath, usdzIv, usdzAuthTag, usdzFileSize
-                // For this snippet, I'll assume those columns exist:
                 usdzFilePath: usdzFinalPath,
                 usdzIv: usdzIv.toString('hex'),
                 usdzAuthTag: usdzAuth.toString('hex'),
@@ -246,16 +248,13 @@ export class ARModelService {
                 thumbnailPath,
             },
         });
-
-        // cleanup temp dir
         try {
             fs.rmSync(tempDir, { recursive: true, force: true });
         } catch (err) {
             console.error('Failed to delete temp dir', tempDir, err);
         }
 
-        // Return created DB record minimal info (do not return paths in production)
-        return { id: created.id, fileName: created.fileName, message: 'Model saved' };
+        return { id: created.id, fileName: created.fileName, message: 'Model and thumbnail saved successfully' };
     }
 
     // Reuse your existing convertCadToGlb below unchanged (but ensure it returns output path)
@@ -379,9 +378,9 @@ export class ARModelService {
         // 3. GLB -> USDZ Converter Servisine İstek At
         // Mevcut converterUrl yapısını kullanıyoruz
         const formData = new FormData();
-        formData.append('file', fs.createReadStream(glbPath), { 
-            filename: glbName, 
-            contentType: 'model/gltf-binary' 
+        formData.append('file', fs.createReadStream(glbPath), {
+            filename: glbName,
+            contentType: 'model/gltf-binary'
         });
 
         const convertResp = await fetch(`${this.converterUrl}/api/convert`, {
@@ -401,11 +400,11 @@ export class ARModelService {
         // 4. Oluşan USDZ dosyasını indir
         const downloadUrl = `${this.converterUrl}/api/download?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`;
         const usdzResp = await fetch(downloadUrl);
-        
+
         if (!usdzResp.ok) {
             throw new InternalServerErrorException('USDZ indirme hatası: ' + (await usdzResp.text()));
         }
-        
+
         const usdzBuffer = await usdzResp.buffer();
         const usdzName = `${baseName}.usdz`;
         const usdzPath = path.join(tempDir, usdzName);
@@ -415,19 +414,19 @@ export class ARModelService {
         // 5. Sonuçları Dön (Frontend finalize endpointine bu tempId ile gidecek)
         return {
             tempId,
-            glb: { 
-                filename: glbName, 
-                url: `/temp/${tempId}/${glbName}`, 
-                path: glbPath, 
-                size: fs.statSync(glbPath).size 
+            glb: {
+                filename: glbName,
+                url: `/temp/${tempId}/${glbName}`,
+                path: glbPath,
+                size: fs.statSync(glbPath).size
             },
-            usdz: { 
-                filename: usdzName, 
-                url: `/temp/${tempId}/${usdzName}`, 
-                path: usdzPath, 
-                size: fs.statSync(usdzPath).size 
+            usdz: {
+                filename: usdzName,
+                url: `/temp/${tempId}/${usdzName}`,
+                path: usdzPath,
+                size: fs.statSync(usdzPath).size
             },
         };
     }
-    
+
 }

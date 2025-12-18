@@ -35,7 +35,7 @@ export interface FinalizeModelDto {
   tempId: string;
   companyId: number;
   modelName?: string;
-  thumbnail?: string; // Base64 string
+  thumbnail?: File | Blob;
 }
 
 export interface ModelDetailDto {

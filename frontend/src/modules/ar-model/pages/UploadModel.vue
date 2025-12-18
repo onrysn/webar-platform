@@ -310,6 +310,28 @@ const processUpload = async (file: File, type: 'auto' | 'glb' | 'usdz') => {
   }
 };
 
+const dataURLtoBlob = (dataurl: string): Blob => {
+  const [header, base64Data] = dataurl.split(',');
+
+  if (!header || !base64Data) {
+    throw new Error('Geçersiz DataURL formatı: Parçalar eksik.');
+  }
+  const match = header.match(/:(.*?);/);
+  const mime = (match && match[1]) ? match[1] : 'image/png';
+
+  try {
+    const bstr = atob(base64Data);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new Blob([u8arr], { type: mime });
+  } catch (e) {
+    throw new Error('Base64 verisi decode edilemedi: ' + e);
+  }
+};
+
 const finalizeUpload = async () => {
   if (!isReadyToFinalize.value || !tempData.value?.tempId) return;
 
@@ -317,19 +339,25 @@ const finalizeUpload = async () => {
   error.value = null;
 
   try {
-    const thumbnailBase64 = previewRef.value?.takeScreenshot() || undefined;
+    const screenshotBase64 = previewRef.value?.takeScreenshot();
+    let thumbnailBlob: Blob | undefined;
+
+    if (screenshotBase64) {
+      thumbnailBlob = dataURLtoBlob(screenshotBase64);
+    }
 
     await arModelService.finalizeModel({
       tempId: tempData.value.tempId,
       companyId: COMPANY_ID,
       modelName: modelName.value,
-      thumbnail: thumbnailBase64
+      thumbnail: thumbnailBlob // Artık Blob gönderiyoruz
     });
 
-    alert("Model başarıyla kaydedildi!");
+    alert("Model ve thumbnail başarıyla kaydedildi!");
     resetForm();
 
   } catch (err: any) {
+    console.error(err);
     error.value = err.response?.data?.message || "Kaydetme başarısız.";
   } finally {
     finalizing.value = false;

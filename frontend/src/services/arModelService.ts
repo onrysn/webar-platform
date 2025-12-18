@@ -51,7 +51,22 @@ export const arModelService = {
 
   // 5. Finalize
   async finalizeModel(data: FinalizeModelDto): Promise<ARModelDto> {
-    const res = await apiService.post<ARModelDto>('/ar-model/finalize', data);
+    const formData = new FormData();
+    formData.append('tempId', data.tempId);
+    formData.append('companyId', data.companyId.toString());
+
+    if (data.modelName) {
+      formData.append('modelName', data.modelName);
+    }
+
+    if (data.thumbnail) {
+      formData.append('thumbnail', data.thumbnail, 'thumbnail.png');
+    }
+
+    const res = await apiService.post<ARModelDto>('/ar-model/finalize', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
     return res.data;
   },
 

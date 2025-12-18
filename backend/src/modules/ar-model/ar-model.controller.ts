@@ -113,12 +113,39 @@ export class ARModelController {
     // --------------------------
     // Finalize -> tempId required, metadata e.g. companyId, thumbnail
     // --------------------------
+    // ar-model.controller.ts
+
     @Post('finalize')
-    @ApiBody({ schema: { type: 'object', properties: { tempId: { type: 'string' }, companyId: { type: 'number' }, modelName: { type: 'string', nullable: true }, thumbnail: { type: 'string', nullable: true } }, required: ['tempId', 'companyId'] } })
-    async finalize(@Body() body: { tempId: string, companyId: number, modelName?: string, thumbnail?: string }, @Req() req: any) {
+    @UseInterceptors(FileInterceptor('thumbnail'))
+    @ApiConsumes('multipart/form-data')
+    @ApiOperation({ summary: 'Temp klasöründeki dosyaları şifreleyip kalıcı klasöre taşır ve DB kaydı oluşturur.' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                tempId: { type: 'string' },
+                companyId: { type: 'number' },
+                modelName: { type: 'string', nullable: true },
+                thumbnail: { type: 'string', format: 'binary', description: 'Thumbnail görsel dosyası' },
+            },
+            required: ['tempId', 'companyId']
+        }
+    })
+    async finalize(
+        @Body() body: { tempId: string, companyId: string, modelName?: string },
+        @UploadedFile() thumbnail: MulterFile,
+        @Req() req: any
+    ) {
         const userId = req.user.userId;
-        const { tempId, companyId, modelName, thumbnail } = body;
-        return this.arModelService.finalizeTempModel(tempId, +companyId, userId, modelName, thumbnail || null);
+        const { tempId, companyId, modelName } = body;
+
+        return this.arModelService.finalizeTempModel(
+            tempId,
+            Number(companyId),
+            userId,
+            modelName,
+            thumbnail
+        );
     }
 
 
@@ -170,7 +197,7 @@ export class ARModelController {
         @Query('mode') mode: 'view' | 'download' = 'view',
         @Res({ passthrough: true }) res: Response // 2. passthrough: true ekliyoruz
     ): Promise<StreamableFile> { // 3. Dönüş tipi StreamableFile
-        
+
         const model = await this.prisma.aRModel.findUnique({ where: { id: +id } });
         if (!model) throw new NotFoundException('Model bulunamadı');
 
@@ -183,7 +210,7 @@ export class ARModelController {
             'Content-Length': buffer.length,
             'Content-Disposition': `${mode === 'download' ? 'attachment' : 'inline'}; filename="${filename}"`,
             // Cache kontrolü eklemek performansı artırır (opsiyonel)
-            'Cache-Control': 'private, max-age=3600' 
+            'Cache-Control': 'private, max-age=3600'
         });
 
         // 4. NestJS StreamableFile ile buffer'ı dönüyoruz
@@ -194,17 +221,17 @@ export class ARModelController {
     @ApiOperation({ summary: 'GLB yükler, converter servisi ile USDZ oluşturur ve temp bilgilerini döner.' })
     @UseInterceptors(FileInterceptor('file', modelUploadConfig))
     @ApiConsumes('multipart/form-data')
-    @ApiBody({ 
-        schema: { 
-            type: 'object', 
-            properties: { 
-                file: { type: 'string', format: 'binary', description: 'Sadece .glb dosyası yükleyin' } 
-            } 
-        } 
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                file: { type: 'string', format: 'binary', description: 'Sadece .glb dosyası yükleyin' }
+            }
+        }
     })
     async convertGlbToUsdz(@UploadedFile() file: MulterFile, @Req() req: any) {
         if (!file) throw new BadRequestException('Dosya gereklidir.');
-        
+
         // Basit bir uzantı kontrolü
         const ext = path.extname(file.originalname).toLowerCase();
         if (ext !== '.glb') {
