@@ -1,6 +1,19 @@
 import type { ARModelDto } from "../../ar-model/dto/arModel.dto";
 
-// --- YENİ EKLENEN TİPLER (Texture için) ---
+export interface FloorLayer {
+  id: string;        
+  shapeId: string;
+  name: string;
+  x: number;
+  z: number;
+  width: number;
+  height: number;
+  rotation: number;
+  color: string;
+  opacity: number;
+  zIndex: number;
+}
+
 export interface FloorTextureDto {
   id: number;
   name: string;
@@ -15,8 +28,6 @@ export interface CreateFloorTextureDto {
   textureUrl: string;
   isActive?: boolean;
 }
-
-// --- MEVCUT TİPLER (Aynen kalıyor) ---
 
 export interface Vector3 {
   x: number;
@@ -40,6 +51,7 @@ export interface SceneSettings {
   floorTextureUrl?: string;
   wallHeight?: number;
   textureScale?: number;
+  floorLayers?: FloorLayer[];
 }
 
 // --- ANA VERİ MODELLERİ (Response Types) ---

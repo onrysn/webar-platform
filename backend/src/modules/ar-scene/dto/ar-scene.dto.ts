@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, ValidateNested, IsArray, IsEnum, IsBoolean } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsOptional, ValidateNested, IsArray, IsEnum, IsBoolean, Min, Max } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -28,6 +28,58 @@ export class FloorPointDto {
   @ApiProperty({ example: 0 })
   @IsNumber()
   z: number;
+}
+
+export class FloorLayerDto {
+  @ApiProperty({ description: 'Frontend tarafında üretilen UUID', example: '550e8400-e29b-41d4-a716-446655440000' })
+  @IsString()
+  id: string;
+
+  @ApiProperty({ 
+    description: 'Şekil Tipi (Kütüphanedeki ID)', 
+    example: 'rect', 
+    enum: ['rect', 'circle', 'triangle', 'arrow', 'l-shape', 'star', 'warning', 'hexagon'] 
+  })
+  @IsString()
+  shapeId: string;
+
+  @ApiProperty({ description: 'Kullanıcının verdiği isim', example: 'Güvenlik Alanı' })
+  @IsString()
+  name: string;
+
+  @ApiProperty({ description: 'Merkez X konumu' })
+  @IsNumber()
+  x: number;
+
+  @ApiProperty({ description: 'Merkez Z konumu' })
+  @IsNumber()
+  z: number;
+
+  @ApiProperty({ description: 'Genişlik (Scale X)' })
+  @IsNumber()
+  width: number;
+
+  @ApiProperty({ description: 'Yükseklik/Derinlik (Scale Y)' })
+  @IsNumber()
+  height: number;
+
+  @ApiProperty({ description: 'Dönme Açısı (Derece)', example: 0 })
+  @IsNumber()
+  rotation: number;
+
+  @ApiProperty({ description: 'Renk Kodu (Hex)', example: '#3b82f6' })
+  @IsString()
+  color: string;
+
+  @ApiProperty({ description: 'Şeffaflık (0.0 - 1.0 arası)', example: 0.8 })
+  @IsNumber()
+  @Min(0)
+  @Max(1)
+  opacity: number;
+
+  @ApiProperty({ description: 'Katman sırası', example: 1 })
+  @IsNumber()
+  zIndex: number;
 }
 
 // 3. Sahne Ayarları (Settings JSON İçeriği)
@@ -82,6 +134,13 @@ export class SceneSettingsDto {
   @IsOptional()
   @IsNumber()
   textureScale?: number;
+
+  @ApiPropertyOptional({ type: [FloorLayerDto], description: 'Zemin üzerine çizilen şekiller ve işaretler' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => FloorLayerDto)
+  floorLayers?: FloorLayerDto[];
 }
 
 // --- ANA DTO'LAR ---

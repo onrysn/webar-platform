@@ -13,7 +13,6 @@
                 </div>
 
                 <div class="flex items-center gap-2">
-                    
                     <div class="relative">
                         <button @click="showDownloadMenu = !showDownloadMenu"
                             :disabled="isExporting"
@@ -47,10 +46,13 @@
             </div>
 
             <div class="flex-1 overflow-y-auto p-2 space-y-2">
+                <div v-if="sceneItems.length === 0" class="text-center text-xs text-gray-400 mt-4">
+                    Henüz model eklenmedi.
+                </div>
                 <div v-for="item in sceneItems" :key="item.id" @click="selectItemFromTree(item.id)"
                     class="p-2 rounded cursor-pointer flex justify-between items-center group transition-all border border-transparent"
                     :class="selectedItemId === item.id ? 'bg-blue-100 border-blue-300 text-blue-700' : 'hover:bg-gray-100 hover:border-gray-200'">
-                    <span class="text-sm truncate font-medium">{{ item.name }}</span>
+                    <span class="text-sm truncate font-medium">{{ item.name || item.model.fileName }}</span>
                     <button @click.stop="deleteItem(item.id)"
                         class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 p-1 transition-opacity">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -136,29 +138,47 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js'; // Export Kütüphanesi
+import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
+import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
 import { TextureLoader } from 'three';
 
+// Service Imports
 import { arSceneService } from '../../../services/arSceneService';
 import { arModelService } from '../../../services/arModelService';
+
+// DTO Imports
 import type { ARSceneDto, SceneItemDto } from '../dto/arScene.dto';
 import type { ARModelDto } from '../../ar-model/dto/arModel.dto';
 
+// --- CONSTANTS: SHAPE LIBRARY ---
+const SHAPE_LIBRARY = [
+    { id: 'rect', label: 'Dikdörtgen', icon: '⬛', path: 'M -0.5 -0.5 L 0.5 -0.5 L 0.5 0.5 L -0.5 0.5 Z' },
+    { id: 'circle', label: 'Daire', icon: '⚪', path: 'M 0 0 m -0.5 0 a 0.5 0.5 0 1 0 1 0 a 0.5 0.5 0 1 0 -1 0' },
+    { id: 'triangle', label: 'Üçgen', icon: '🔺', path: 'M 0 -0.5 L 0.5 0.5 L -0.5 0.5 Z' },
+    { id: 'arrow', label: 'Yön Oku', icon: '⬆️', path: 'M -0.2 0.5 L -0.2 -0.1 L -0.5 -0.1 L 0 -0.5 L 0.5 -0.1 L 0.2 -0.1 L 0.2 0.5 Z' },
+    { id: 'l-shape', label: 'L Köşe', icon: 'L', path: 'M -0.5 -0.5 L 0.5 -0.5 L 0.5 -0.1 L -0.1 -0.1 L -0.1 0.5 L -0.5 0.5 Z' },
+    { id: 'star', label: 'Yıldız', icon: '⭐', path: 'M 0 -0.5 L 0.11 -0.15 L 0.47 -0.15 L 0.18 0.06 L 0.29 0.4 L 0 0.19 L -0.29 0.4 L -0.18 0.06 L -0.47 -0.15 L -0.11 -0.15 Z' },
+    { id: 'warning', label: 'Uyarı', icon: '⚠️', path: 'M 0 -0.5 L 0.43 0.25 L 0.5 0.5 L -0.5 0.5 L -0.43 0.25 Z' },
+    { id: 'hexagon', label: 'Altıgen', icon: '🛑', path: 'M -0.25 -0.43 L 0.25 -0.43 L 0.5 0 L 0.25 0.43 L -0.25 0.43 L -0.5 0 Z' }
+];
+
+// --- STATE ---
 const route = useRoute();
 const sceneId = Number(route.params.id);
-
-// --- State ---
 const canvasRef = ref<HTMLCanvasElement | null>(null);
+
 const isLoading = ref(true);
-const isExporting = ref(false); // Export işlemi sırasında loading göstermek için
-const showDownloadMenu = ref(false); // Menü aç/kapa
+const isExporting = ref(false);
+const showDownloadMenu = ref(false);
+
 const sceneData = ref<ARSceneDto | null>(null);
 const sceneItems = ref<SceneItemDto[]>([]);
+
 const showModelSelector = ref(false);
 const availableModels = ref<ARModelDto[]>([]);
 const selectedItemId = ref<number | null>(null);
 
-// Mouse Takibi
+// Mouse
 const mouseStart = new THREE.Vector2();
 
 // --- Three.js Globals ---
@@ -173,6 +193,7 @@ let animationId: number;
 
 const itemsMap = new Map<number, THREE.Object3D>();
 
+// --- LIFECYCLE ---
 onMounted(async () => {
     if (!sceneId) return;
 
@@ -209,7 +230,7 @@ const loadSceneData = async () => {
 
 const getThumbnailUrl = (path: string) => arModelService.getPreviewUrl(path);
 
-// --- YARDIMCI FONKSİYON: Dinamik Grid Dokusu ---
+// --- YARDIMCI: Grid Texture ---
 const createGridTexture = () => {
     const size = 1024;
     const canvas = document.createElement('canvas');
@@ -232,10 +253,8 @@ const createGridTexture = () => {
 };
 
 // =======================================================
-// EXPORT & CONVERT LOGIC
+// EXPORT & CONVERT
 // =======================================================
-
-// 1. Sahneyi GLB Blob olarak alma (Promise)
 const getSceneAsBlob = (): Promise<Blob> => {
     return new Promise((resolve, reject) => {
         if (!scene) {
@@ -244,8 +263,7 @@ const getSceneAsBlob = (): Promise<Blob> => {
         }
 
         const exporter = new GLTFExporter();
-
-        // Geçici Gizleme İşlemleri
+        
         const controlsObj = transformControl as unknown as THREE.Object3D;
         const prevControlsVisible = controlsObj.visible;
         controlsObj.visible = false;
@@ -257,50 +275,36 @@ const getSceneAsBlob = (): Promise<Blob> => {
             gridMesh.visible = false;
         }
 
-        // Export
         exporter.parse(
             scene,
             (gltf) => {
                 const blob = new Blob([gltf as ArrayBuffer], { type: 'model/gltf-binary' });
-                
-                // Görünürlükleri geri yükle
                 controlsObj.visible = prevControlsVisible;
                 if (gridMesh) gridMesh.visible = prevGridVisible;
-                
                 resolve(blob);
             },
             (error) => {
-                // Hata durumunda da görünürlükleri geri yükle
                 controlsObj.visible = prevControlsVisible;
                 if (gridMesh) gridMesh.visible = prevGridVisible;
-                
                 reject(error);
             },
-            {
-                binary: true,
-                onlyVisible: true
-            }
+            { binary: true, onlyVisible: true }
         );
     });
 };
 
-// 2. Ana Handler
 const handleExport = async (format: 'glb' | 'usdz') => {
     if (isExporting.value) return;
-    
     showDownloadMenu.value = false;
     isExporting.value = true;
 
     try {
-        // Aşam 1: Tarayıcıda GLB oluştur
         const glbBlob = await getSceneAsBlob();
         const fileName = sceneData.value?.name || 'sahne';
 
         if (format === 'glb') {
-            // Sadece GLB ise direkt indir
             triggerDownload(glbBlob, `${fileName}.glb`);
         } else {
-            // USDZ ise Backend'e gönderip çevirt
             await convertAndDownloadUsdz(glbBlob, fileName);
         }
 
@@ -313,17 +317,9 @@ const handleExport = async (format: 'glb' | 'usdz') => {
 };
 
 const convertAndDownloadUsdz = async (glbBlob: Blob, baseName: string) => {
-    // Servis üzerinden isteği atıyoruz (Token otomatik eklenir)
-    // Blob'u gönderirken dosya adını da (.glb uzantılı) iletiyoruz.
     const data = await arModelService.convertGlbToUsdz(glbBlob, `${baseName}.glb`);
-
-    // Gelen data yapısı: { tempId, glb: {...}, usdz: { url: '...' } }
-    
     if (data.usdz && data.usdz.url) {
-        // Servisteki helper ile tam URL'i alıyoruz (http://localhost:3000/temp/...)
         const downloadUrl = arModelService.getPreviewUrl(data.usdz.url);
-        
-        // Link oluşturup indirmeyi tetikliyoruz
         const link = document.createElement('a');
         link.href = downloadUrl;
         link.download = `${baseName}.usdz`; 
@@ -335,7 +331,6 @@ const convertAndDownloadUsdz = async (glbBlob: Blob, baseName: string) => {
     }
 };
 
-// 4. Basit Blob İndirme Tetikleyici
 const triggerDownload = (blob: Blob, filename: string) => {
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -344,44 +339,43 @@ const triggerDownload = (blob: Blob, filename: string) => {
     URL.revokeObjectURL(link.href);
 };
 
-
 // =======================================================
-// THREE.JS SETUP & EVENTS (MEVCUT KODLARIN AYNI KALMASI)
+// THREE.JS INIT
 // =======================================================
-
-// initThreeJS fonksiyonunun güncellenmiş hali:
-
 const initThreeJS = () => {
     if (!canvasRef.value) return;
 
+    // Ayarlar
     const settings = sceneData.value?.settings || {};
     const sceneWidth = settings.width || 20;
     const sceneDepth = settings.depth || 20;
     const bgColor = settings.backgroundColor || '#f5f5f5';
     const floorColor = settings.floorColor || '#ffffff';
     const floorType = settings.floorType || 'rectangle';
-    const floorTextureUrl = settings.floorTextureUrl; // Backend'den gelen Texture URL
+    const floorTextureUrl = settings.floorTextureUrl;
+    const floorLayers = settings.floorLayers || [];
     const points = settings.floorPoints || [];
+    const texScale = settings.textureScale || 1; 
 
+    // Scene
     scene = new THREE.Scene();
     scene.background = new THREE.Color(bgColor);
     const maxDim = Math.max(sceneWidth, sceneDepth);
     scene.fog = new THREE.Fog(bgColor, 30, maxDim * 8);
 
+    // Lights
     scene.add(new THREE.AmbientLight(0xffffff, 0.7));
     const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
     dirLight.position.set(15, 30, 15);
     dirLight.castShadow = true;
-
     const d = maxDim * 1.2;
     dirLight.shadow.camera.left = -d; dirLight.shadow.camera.right = d;
     dirLight.shadow.camera.top = d; dirLight.shadow.camera.bottom = -d;
     dirLight.shadow.mapSize.set(2048, 2048);
     scene.add(dirLight);
 
-    // --- GEOMETRİ ---
+    // --- ZEMİN (Base Floor) ---
     let geometry: THREE.BufferGeometry;
-
     if (floorType === 'custom' && points.length > 2) {
         const shape = new THREE.Shape();
         const p0 = points[0];
@@ -396,20 +390,23 @@ const initThreeJS = () => {
         geometry = new THREE.PlaneGeometry(sceneWidth, sceneDepth);
     }
 
-    geometry.center();
+    // --- OFFSET HESAPLAMA ---
+    geometry.computeBoundingBox();
+    const centerOffset = new THREE.Vector3();
+    if (geometry.boundingBox) {
+        geometry.boundingBox.getCenter(centerOffset);
+    }
+    geometry.translate(-centerOffset.x, -centerOffset.y, -centerOffset.z);
 
-    // --- UV MAP (Texture'ın düzgün yayılması için kritik) ---
-    // Bu işlem sayesinde texture, metre başına orantılı olarak yayılır (stretch olmaz)
+    // UV Map
     geometry.computeBoundingBox();
     const box = geometry.boundingBox!;
     const posAttribute = geometry.attributes.position as THREE.BufferAttribute;
     const uvAttribute = geometry.attributes.uv as THREE.BufferAttribute;
-
     if (posAttribute && uvAttribute) {
         for (let i = 0; i < posAttribute.count; i++) {
             const x = posAttribute.getX(i);
             const y = posAttribute.getY(i);
-            // UV koordinatlarını dünya koordinatlarına eşliyoruz
             const u = (x - box.min.x);
             const v = (y - box.min.y);
             uvAttribute.setXY(i, u, v);
@@ -417,25 +414,16 @@ const initThreeJS = () => {
         uvAttribute.needsUpdate = true;
     }
 
-    // --- ZEMİN MATERYALİ (Texture Kontrolü) ---
+    // Materyal
     let baseMaterial: THREE.MeshStandardMaterial;
-
     if (floorTextureUrl) {
-        // DOKULU ZEMİN
-        const loader = new TextureLoader;
+        const loader = new TextureLoader();
         const texture = loader.load(floorTextureUrl);
-        
-        // Dokunun tekrar etmesini sağla
         texture.wrapS = THREE.RepeatWrapping;
         texture.wrapT = THREE.RepeatWrapping;
-        
-        // Dokunun sıklığını ayarla. 
-        // UV'ler dünya koordinatlarında (metre) olduğu için, 
-        // repeat(0.5, 0.5) demek resmi her 2 metrede bir tekrar et demektir.
-        // Bu değeri zevkinize göre 0.3 ile 1.0 arasında değiştirebilirsiniz.
-        texture.repeat.set(0.5, 0.5); 
-        
-        // Renk uzayını ayarla (ThreeJS versiyonuna göre gerekebilir)
+        const safeScale = texScale > 0 ? texScale : 1;
+        const repeatFactor = 1 / safeScale;
+        texture.repeat.set(repeatFactor, repeatFactor);
         texture.colorSpace = THREE.SRGBColorSpace;
 
         baseMaterial = new THREE.MeshStandardMaterial({
@@ -444,61 +432,136 @@ const initThreeJS = () => {
             metalness: 0.1,
             side: THREE.DoubleSide,
             polygonOffset: true,
-            polygonOffsetFactor: 1,
-            polygonOffsetUnits: 1
+            polygonOffsetFactor: 2,
+            polygonOffsetUnits: 2,
+            depthWrite: false
         });
     } else {
-        // DÜZ RENKLİ ZEMİN
         baseMaterial = new THREE.MeshStandardMaterial({
             color: floorColor,
             roughness: 0.8,
             metalness: 0.1,
             side: THREE.DoubleSide,
             polygonOffset: true,
-            polygonOffsetFactor: 1,
-            polygonOffsetUnits: 1
+            polygonOffsetFactor: 2,
+            polygonOffsetUnits: 2,
+            depthWrite: false
         });
     }
 
+    // Base mesh'in render order'ı en düşük olsun (0)
     const baseMesh = new THREE.Mesh(geometry, baseMaterial);
     baseMesh.receiveShadow = true;
     baseMesh.name = "BaseFloor";
+    baseMesh.renderOrder = 0; 
 
-    // --- GRID (Izgara) ---
+    // --- GRID ---
     const gridTexture = createGridTexture();
     if (gridTexture) gridTexture.repeat.set(1, 1);
-
     const gridMaterial = new THREE.MeshBasicMaterial({
         map: gridTexture,
         transparent: true,
-        opacity: 0.6,
+        opacity: 0.4,
         side: THREE.DoubleSide,
-        depthWrite: false
+        depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -2, 
+        polygonOffsetUnits: -2
     });
     const gridMesh = new THREE.Mesh(geometry, gridMaterial);
     gridMesh.name = "GridMesh";
+    gridMesh.visible = settings.gridVisible !== false;
     
-    // Grid görünürlüğü ayarı (Settings'den)
-    gridMesh.visible = settings.gridVisible !== false; 
+    // Grid her zaman en üstte görünsün
+    gridMesh.renderOrder = 999; 
 
+    // --- FLOOR GROUP ---
     const floorGroup = new THREE.Group();
     floorGroup.add(baseMesh);
     floorGroup.add(gridMesh);
 
+    // --- FLOOR LAYERS (SVG Şekiller - REVİZE EDİLMİŞ BÖLÜM) ---
+    if (floorLayers.length > 0) {
+        // 1. Z-Index Sıralaması
+        const sortedLayers = [...floorLayers].sort((a, b) => a.zIndex - b.zIndex);
+        const svgLoader = new SVGLoader(); 
+
+        sortedLayers.forEach((layer, index) => {
+            const shapeDef = SHAPE_LIBRARY.find(s => s.id === layer.shapeId) || SHAPE_LIBRARY[0];
+            if (!shapeDef) return;
+
+            // ÖNEMLİ: SVG Wrapper (loader.parse bunu bekler)
+            const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg"><path d="${shapeDef.path}" /></svg>`;
+            const shapeData = svgLoader.parse(svgMarkup);
+
+            if (!shapeData.paths || shapeData.paths.length === 0) return;
+
+            const shapes: THREE.Shape[] = [];
+            shapeData.paths.forEach((path) => {
+                const pathShapes = path.toShapes(true);
+                shapes.push(...pathShapes);
+            });
+
+            if (shapes.length === 0) return;
+
+            const layerGeo = new THREE.ShapeGeometry(shapes);
+            
+            // Geometriyi ortala (Scale ve Rotate işlemleri merkezden olsun diye)
+            layerGeo.computeBoundingBox();
+            const center = new THREE.Vector3();
+            if(layerGeo.boundingBox) layerGeo.boundingBox.getCenter(center);
+            layerGeo.translate(-center.x, -center.y, -center.z);
+
+            // Materyal (Z-Fighting Önlemleri ve Render Order)
+            const layerMat = new THREE.MeshBasicMaterial({
+                color: layer.color,
+                transparent: true,
+                opacity: layer.opacity !== undefined ? layer.opacity : 1,
+                side: THREE.DoubleSide,
+                depthWrite: false, // Arka arkaya binen transparan nesneler için önemli
+                depthTest: true
+            });
+
+            const layerMesh = new THREE.Mesh(layerGeo, layerMat);
+
+            // Scale (Genişlik ve Yükseklik)
+            layerMesh.scale.set(layer.width, layer.height, 1);
+
+            // Pozisyonlama (Offset ve Z-Fighting önleme)
+            const correctedX = layer.x - centerOffset.x;
+            const correctedZ = layer.z - centerOffset.y;
+            
+            // Fiziksel olarak çok az yukarı kaldırıyoruz (Y Ekseni)
+            const zFightOffset = 0.005 * (index + 1);
+            layerMesh.position.set(correctedX, correctedZ, zFightOffset);
+
+            // Render Order: ThreeJS'e çizim sırasını dayatıyoruz.
+            // zIndex ne kadar yüksekse o kadar geç çizilir (üste gelir).
+            layerMesh.renderOrder = layer.zIndex; 
+
+            // Rotasyon
+            layerMesh.rotation.z = -layer.rotation;
+
+            floorGroup.add(layerMesh);
+        });
+    }
+
+    // Zemin Dönüşü
     if (floorType === 'custom') {
         floorGroup.rotation.x = Math.PI / 2;
         floorGroup.scale.y = -1;
     } else {
         floorGroup.rotation.x = -Math.PI / 2;
     }
+
     scene.add(floorGroup);
 
     // --- KAMERA & RENDERER ---
     const width = canvasRef.value.clientWidth;
     const height = canvasRef.value.clientHeight;
     camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
-    const camDist = maxDim * 1.0;
-    camera.position.set(camDist, camDist * 1.2, camDist);
+    const camDist = maxDim * 1.5;
+    camera.position.set(camDist, camDist, camDist);
     camera.lookAt(0, 0, 0);
 
     renderer = new THREE.WebGLRenderer({ canvas: canvasRef.value, antialias: true });
@@ -507,13 +570,16 @@ const initThreeJS = () => {
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
-    // --- KONTROLLER ---
     orbit = new OrbitControls(camera, renderer.domElement);
     orbit.enableDamping = true;
     orbit.dampingFactor = 0.05;
-    orbit.maxPolarAngle = Math.PI / 2 - 0.02;
-    orbit.target.set(0, 0, 0);
-    orbit.update();
+    
+    // --- KAMERA AÇISI KISITLAMASI ---
+    // Yerin altına inmesini engelle (Max Polar Angle: 90 derece)
+    // 0 = Tam tepe, Math.PI = Tam alt.
+    // Math.PI / 2 = Ufuk çizgisi.
+    // Biraz pay bırakarak (0.05) tam ufuk çizgisinde titreşimi önlüyoruz.
+    orbit.maxPolarAngle = Math.PI / 2 - 0.05; 
 
     transformControl = markRaw(new TransformControls(camera, renderer.domElement));
     transformControl.addEventListener('dragging-changed', (event) => { orbit.enabled = !event.value; });
@@ -550,7 +616,7 @@ const animate = () => {
     renderer.render(scene, camera);
 };
 
-// --- Model Logic ---
+// --- MODEL İŞLEMLERİ ---
 const loadSceneObjects = async () => {
     if (!sceneData.value) return;
     const loader = new GLTFLoader();
@@ -569,9 +635,9 @@ const loadSceneObjects = async () => {
                 }
             });
 
-            const pos = item.position as any;
-            const rot = item.rotation as any;
-            const scl = item.scale as any;
+            const pos = item.position;
+            const rot = item.rotation;
+            const scl = item.scale;
 
             model.position.set(pos.x, pos.y, pos.z);
             model.rotation.set(rot.x, rot.y, rot.z);
@@ -610,15 +676,11 @@ const addModelToScene = async (arModel: ARModelDto) => {
         });
 
         const box = new THREE.Box3().setFromObject(model);
-        if (box.isEmpty()) console.warn("Model boyutu hesaplanamadı.");
-
         const center = new THREE.Vector3();
         box.getCenter(center);
-
         const newX = -center.x;
         const newY = -box.min.y;
         const newZ = -center.z;
-
         model.position.set(newX, newY, newZ);
 
         const newItem = await arSceneService.addItem({
@@ -643,14 +705,13 @@ const addModelToScene = async (arModel: ARModelDto) => {
     }
 };
 
-// --- Seçim Mantığı ---
+// --- ETKİLEŞİM ---
 const onMouseDown = (event: MouseEvent) => {
     mouseStart.set(event.clientX, event.clientY);
 };
 
 const onMouseUp = (event: MouseEvent) => {
     if (!canvasRef.value) return;
-
     const distance = mouseStart.distanceTo(new THREE.Vector2(event.clientX, event.clientY));
     if (distance > 5) return;
 
@@ -660,15 +721,8 @@ const onMouseUp = (event: MouseEvent) => {
 
     raycaster.setFromCamera(mouse, camera);
 
-    if (selectedItemId.value && transformControl) {
-        const gizmoChildren = (transformControl as any).children || [];
-        if (gizmoChildren.length > 0) {
-            const gizmoIntersects = raycaster.intersectObjects(gizmoChildren, true);
-            if (gizmoIntersects.length > 0) return;
-        }
-    }
-
     const intersects = raycaster.intersectObjects(scene.children, true);
+    
     const hit = intersects.find(i => {
         let obj = i.object;
         while (obj.parent && obj.parent !== scene) {
@@ -697,6 +751,7 @@ const selectItemFromTree = (itemId: number) => {
 };
 
 const handleKeyDown = (event: KeyboardEvent) => {
+    if (document.activeElement?.tagName === 'INPUT') return;
     switch (event.key.toLowerCase()) {
         case 'w': transformControl.setMode('translate'); break;
         case 'e': transformControl.setMode('rotate'); break;

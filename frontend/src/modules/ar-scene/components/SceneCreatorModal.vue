@@ -1,7 +1,8 @@
 <template>
     <div v-if="isOpen"
         class="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all"
-        @keydown.window.ctrl.z="removeLastPoint">
+        @keydown.window.ctrl.z="removeLastPoint" @keydown.window.escape="cancelTool"
+        @keydown.window.delete="removeLayer">
 
         <div
             class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col h-[92vh] border border-slate-200/50">
@@ -30,6 +31,7 @@
 
                 <div
                     class="p-6 space-y-8 w-full md:w-80 lg:w-[380px] overflow-y-auto border-r border-slate-100 bg-slate-50/40 custom-scrollbar">
+
                     <section class="space-y-4">
                         <div class="flex items-center justify-between">
                             <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Genel Bilgiler
@@ -58,8 +60,6 @@
                                 </div>
                                 <input type="range" v-model.number="form.wallHeight" min="0" max="5" step="0.1"
                                     class="w-full h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600">
-                                <p class="text-[9px] text-slate-400 mt-2 text-center" v-if="form.wallHeight === 0">Duvar
-                                    yok, sadece zemin planlanıyor.</p>
                             </div>
                         </div>
                     </section>
@@ -75,11 +75,9 @@
                                 <span class="text-[11px] font-black"
                                     :class="form.shapeType === shape.id ? 'text-indigo-700' : 'text-slate-600'">{{
                                         shape.label }}</span>
-                                <div v-if="form.shapeType === shape.id"
-                                    class="absolute top-2 right-2 w-2 h-2 bg-indigo-600 rounded-full animate-pulse">
-                                </div>
                             </button>
                         </div>
+
                         <div v-if="form.shapeType !== 'custom'"
                             class="animate-in fade-in slide-in-from-bottom-2 duration-300">
                             <div v-if="form.shapeType === 'circle'"
@@ -105,9 +103,6 @@
                         </div>
                         <div v-else
                             class="bg-slate-800 p-4 rounded-2xl text-white shadow-lg relative overflow-hidden group">
-                            <div
-                                class="absolute -right-4 -top-4 w-16 h-16 bg-indigo-500 rounded-full blur-2xl opacity-20 group-hover:opacity-40 transition-opacity">
-                            </div>
                             <p class="text-[10px] font-black uppercase opacity-80 mb-1">Serbest Çizim Modu</p>
                             <p class="text-[11px] font-medium leading-relaxed text-slate-300">Sağ taraftaki alana
                                 tıklayarak odanızın köşelerini belirleyin.</p>
@@ -130,53 +125,138 @@
                                     :class="selectedTexture === tex.textureUrl ? 'border-indigo-600 ring-2 ring-indigo-50 ring-offset-1' : 'border-transparent hover:border-slate-200'">
                                     <img :src="tex.thumbnailUrl"
                                         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-                                    <div v-if="selectedTexture === tex.textureUrl"
-                                        class="absolute inset-0 bg-indigo-900/10 flex items-center justify-center">
-                                        <div class="w-2 h-2 bg-white rounded-full shadow-md"></div>
-                                    </div>
                                 </button>
                             </div>
                             <div v-if="selectedTexture"
-                                class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 space-y-2 animate-in slide-in-from-top-2">
-                                <label
-                                    class="block text-[10px] font-black text-indigo-400 uppercase tracking-wider">Doku
+                                class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 space-y-2">
+                                <label class="block text-[10px] font-black text-indigo-400 uppercase tracking-wider">Doku
                                     Ölçeği</label>
                                 <div class="flex gap-2">
                                     <button v-for="val in [1, 2, 4, 8]" :key="val" @click="form.textureScale = val"
                                         class="flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-all"
-                                        :class="form.textureScale === val ? 'bg-indigo-600 text-white border-indigo-600 shadow-md transform scale-105' : 'bg-white text-indigo-600 border-indigo-100 hover:bg-indigo-100'">
+                                        :class="form.textureScale === val ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-indigo-600 border-indigo-100'">
                                         {{ val }}x
                                     </button>
                                 </div>
                             </div>
                             <div class="grid grid-cols-2 gap-3">
-                                <div class="group relative flex flex-col justify-between p-3 bg-white rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md hover:border-indigo-300"
-                                    :class="{ 'opacity-50 cursor-not-allowed bg-slate-50 grayscale': !!selectedTexture }">
-                                    <span
-                                        class="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1.5">Zemin</span>
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-6 h-6 rounded-full border border-slate-200 shadow-sm ring-1 ring-white"
+                                <div class="p-3 bg-white rounded-2xl border border-slate-200 relative">
+                                    <span class="text-[9px] font-black uppercase text-slate-400">Zemin</span>
+                                    <div class="flex items-center gap-2 mt-2">
+                                        <div class="w-6 h-6 rounded-full border border-slate-200"
                                             :style="{ backgroundColor: form.floorColor }"></div>
-                                        <span class="text-xs font-bold text-slate-700 font-mono">{{ form.floorColor
-                                        }}</span>
+                                        <input v-model="form.floorColor" :disabled="!!selectedTexture" type="color"
+                                            class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
                                     </div>
-                                    <input v-model="form.floorColor" :disabled="!!selectedTexture" type="color"
-                                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                                 </div>
-                                <div
-                                    class="group relative flex flex-col justify-between p-3 bg-white rounded-2xl border border-slate-200 shadow-sm transition-all hover:shadow-md hover:border-indigo-300">
-                                    <span
-                                        class="text-[9px] font-black uppercase text-slate-400 tracking-wider mb-1.5">Arka
-                                        Plan</span>
-                                    <div class="flex items-center gap-2.5">
-                                        <div class="w-6 h-6 rounded-full border border-slate-200 shadow-sm ring-1 ring-white"
+                                <div class="p-3 bg-white rounded-2xl border border-slate-200 relative">
+                                    <span class="text-[9px] font-black uppercase text-slate-400">Arka Plan</span>
+                                    <div class="flex items-center gap-2 mt-2">
+                                        <div class="w-6 h-6 rounded-full border border-slate-200"
                                             :style="{ backgroundColor: form.bgColor }"></div>
-                                        <span class="text-xs font-bold text-slate-700 font-mono">{{ form.bgColor
-                                        }}</span>
+                                        <input v-model="form.bgColor" type="color"
+                                            class="absolute inset-0 opacity-0 cursor-pointer w-full h-full">
                                     </div>
-                                    <input v-model="form.bgColor" type="color"
-                                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
                                 </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="space-y-4 border-t border-slate-200 pt-4">
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Zemin İşaretleri
+                            </h4>
+                        </div>
+
+                        <div class="grid grid-cols-4 gap-2">
+                            <button v-for="tool in SHAPE_LIBRARY" :key="tool.id" @click="selectTool(tool.id)"
+                                class="aspect-square flex flex-col items-center justify-center rounded-xl border transition-all duration-200 relative group hover:-translate-y-0.5"
+                                :class="activeTool === tool.id
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg ring-2 ring-indigo-200 ring-offset-1 z-10'
+                                    : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-400 hover:text-indigo-600 hover:shadow-md'">
+
+                                <span class="text-xl mb-1 filter drop-shadow-sm">{{ tool.icon }}</span>
+
+                                <span
+                                    class="absolute -bottom-8 bg-slate-800 text-white text-[9px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
+                                    {{ tool.label }}
+                                </span>
+                            </button>
+                        </div>
+
+                        <div v-if="activeTool"
+                            class="bg-indigo-50 border border-indigo-100 p-3 rounded-xl flex gap-3 items-center animate-pulse">
+                            <span class="text-xl">👆</span>
+                            <div>
+                                <p class="text-[10px] font-black text-indigo-700 uppercase">Çizim Modu Aktif</p>
+                                <p class="text-[10px] text-indigo-600 leading-tight">
+                                    Zemine tıklayıp sürükleyerek çizin. <br>
+                                    <span class="opacity-70">(Orantı için Shift'e basılı tutun)</span>
+                                </p>
+                            </div>
+                        </div>
+
+                        <div v-if="selectedLayerId && !activeTool"
+                            class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-4 animate-in fade-in slide-in-from-left-4">
+
+                            <div class="flex justify-between items-center border-b border-slate-200 pb-2">
+                                <input type="text" v-model="layers.find(l => l.id === selectedLayerId)!.name"
+                                    class="bg-transparent text-xs font-black text-slate-700 outline-none w-32 focus:text-indigo-600" />
+                                <div class="flex gap-1">
+                                    <button @click="bringToFront" title="Öne Getir"
+                                        class="p-1.5 hover:bg-white rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">▲</button>
+                                    <button @click="removeLayer" title="Sil"
+                                        class="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors">🗑</button>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label class="text-[9px] font-bold text-slate-400 uppercase">Genişlik (m)</label>
+                                    <input type="number" step="0.1"
+                                        v-model.number="layers.find(l => l.id === selectedLayerId)!.width"
+                                        class="w-full bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs font-bold text-center mt-1">
+                                </div>
+                                <div>
+                                    <label class="text-[9px] font-bold text-slate-400 uppercase">Yükseklik (m)</label>
+                                    <input type="number" step="0.1"
+                                        v-model.number="layers.find(l => l.id === selectedLayerId)!.height"
+                                        class="w-full bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs font-bold text-center mt-1">
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between">
+                                <span class="text-[10px] font-bold text-slate-500">Renk</span>
+                                <div
+                                    class="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border border-slate-200 relative">
+                                    <div class="w-4 h-4 rounded shadow-sm"
+                                        :style="{ backgroundColor: layers.find(l => l.id === selectedLayerId)?.color }">
+                                    </div>
+                                    <input type="color" v-model="layers.find(l => l.id === selectedLayerId)!.color"
+                                        class="opacity-0 w-4 h-4 absolute cursor-pointer">
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-[10px] font-bold text-slate-500">Döndür</span>
+                                    <span class="text-[10px] font-bold text-indigo-600">{{ layers.find(l => l.id ===
+                                        selectedLayerId)?.rotation }}°</span>
+                                </div>
+                                <input type="range" min="0" max="360" step="5"
+                                    v-model.number="layers.find(l => l.id === selectedLayerId)!.rotation"
+                                    class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                            </div>
+
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span class="text-[10px] font-bold text-slate-500">Şeffaflık</span>
+                                    <span class="text-[10px] font-bold text-indigo-600">%{{ Math.round((layers.find(l =>
+                                        l.id === selectedLayerId)?.opacity || 1) * 100) }}</span>
+                                </div>
+                                <input type="range" min="0.1" max="1" step="0.05"
+                                    v-model.number="layers.find(l => l.id === selectedLayerId)!.opacity"
+                                    class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
                             </div>
                         </div>
                     </section>
@@ -184,6 +264,7 @@
 
                 <div class="flex-1 bg-slate-100/50 flex flex-col relative overflow-hidden"
                     :style="{ backgroundColor: form.bgColor }">
+
                     <div
                         class="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center z-20 shadow-sm/50">
                         <div class="flex items-center gap-3">
@@ -216,8 +297,9 @@
                     </div>
 
                     <div class="w-full h-full relative" ref="svgContainer" :style="{ cursor: cursorStyle }"
-                        @wheel.prevent="handleWheel" @mousedown="startPan" @mouseup="stopDrag" @mouseleave="stopDrag"
-                        @mousemove="handleMouseMove" @click="handleSvgClick" @contextmenu.prevent="removeLastPoint">
+                        @wheel.prevent="handleWheel" @mousedown="handleMouseDown" @mouseup="stopDrag"
+                        @mouseleave="stopDrag" @mousemove="handleMouseMove" @click="handleSvgClick"
+                        @contextmenu.prevent="removeLastPoint">
 
                         <svg ref="svgEl" width="100%" height="100%" :viewBox="dynamicViewBox"
                             class="block w-full h-full pointer-events-none drop-shadow-2xl">
@@ -255,21 +337,40 @@
                                     fill="white" class="drop-shadow-sm" stroke="#e2e8f0" stroke-width="0.02"
                                     opacity="0.9" />
                                 <text :x="label.midX" :y="label.midZ + 0.1" font-size="0.35" text-anchor="middle"
-                                    font-weight="800" fill="#334155" font-family="Inter, sans-serif">
-                                    {{ label.length }}m
-                                </text>
+                                    font-weight="800" fill="#334155" font-family="Inter, sans-serif">{{ label.length
+                                    }}m</text>
+                            </g>
+
+                            <g v-for="layer in layers" :key="layer.id"
+                                :transform="`translate(${layer.x}, ${layer.z}) rotate(${layer.rotation})`"
+                                @mousedown="startDragLayer(layer.id, $event)"
+                                class="cursor-move group pointer-events-auto" :opacity="layer.opacity">
+
+                                <g v-if="selectedLayerId === layer.id" class="pointer-events-none">
+                                    <rect :x="-layer.width / 2 - 0.1" :y="-layer.height / 2 - 0.1"
+                                        :width="layer.width + 0.2" :height="layer.height + 0.2" fill="none"
+                                        stroke="#6366f1" stroke-width="0.05" stroke-dasharray="0.1, 0.1" />
+
+                                    <text v-if="isDrawing && selectedLayerId === layer.id" :x="0"
+                                        :y="-layer.height / 2 - 0.2" text-anchor="middle" font-size="0.3"
+                                        font-weight="bold" fill="#6366f1" style="text-shadow: 0px 0px 4px white;">
+                                        {{ layer.width.toFixed(2) }}m x {{ layer.height.toFixed(2) }}m
+                                    </text>
+                                </g>
+
+                                <path :d="getShapePath(layer.shapeId)" :fill="layer.color" stroke="black"
+                                    stroke-width="0.02" stroke-opacity="0.1" vector-effect="non-scaling-stroke"
+                                    :transform="`scale(${layer.width}, ${layer.height})`"
+                                    class="transition-colors drop-shadow-sm" />
                             </g>
 
                             <g v-if="form.shapeType === 'custom'">
-
                                 <line v-if="lastPoint && !isClosed" :x1="lastPoint.x" :y1="lastPoint.z" :x2="mousePos.x"
                                     :y2="mousePos.z" stroke="#6366f1" stroke-width="0.1" stroke-dasharray="0.2,0.2"
                                     opacity="0.6" class="pointer-events-none" />
-
                                 <circle v-if="!isClosed" :cx="mousePos.x" :cy="mousePos.z" r="0.2"
                                     :fill="isSnapToStart ? '#22c55e' : 'rgba(99, 102, 241, 0.5)'" stroke="white"
                                     stroke-width="0.05" class="animate-pulse pointer-events-none" />
-
                                 <circle v-for="(p, i) in customPoints" :key="i" :cx="p.x" :cy="p.z" :r="0.25"
                                     :fill="i === 0 && isSnapToStart ? '#22c55e' : '#4f46e5'" stroke="white"
                                     stroke-width="0.08" :class="draggingPointIndex === null
@@ -289,8 +390,7 @@
                             </span>
                             <span v-else class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
                                 {{ form.shapeType === 'circle' ? 'Daire' : form.shapeType === 'ellipse' ? 'Elips' :
-                                    'Dikdörtgen' }} Modu
-                                Aktif
+                                    'Dikdörtgen' }} Modu Aktif
                             </span>
                         </div>
                     </div>
@@ -315,10 +415,47 @@
 import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
 import { arSceneService } from '../../../services/arSceneService';
 
-const svgEl = ref<SVGSVGElement | null>(null);
+// --- TİP TANIMLARI ---
+interface FloorLayer {
+    id: string;
+    shapeId: string;
+    name: string;
+    x: number;
+    z: number;
+    width: number;
+    height: number;
+    rotation: number;
+    color: string;
+    opacity: number;
+    zIndex: number;
+}
+
+// --- SABİTLER ---
+const SHAPE_LIBRARY = [
+    { id: 'rect', label: 'Dikdörtgen', icon: '⬛', path: 'M -0.5 -0.5 L 0.5 -0.5 L 0.5 0.5 L -0.5 0.5 Z' },
+    { id: 'circle', label: 'Daire', icon: '⚪', path: 'M 0 0 m -0.5 0 a 0.5 0.5 0 1 0 1 0 a 0.5 0.5 0 1 0 -1 0' },
+    { id: 'triangle', label: 'Üçgen', icon: '🔺', path: 'M 0 -0.5 L 0.5 0.5 L -0.5 0.5 Z' },
+    { id: 'arrow', label: 'Yön Oku', icon: '⬆️', path: 'M -0.2 0.5 L -0.2 -0.1 L -0.5 -0.1 L 0 -0.5 L 0.5 -0.1 L 0.2 -0.1 L 0.2 0.5 Z' },
+    { id: 'l-shape', label: 'L Köşe', icon: 'L', path: 'M -0.5 -0.5 L 0.5 -0.5 L 0.5 -0.1 L -0.1 -0.1 L -0.1 0.5 L -0.5 0.5 Z' },
+    { id: 'star', label: 'Yıldız', icon: '⭐', path: 'M 0 -0.5 L 0.11 -0.15 L 0.47 -0.15 L 0.18 0.06 L 0.29 0.4 L 0 0.19 L -0.29 0.4 L -0.18 0.06 L -0.47 -0.15 L -0.11 -0.15 Z' },
+    { id: 'warning', label: 'Uyarı', icon: '⚠️', path: 'M 0 -0.5 L 0.43 0.25 L 0.5 0.5 L -0.5 0.5 L -0.43 0.25 Z' },
+    { id: 'hexagon', label: 'Altıgen', icon: '🛑', path: 'M -0.25 -0.43 L 0.25 -0.43 L 0.5 0 L 0.25 0.43 L -0.25 0.43 L -0.5 0 Z' }
+];
+
+const shapes = [
+    { id: 'rectangle', label: 'Dikdörtgen', icon: '⬛' },
+    { id: 'circle', label: 'Daire', icon: '⚪' },
+    { id: 'ellipse', label: 'Elips', icon: '⬬' },
+    { id: 'custom', label: 'Serbest', icon: '✏️' }
+];
+
+// --- SETUP ---
 const props = defineProps<{ isOpen: boolean; mode: 'create' | 'edit'; initialData?: any; }>();
 const emit = defineEmits(['close', 'save']);
+const svgEl = ref<SVGSVGElement | null>(null);
+const svgContainer = ref<HTMLDivElement | null>(null);
 
+// --- STATE ---
 const form = reactive({
     name: '',
     width: 5,
@@ -334,27 +471,25 @@ const textureList = ref<any[]>([]);
 const selectedTexture = ref<string | null>(null);
 const customPoints = ref<{ x: number, z: number }[]>([]);
 const mousePos = reactive({ x: 0, z: 0 });
-const svgContainer = ref<HTMLDivElement | null>(null);
 const viewPort = reactive({ x: -2, y: -2, zoom: 15, isDragging: false, lastMouseX: 0, lastMouseY: 0 });
+
+const layers = ref<FloorLayer[]>([]);
+const selectedLayerId = ref<string | null>(null);
+const draggingLayerId = ref<string | null>(null);
+const activeTool = ref<string | null>(null);
+const isDrawing = ref(false);
+const drawStartPos = reactive({ x: 0, z: 0 });
+// Yeni: Sürükleme sırasında mouse'un şeklin merkezine olan uzaklığı (Smooth drag için)
+const dragOffset = reactive({ x: 0, z: 0 });
 
 const draggingPointIndex = ref<number | null>(null);
 const isClosed = ref(false);
 const isSnapToStart = ref(false);
 const hoveredPointIndex = ref<number | null>(null);
-// Container Boyutlarını Takip Etmek için (Drift sorununu çözer)
 const containerSize = reactive({ width: 100, height: 100 });
 let resizeObserver: ResizeObserver | null = null;
 
-const startDragPoint = (index: number) => { draggingPointIndex.value = index; };
-const stopDrag = () => { draggingPointIndex.value = null; viewPort.isDragging = false; };
-
-const shapes = [
-    { id: 'rectangle', label: 'Dikdörtgen', icon: '⬛' },
-    { id: 'circle', label: 'Daire', icon: '⚪' },
-    { id: 'ellipse', label: 'Elips', icon: '⬬' },
-    { id: 'custom', label: 'Serbest', icon: '✏️' }
-];
-
+// --- COMPUTED ---
 const calculatedArea = computed(() => {
     if (form.shapeType === 'rectangle') return (form.width * form.depth).toFixed(2);
     else if (form.shapeType === 'circle') { const r = form.width / 2; return (Math.PI * r * r).toFixed(2); }
@@ -430,61 +565,120 @@ const finalPath = computed(() => {
 
 const dynamicViewBox = computed(() => {
     const aspectRatio = containerSize.width / containerSize.height;
-    // Zoom değeri ViewBox yüksekliği olsun, Genişliği ise Orana göre hesaplayalım.
     const viewBoxHeight = viewPort.zoom;
     const viewBoxWidth = viewPort.zoom * aspectRatio;
     return `${viewPort.x} ${viewPort.y} ${viewBoxWidth} ${viewBoxHeight}`;
 });
+
 const lastPoint = computed(() => customPoints.value.length ? customPoints.value[customPoints.value.length - 1] : null);
 
-const handleWheel = (e: WheelEvent) => {
-    const delta = e.deltaY > 0 ? 1.1 : 0.9;
-    const newZoom = viewPort.zoom * delta;
-    if (newZoom > 1 && newZoom < 500) viewPort.zoom = newZoom;
-};
+const cursorStyle = computed(() => {
+    if (activeTool.value) return 'crosshair';
+    if (isDrawing.value) return 'crosshair';
+    if (viewPort.isDragging) return 'grabbing';
+    if (draggingPointIndex.value !== null) return 'grabbing';
+    if (draggingLayerId.value !== null) return 'grabbing';
+    if (hoveredPointIndex.value !== null) return 'grab';
+    if (form.shapeType === 'custom' && !isClosed.value) return 'crosshair';
+    return 'default';
+});
 
-const startPan = (e: MouseEvent) => {
-    if (e.button === 1 || (e.button === 0 && e.altKey)) {
-        e.preventDefault(); viewPort.isDragging = true;
-        viewPort.lastMouseX = e.clientX; viewPort.lastMouseY = e.clientY;
+// --- METODLAR ---
+
+const selectTool = (toolId: string) => {
+    if (activeTool.value === toolId) {
+        cancelTool();
+    } else {
+        activeTool.value = toolId;
+        selectedLayerId.value = null;
     }
 };
 
+const cancelTool = () => {
+    activeTool.value = null;
+    isDrawing.value = false;
+};
+
+const getShapePath = (shapeId: string) => {
+    return SHAPE_LIBRARY.find(s => s.id === shapeId)?.path || '';
+};
+
+// MOUSE EVENT: Down (Container)
+const handleMouseDown = (e: MouseEvent) => {
+    // 1. ÇİZİM BAŞLANGICI
+    if (activeTool.value) {
+        e.stopPropagation();
+        isDrawing.value = true;
+        drawStartPos.x = mousePos.x;
+        drawStartPos.z = mousePos.z;
+
+        const shapeDef = SHAPE_LIBRARY.find(s => s.id === activeTool.value);
+        const newLayer: FloorLayer = {
+            id: crypto.randomUUID(),
+            shapeId: activeTool.value,
+            name: shapeDef?.label || 'Şekil',
+            x: mousePos.x,
+            z: mousePos.z,
+            width: 0.1,
+            height: 0.1,
+            rotation: 0,
+            color: '#3b82f6',
+            opacity: 0.8,
+            zIndex: layers.value.length + 1
+        };
+
+        layers.value.push(newLayer);
+        selectedLayerId.value = newLayer.id;
+        draggingLayerId.value = newLayer.id;
+        return;
+    }
+
+    // 2. BOŞLUĞA TIKLAMA (SEÇİMİ KALDIR ve PAN YAP)
+    // Şekiller üzerindeki mousedown eventinde 'stop' olduğu için,
+    // eğer olay buraya kadar ulaştıysa kesinlikle boşluğa (background'a) tıklanmıştır.
+    selectedLayerId.value = null;
+
+    // Pan işlemini başlat (Sol tık veya Orta tık)
+    if (e.button === 0 || e.button === 1) {
+        e.preventDefault();
+        viewPort.isDragging = true;
+        viewPort.lastMouseX = e.clientX;
+        viewPort.lastMouseY = e.clientY;
+    }
+};
+
+// MOUSE EVENT: Move
 const handleMouseMove = (e: MouseEvent) => {
     if (!svgEl.value) return;
 
+    // --- Pan İşlemi ---
     if (viewPort.isDragging) {
-        // Pan işlemi (Değişmedi, aynı mantık)
-        // Matrix kullanmadan basit pan
         const startPoint = svgEl.value.createSVGPoint();
         startPoint.x = e.clientX;
         startPoint.y = e.clientY;
-
         const endPoint = svgEl.value.createSVGPoint();
         endPoint.x = viewPort.lastMouseX;
         endPoint.y = viewPort.lastMouseY;
-
         const start = startPoint.matrixTransform(svgEl.value.getScreenCTM()!.inverse());
         const end = endPoint.matrixTransform(svgEl.value.getScreenCTM()!.inverse());
-
         viewPort.x -= (start.x - end.x);
         viewPort.y -= (start.y - end.y);
-
         viewPort.lastMouseX = e.clientX;
         viewPort.lastMouseY = e.clientY;
         return;
     }
 
+    // --- Koordinat Hesaplama ---
     const pt = svgEl.value.createSVGPoint();
     pt.x = e.clientX;
     pt.y = e.clientY;
     const ctm = svgEl.value.getScreenCTM();
     if (!ctm) return;
     const svgPoint = pt.matrixTransform(ctm.inverse());
-
     let targetX = Math.round(svgPoint.x * 100) / 100;
     let targetZ = Math.round(svgPoint.y * 100) / 100;
 
+    // Custom shape snap
     hoveredPointIndex.value = null;
     if (form.shapeType === 'custom' && customPoints.value.length > 0) {
         for (let i = 0; i < customPoints.value.length; i++) {
@@ -497,7 +691,6 @@ const handleMouseMove = (e: MouseEvent) => {
             }
         }
     }
-
     isSnapToStart.value = false;
     if (form.shapeType === 'custom' && !isClosed.value && customPoints.value.length > 2 && draggingPointIndex.value === null) {
         const startNode = customPoints.value[0];
@@ -511,27 +704,78 @@ const handleMouseMove = (e: MouseEvent) => {
             }
         }
     }
-
     mousePos.x = targetX;
     mousePos.z = targetZ;
 
+    // --- ÇİZİM GÜNCELLEME (Boyutlandırma) ---
+    if (isDrawing.value && draggingLayerId.value) {
+        const layer = layers.value.find(l => l.id === draggingLayerId.value);
+        if (layer) {
+            let newWidth = Math.abs(mousePos.x - drawStartPos.x);
+            let newHeight = Math.abs(mousePos.z - drawStartPos.z);
+
+            if (e.shiftKey) {
+                const maxDim = Math.max(newWidth, newHeight);
+                newWidth = maxDim;
+                newHeight = maxDim;
+            }
+
+            layer.width = newWidth;
+            layer.height = newHeight;
+            layer.x = (drawStartPos.x + mousePos.x) / 2;
+            layer.z = (drawStartPos.z + mousePos.z) / 2;
+        }
+        return;
+    }
+
+    // --- KATMAN TAŞIMA (Sürükleme) ---
+    // draggingLayerId var ama çizim modunda değilsek -> Taşıma
+    if (draggingLayerId.value && !isDrawing.value) {
+        const layer = layers.value.find(l => l.id === draggingLayerId.value);
+        if (layer) {
+            // Offset'i kullanarak yumuşak taşıma
+            layer.x = mousePos.x - dragOffset.x;
+            layer.z = mousePos.z - dragOffset.z;
+        }
+        return;
+    }
+
+    // --- NOKTA TAŞIMA (Custom Shape) ---
     if (draggingPointIndex.value !== null) {
         customPoints.value[draggingPointIndex.value] = { x: mousePos.x, z: mousePos.z };
     }
 };
 
-const cursorStyle = computed(() => {
-    if (viewPort.isDragging) return 'grabbing';
-    if (draggingPointIndex.value !== null) return 'grabbing';
-    if (hoveredPointIndex.value !== null) return 'grab';
-    if (form.shapeType === 'custom' && !isClosed.value) return 'crosshair';
-    return 'default';
-});
+// MOUSE EVENT: Up / Leave
+const stopDrag = () => {
+    if (isDrawing.value) {
+        const layer = layers.value.find(l => l.id === draggingLayerId.value);
+        if (layer && (layer.width < 0.1 || layer.height < 0.1)) {
+            layer.width = 1.0;
+            layer.height = 1.0;
+        }
+        isDrawing.value = false;
+        activeTool.value = null;
+        selectedLayerId.value = draggingLayerId.value;
+    }
+
+    draggingPointIndex.value = null;
+    draggingLayerId.value = null;
+    viewPort.isDragging = false;
+};
+
+// Helperlar
+const handleWheel = (e: WheelEvent) => {
+    const delta = e.deltaY > 0 ? 1.1 : 0.9;
+    const newZoom = viewPort.zoom * delta;
+    if (newZoom > 1 && newZoom < 500) viewPort.zoom = newZoom;
+};
 
 const handleSvgClick = () => {
     if (form.shapeType !== 'custom') return;
     if (draggingPointIndex.value !== null) return;
     if (isClosed.value) return;
+    if (activeTool.value) return;
 
     if (isSnapToStart.value) {
         isClosed.value = true;
@@ -542,18 +786,14 @@ const handleSvgClick = () => {
 };
 
 const resetView = () => {
-    // Odaklamada da Aspect Ratio'yu hesaba katmalıyız
     const aspectRatio = containerSize.width / containerSize.height;
     viewPort.zoom = 15;
-
     if (form.shapeType !== 'custom') {
         const vbW = viewPort.zoom * aspectRatio;
         const vbH = viewPort.zoom;
-        // Şeklin ortasını (form.width/2) ViewBox'ın ortasına (vbW/2) eşitle
         viewPort.x = (form.width / 2) - (vbW / 2);
         viewPort.y = (form.depth / 2) - (vbH / 2);
     } else {
-        // Custom modda 0,0'a göre ortala
         const vbW = viewPort.zoom * aspectRatio;
         const vbH = viewPort.zoom;
         viewPort.x = -(vbW / 2);
@@ -562,7 +802,6 @@ const resetView = () => {
 };
 
 const resetForm = () => {
-    // Formu sıfırla
     Object.assign(form, {
         name: '',
         width: 5,
@@ -573,29 +812,62 @@ const resetForm = () => {
         wallHeight: 2.8,
         textureScale: 2
     });
-
-    // State'leri temizle
     customPoints.value = [];
     selectedTexture.value = null;
     isClosed.value = false;
     isSnapToStart.value = false;
     draggingPointIndex.value = null;
     hoveredPointIndex.value = null;
-    
-    // Kamerayı varsayılana çek
+    layers.value = [];
+    activeTool.value = null;
     resetView();
 };
 
 const clearCustomDrawing = () => {
     customPoints.value = [];
-    isClosed.value = false;       // KRİTİK DÜZELTME: Kilit kaldırılsın
-    isSnapToStart.value = false;  // Magnet sıfırlansın
+    isClosed.value = false;
+    isSnapToStart.value = false;
     draggingPointIndex.value = null;
 };
 
 const removeLastPoint = () => {
     if (isClosed.value) isClosed.value = false;
     else customPoints.value.pop();
+};
+
+const startDragPoint = (index: number) => { draggingPointIndex.value = index; };
+
+// ŞEKİL SÜRÜKLEME BAŞLANGICI
+const startDragLayer = (id: string, e: MouseEvent) => {
+    // Eğer çizim modundaysak sürüklemeyi engelle (yeni şekil çiziyoruzdur)
+    if (activeTool.value) return;
+
+    e.stopPropagation(); // Arka plan pan işlemini durdur
+
+    const layer = layers.value.find(l => l.id === id);
+    if (layer) {
+        // Tıklanan nokta ile şekil merkezi arasındaki farkı kaydet (Offset)
+        dragOffset.x = mousePos.x - layer.x;
+        dragOffset.z = mousePos.z - layer.z;
+
+        draggingLayerId.value = id;
+        selectedLayerId.value = id;
+    }
+};
+
+const removeLayer = () => {
+    if (!selectedLayerId.value) return;
+    layers.value = layers.value.filter(l => l.id !== selectedLayerId.value);
+    selectedLayerId.value = null;
+};
+
+const bringToFront = () => {
+    if (!selectedLayerId.value) return;
+    const layer = layers.value.find(l => l.id === selectedLayerId.value);
+    if (layer) {
+        layers.value = layers.value.filter(l => l.id !== selectedLayerId.value);
+        layers.value.push(layer);
+    }
 };
 
 const setShape = (id: string) => {
@@ -633,7 +905,8 @@ const handleSave = () => {
             floorColor: form.floorColor,
             width: finalWidth,
             depth: finalDepth,
-            gridVisible: true
+            gridVisible: true,
+            floorLayers: layers.value
         }
     });
 };
@@ -662,10 +935,8 @@ onUnmounted(() => {
 watch(() => props.isOpen, (val) => {
     if (val) {
         resetForm();
-
         if (props.mode === 'edit' && props.initialData) {
             const s = props.initialData.settings;
-            
             Object.assign(form, {
                 name: props.initialData.name,
                 width: s.width || 5,
@@ -676,35 +947,28 @@ watch(() => props.isOpen, (val) => {
                 wallHeight: s.wallHeight ?? 2.8,
                 textureScale: s.textureScale || 2
             });
-            
             selectedTexture.value = s.floorTextureUrl;
-            
             if (s.floorPoints) {
                 customPoints.value = [...s.floorPoints];
-                if (form.shapeType === 'custom' && customPoints.value.length > 2) {
-                    isClosed.value = true;
-                }
+                if (form.shapeType === 'custom' && customPoints.value.length > 2) isClosed.value = true;
             }
-
+            if (s.floorLayers) {
+                layers.value = [...s.floorLayers];
+            }
             setTimeout(() => {
                 if (svgContainer.value) {
                     const rect = svgContainer.value.getBoundingClientRect();
                     const aspect = rect.width / rect.height;
-                    
                     const maxDim = Math.max(form.width, form.depth);
                     let calculatedZoom = maxDim * 1.5;
                     if (calculatedZoom > 490) calculatedZoom = 490;
-                    
                     viewPort.zoom = calculatedZoom;
-                    
-                    // Ortala
                     if (form.shapeType !== 'custom') {
                         const vbW = calculatedZoom * aspect;
                         viewPort.x = (form.width / 2) - (vbW / 2);
                         viewPort.y = (form.depth / 2) - (calculatedZoom / 2);
                     } else {
-                        viewPort.x = -5; 
-                        viewPort.y = -5;
+                        viewPort.x = -5; viewPort.y = -5;
                     }
                 }
             }, 100);
