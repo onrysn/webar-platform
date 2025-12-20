@@ -74,6 +74,14 @@ export class SceneSettingsDto {
   @IsOptional()
   @IsBoolean()
   gridVisible?: boolean;
+
+  @IsOptional()
+  @IsNumber()
+  wallHeight?: number;
+
+  @IsOptional()
+  @IsNumber()
+  textureScale?: number;
 }
 
 // --- ANA DTO'LAR ---

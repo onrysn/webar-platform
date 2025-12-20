@@ -38,6 +38,8 @@ export interface SceneSettings {
   gridVisible?: boolean;
   floorColor?: string;
   floorTextureUrl?: string;
+  wallHeight?: number;
+  textureScale?: number;
 }
 
 // --- ANA VERİ MODELLERİ (Response Types) ---
