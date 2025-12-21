@@ -349,6 +349,18 @@ const getSceneAsBlob = (): Promise<Blob> => {
             gridMesh.visible = false;
         }
 
+        const baseFloor = scene.getObjectByName("BaseFloor");
+        const floorGroup = baseFloor?.parent;
+        const originalPositions = new Map<THREE.Object3D, number>();
+        if (floorGroup) {
+            floorGroup.children.forEach((child) => {
+                if (child.name !== "BaseFloor" && child.name !== "GridMesh") {
+                    originalPositions.set(child, child.position.z);
+                    child.position.z = -child.position.z; 
+                }
+            });
+        }
+
         exporter.parse(
             scene,
             (gltf) => {
@@ -448,7 +460,7 @@ const initThreeJS = () => {
     dirLight.shadow.mapSize.set(2048, 2048);
     scene.add(dirLight);
 
-    // --- ZEMİN (Base Floor) ---
+    // --- ZEMİN (Base Floor) GEOMETRİSİ ---
     let geometry: THREE.BufferGeometry;
     if (floorType === 'custom' && points.length > 2) {
         const shape = new THREE.Shape();
@@ -462,6 +474,7 @@ const initThreeJS = () => {
         geometry = new THREE.ShapeGeometry(shape);
     } else {
         geometry = new THREE.PlaneGeometry(sceneWidth, sceneDepth);
+        // Önceki düzeltme: Geometriyi pozitif alana taşı
         geometry.translate(sceneWidth / 2, sceneDepth / 2, 0);
     }
 
@@ -489,7 +502,24 @@ const initThreeJS = () => {
         uvAttribute.needsUpdate = true;
     }
 
-    // Materyal
+    // --- ZEMİN MATERYALİ (STENCIL WRITE EKLENDİ) ---
+    // Ortak ayarlar
+    const baseMaterialParams = {
+        roughness: 0.8,
+        metalness: 0.1,
+        side: THREE.DoubleSide,
+        polygonOffset: true,
+        polygonOffsetFactor: 2,
+        polygonOffsetUnits: 2,
+        depthWrite: false,
+        
+        // >>> MASK LEME AYARLARI (YAZMA) <<<
+        stencilWrite: true,
+        stencilRef: 1,                    // Referans ID: 1
+        stencilFunc: THREE.AlwaysStencilFunc, // Her zaman çiz
+        stencilZPass: THREE.ReplaceStencilOp  // Çizilen pikselin stencil değerini '1' yap
+    };
+
     let baseMaterial: THREE.MeshStandardMaterial;
     if (floorTextureUrl) {
         const loader = new TextureLoader();
@@ -503,24 +533,12 @@ const initThreeJS = () => {
 
         baseMaterial = new THREE.MeshStandardMaterial({
             map: texture,
-            roughness: 0.8,
-            metalness: 0.1,
-            side: THREE.DoubleSide,
-            polygonOffset: true,
-            polygonOffsetFactor: 2,
-            polygonOffsetUnits: 2,
-            depthWrite: false
+            ...baseMaterialParams
         });
     } else {
         baseMaterial = new THREE.MeshStandardMaterial({
             color: floorColor,
-            roughness: 0.8,
-            metalness: 0.1,
-            side: THREE.DoubleSide,
-            polygonOffset: true,
-            polygonOffsetFactor: 2,
-            polygonOffsetUnits: 2,
-            depthWrite: false
+            ...baseMaterialParams
         });
     }
 
@@ -528,7 +546,7 @@ const initThreeJS = () => {
     const baseMesh = new THREE.Mesh(geometry, baseMaterial);
     baseMesh.receiveShadow = true;
     baseMesh.name = "BaseFloor";
-    baseMesh.renderOrder = 0; 
+    baseMesh.renderOrder = 0; // İlk bu çizilmeli ki stencil buffer dolsun
 
     // --- GRID ---
     const gridTexture = createGridTexture();
@@ -555,7 +573,7 @@ const initThreeJS = () => {
     floorGroup.add(baseMesh);
     floorGroup.add(gridMesh);
 
-    // --- FLOOR LAYERS (SVG Şekiller - REVİZE EDİLMİŞ BÖLÜM) ---
+    // --- FLOOR LAYERS (SVG Şekiller - MASK UYGULAMALI) ---
     if (floorLayers.length > 0) {
         // 1. Z-Index Sıralaması
         const sortedLayers = [...floorLayers].sort((a, b) => a.zIndex - b.zIndex);
@@ -587,14 +605,19 @@ const initThreeJS = () => {
             if(layerGeo.boundingBox) layerGeo.boundingBox.getCenter(center);
             layerGeo.translate(-center.x, -center.y, -center.z);
 
-            // Materyal (Z-Fighting Önlemleri ve Render Order)
+            // --- KATMAN MATERYALİ (STENCIL READ EKLENDİ) ---
             const layerMat = new THREE.MeshBasicMaterial({
                 color: layer.color,
                 transparent: true,
                 opacity: layer.opacity !== undefined ? layer.opacity : 1,
                 side: THREE.DoubleSide,
-                depthWrite: false, // Arka arkaya binen transparan nesneler için önemli
-                depthTest: true
+                depthWrite: false, 
+                depthTest: true,
+
+                // >>> MASKELEME AYARLARI (OKUMA) <<<
+                stencilWrite: true,
+                stencilRef: 1,                   // Zeminin ID'si ile eşleşmeli (1)
+                stencilFunc: THREE.EqualStencilFunc, // Sadece değer '1' ise çiz (Zeminin olduğu yer)
             });
 
             const layerMesh = new THREE.Mesh(layerGeo, layerMat);
@@ -610,8 +633,7 @@ const initThreeJS = () => {
             const zFightOffset = 0.005 * (index + 1);
             layerMesh.position.set(correctedX, correctedZ, zFightOffset);
 
-            // Render Order: ThreeJS'e çizim sırasını dayatıyoruz.
-            // zIndex ne kadar yüksekse o kadar geç çizilir (üste gelir).
+            // Render Order: 
             layerMesh.renderOrder = layer.zIndex; 
 
             // Rotasyon
@@ -633,7 +655,11 @@ const initThreeJS = () => {
     camera.position.set(camDist, camDist, camDist);
     camera.lookAt(0, 0, 0);
 
-    renderer = new THREE.WebGLRenderer({ canvas: canvasRef.value, antialias: true });
+    renderer = new THREE.WebGLRenderer({ 
+        canvas: canvasRef.value, 
+        antialias: true,
+        stencil: true
+    });
     renderer.setSize(width, height);
     renderer.setPixelRatio(window.devicePixelRatio);
     renderer.shadowMap.enabled = true;
@@ -644,10 +670,6 @@ const initThreeJS = () => {
     orbit.dampingFactor = 0.05;
     
     // --- KAMERA AÇISI KISITLAMASI ---
-    // Yerin altına inmesini engelle (Max Polar Angle: 90 derece)
-    // 0 = Tam tepe, Math.PI = Tam alt.
-    // Math.PI / 2 = Ufuk çizgisi.
-    // Biraz pay bırakarak (0.05) tam ufuk çizgisinde titreşimi önlüyoruz.
     orbit.maxPolarAngle = Math.PI / 2 - 0.05; 
 
     transformControl = markRaw(new TransformControls(camera, renderer.domElement));
