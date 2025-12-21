@@ -462,6 +462,7 @@ const initThreeJS = () => {
         geometry = new THREE.ShapeGeometry(shape);
     } else {
         geometry = new THREE.PlaneGeometry(sceneWidth, sceneDepth);
+        geometry.translate(sceneWidth / 2, sceneDepth / 2, 0);
     }
 
     // --- OFFSET HESAPLAMA ---
@@ -620,13 +621,7 @@ const initThreeJS = () => {
         });
     }
 
-    // Zemin Dönüşü
-    if (floorType === 'custom') {
-        floorGroup.rotation.x = Math.PI / 2;
-        floorGroup.scale.y = -1;
-    } else {
-        floorGroup.rotation.x = -Math.PI / 2;
-    }
+    floorGroup.rotation.x = Math.PI / 2;
 
     scene.add(floorGroup);
 
