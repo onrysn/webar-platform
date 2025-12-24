@@ -141,7 +141,6 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
 import { TextureLoader } from 'three';
-import { Brush, Evaluator, INTERSECTION } from 'three-bvh-csg';
 
 // Service Imports
 import { arSceneService } from '../../../services/arSceneService';
@@ -328,32 +327,43 @@ const createGridTexture = () => {
     return texture;
 };
 
-const createPerimeterMaterial = (layer: any) => {
-    // Eğer doku varsa
+const createPerimeterMaterial = async (layer: any) => {
+    // Eğer doku URL'i varsa
     if (layer.textureUrl) {
         const loader = new TextureLoader();
-        const texture = loader.load(layer.textureUrl);
-        
-        // Dokuyu tekrarla
-        texture.wrapS = THREE.RepeatWrapping;
-        texture.wrapT = THREE.RepeatWrapping;
-        texture.colorSpace = THREE.SRGBColorSpace;
-        
-        // Ölçekleme: Doku ne kadar sık tekrar edecek?
-        // Basit bir yaklaşım: Genişlik ve yüksekliğe göre.
-        // Ancak Extrude geometride UV'ler otomatik oluşturulur.
-        // Genellikle layer.textureScale değerini repeat değeri olarak kullanabiliriz.
-        const scale = layer.textureScale || 1;
-        texture.repeat.set(scale * 0.5, scale * 0.5); // 0.5 çarpanı biraz daha doğal görünüm için
+        try {
+            // .load() yerine .loadAsync() kullanıyoruz ve işlemin bitmesini bekliyoruz
+            const texture = await loader.loadAsync(layer.textureUrl);
+            
+            // Dokuyu tekrarla
+            texture.wrapS = THREE.RepeatWrapping;
+            texture.wrapT = THREE.RepeatWrapping;
+            texture.colorSpace = THREE.SRGBColorSpace;
+            
+            // GLTF Export için önemli: Texture'ın dikey çevrilmesini kapatıyoruz
+            // Bu satır "No valid image data found" hatasını çözmeye yardımcı olur.
+            texture.flipY = false; 
 
-        return new THREE.MeshStandardMaterial({
-            map: texture,
-            roughness: 0.9,
-            metalness: 0.1,
-            side: THREE.DoubleSide
-        });
+            const scale = layer.textureScale || 1;
+            texture.repeat.set(scale * 0.5, scale * 0.5);
+
+            return new THREE.MeshStandardMaterial({
+                map: texture,
+                roughness: 0.9,
+                metalness: 0.1,
+                side: THREE.DoubleSide
+            });
+        } catch (error) {
+            console.warn("Doku yüklenemedi, renk kullanılıyor:", error);
+            // Hata olursa (örn: link kırık) varsayılan renk ile devam et
+            return new THREE.MeshStandardMaterial({
+                color: layer.color || '#94a3b8',
+                roughness: 0.8,
+                metalness: 0.1
+            });
+        }
     } 
-    // Doku yoksa renk kullan
+    // Doku yoksa düz renk materyali döndür
     else {
         return new THREE.MeshStandardMaterial({
             color: layer.color || '#94a3b8',
@@ -363,21 +373,18 @@ const createPerimeterMaterial = (layer: any) => {
     }
 };
 
-const buildPerimeterLayers = (targetScene: THREE.Scene, settings: any) => {
+const buildPerimeterLayers = async (targetScene: THREE.Scene, settings: any) => {
     const layers = settings.perimeterLayers || [];
     if (layers.length === 0) return;
 
-    // 1. ZEMİN NOKTALARINI HAZIRLA (Tip Güvenli Kopya)
+    // 1. ZEMİN NOKTALARINI HAZIRLA
     let basePoints: { x: number, z: number }[] = [];
 
     if (settings.floorType === 'custom' && Array.isArray(settings.floorPoints) && settings.floorPoints.length > 2) {
-        // Gelen verinin düzgün olduğundan emin olarak kopyalıyoruz
         basePoints = settings.floorPoints.map((p: any) => ({ x: Number(p.x), z: Number(p.z) }));
     } else {
-        // Dikdörtgen varsayılan noktaları
         const w = Number(settings.width) || 5;
         const d = Number(settings.depth) || 4;
-        // Sol üst köşe 0,0 olacak şekilde (Editör koordinatları)
         basePoints = [
             { x: 0, z: 0 },
             { x: w, z: 0 },
@@ -386,13 +393,11 @@ const buildPerimeterLayers = (targetScene: THREE.Scene, settings: any) => {
         ];
     }
 
-    // 2. MERKEZ NOKTASINI HESAPLA (Konumlandırma İçin)
-    // Zemin geometrisi (-center.x, -center.y) kadar ötelenmişti.
-    // Duvarları da aynı miktarda ötelememiz lazım.
+    // 2. MERKEZ NOKTASINI HESAPLA
     const tempShape = new THREE.Shape();
     const tp0 = basePoints[0];
     if (tp0) {
-        tempShape.moveTo(tp0.x, -tp0.z); // Shape Y ekseni terstir
+        tempShape.moveTo(tp0.x, -tp0.z);
         for (let i = 1; i < basePoints.length; i++) {
             const tp = basePoints[i];
             if (tp) tempShape.lineTo(tp.x, -tp.z);
@@ -406,93 +411,56 @@ const buildPerimeterLayers = (targetScene: THREE.Scene, settings: any) => {
     // 3. PERIMETER GRUBU OLUŞTUR
     const perimeterGroup = new THREE.Group();
     perimeterGroup.name = "GeneratedPerimeterGroup";
-
-    // Grubu, zemin ile aynı merkeze taşıyoruz.
-    // Three.js Shape (X, Y) -> 3D (X, Z) dönüşümü için Y değerini Z'ye atıyoruz.
-    // Zemin rotasyonu (-Math.PI/2) olduğu için Shape'in Y ekseni, Dünya'nın Z eksenine denk gelir.
     perimeterGroup.position.x = -center.x;
-    perimeterGroup.position.z = center.y; // Shape koordinat sistemindeki Y (bizim -Z'miz)
+    perimeterGroup.position.z = center.y;
 
     // --- SOĞAN KABUĞU DÖNGÜSÜ ---
-    
-    // Başlangıç referansı: Zeminin kendisi
     let currentInnerBoundary = [...basePoints]; 
 
-    layers.forEach((layer: any, index: number) => {
-        // A. DIŞ SINIRI HESAPLA (Offset)
-        // Mevcut iç sınırdan, katman genişliği kadar dışarı çık.
+    // ÖNEMLİ: await kullanabilmek için standart for döngüsü kullanıyoruz
+    for (let index = 0; index < layers.length; index++) {
+        const layer = layers[index];
+
+        // A. DIŞ SINIRI HESAPLA
         const currentOuterBoundary = offsetPolygon(currentInnerBoundary, Number(layer.width));
+        if (!currentOuterBoundary || currentOuterBoundary.length < 3) continue;
 
-        // Eğer hesaplama başarısızsa veya nokta sayısı yetersizse atla
-        if (!currentOuterBoundary || currentOuterBoundary.length < 3) return;
-
-        // B. THREE.JS SHAPE OLUŞTUR (Dış Sınır)
+        // B. SHAPE OLUŞTUR
         const shape = new THREE.Shape();
-        
-        // --- Tip Güvenli Çizim (Dış Sınır) ---
         const p0 = currentOuterBoundary[0];
-        if (p0) {
-            // Three.js 2D Shape Y ekseni yukarı bakar, 
-            // ama bizim 3D Zemin koordinatlarında Z aşağı doğru artar.
-            // Bu yüzden Z değerini ters çeviriyoruz (-p.z).
-            shape.moveTo(p0.x, -p0.z); 
-        }
-
+        if (p0) shape.moveTo(p0.x, -p0.z); 
         for (let i = 1; i < currentOuterBoundary.length; i++) {
             const p = currentOuterBoundary[i];
-            if (p) {
-                shape.lineTo(p.x, -p.z);
-            }
+            if (p) shape.lineTo(p.x, -p.z);
         }
         shape.closePath();
 
-        // C. DELİK OLUŞTUR (İç Sınır)
-        // Bu katmanın içi, bir önceki katmanın (veya zeminin) bittiği yerdir.
+        // C. DELİK OLUŞTUR
         const holePath = new THREE.Path();
-        
-        // --- Tip Güvenli Çizim (Delik) ---
         const h0 = currentInnerBoundary[0];
-        if (h0) {
-            holePath.moveTo(h0.x, -h0.z);
-        }
-
+        if (h0) holePath.moveTo(h0.x, -h0.z);
         for (let i = 1; i < currentInnerBoundary.length; i++) {
             const hp = currentInnerBoundary[i];
-            if (hp) {
-                holePath.lineTo(hp.x, -hp.z);
-            }
+            if (hp) holePath.lineTo(hp.x, -hp.z);
         }
         holePath.closePath();
-        
-        // Deliği şekle ekle
         shape.holes.push(holePath);
 
-        // D. EXTRUDE (Yükseltme)
+        // D. EXTRUDE
         const geometry = new THREE.ExtrudeGeometry(shape, {
-            depth: Number(layer.height), // Extrude Z ekseninde (derinlik) büyür
+            depth: Number(layer.height),
             bevelEnabled: false
         });
 
-        // E. MATERYAL VE MESH
-        const material = createPerimeterMaterial(layer);
+        // E. MATERYAL VE MESH (BURADA BEKLİYORUZ)
+        // Texture'ın inmesini ve materyalin oluşmasını bekliyoruz
+        const material = await createPerimeterMaterial(layer);
+        
         const mesh = new THREE.Mesh(geometry, material);
 
         // F. POZİSYONLAMA
-        // Extrude sonucu Z ekseninde uzayan bir objedir.
-        // Bunu Y ekseninde (yukarı) uzayan bir obje yapmak için -90 derece çeviriyoruz.
         mesh.rotation.x = -Math.PI / 2; 
-        
-        // Yükseklik ayarı (Zeminden ne kadar yukarıda/aşağıda)
-        mesh.position.z = layer.elevation ? Number(layer.elevation) : 0; 
-        // DİKKAT: Obje döndürüldüğü için yerel Z ekseni, dünya Y eksenine denk gelir.
-        // Ancak Three.js position değerleri ebeveynine göredir. 
-        // Group rotasyonu olmadığı için mesh.position.y kullanmalıyız.
-        // DÜZELTME: Mesh döndürüldü -> Mesh'in yerel Z'si yukarı bakar.
-        // Ama biz Mesh'i Group içine koyuyoruz. Group düz duruyor.
-        // O yüzden Mesh'in Y pozisyonunu (dünya yüksekliği) ayarlıyoruz.
         mesh.position.y = layer.elevation ? Number(layer.elevation) : 0;
-
-        // Render sırası ve Gölgeler
         mesh.renderOrder = index + 1;
         mesh.castShadow = true;
         mesh.receiveShadow = true;
@@ -500,9 +468,8 @@ const buildPerimeterLayers = (targetScene: THREE.Scene, settings: any) => {
         perimeterGroup.add(mesh);
 
         // G. REFERANS GÜNCELLEME
-        // Bir sonraki katman, bu katmanın dışından başlayacak.
         currentInnerBoundary = currentOuterBoundary;
-    });
+    }
 
     targetScene.add(perimeterGroup);
 };
@@ -510,98 +477,41 @@ const buildPerimeterLayers = (targetScene: THREE.Scene, settings: any) => {
 // =======================================================
 // EXPORT & CONVERT
 // =======================================================
-const getSceneAsBlob = (): Promise<Blob> => {
-    return new Promise((resolve, reject) => {
-        if (!scene) {
-            reject("Sahne bulunamadı");
-            return;
-        }
+const getSceneAsBlob = async (): Promise<Blob> => {
+    
+    if (!scene) {
+        throw new Error("Sahne bulunamadı");
+    }
 
-        const exporter = new GLTFExporter();
-        const evaluator = new Evaluator();
-        const settings = sceneData.value?.settings || {};
+    const exporter = new GLTFExporter();
+    // CSG (Evaluator) işlemini zemin şekilleri için kaldırdık, çünkü 2D şekilleri siliyor.
+    const settings = sceneData.value?.settings || {};
 
-        // --- ADIM 1: ARAYÜZ ELEMANLARINI GİZLE ---
-        const controlsObj = transformControl as unknown as THREE.Object3D;
-        controlsObj.visible = false;
+    // --- ADIM 1: ARAYÜZ ELEMANLARINI GİZLE ---
+    const controlsObj = transformControl as unknown as THREE.Object3D;
+    controlsObj.visible = false;
 
-        const gridMesh = scene.getObjectByName("GridMesh");
-        if (gridMesh) gridMesh.visible = false;
+    const gridMesh = scene.getObjectByName("GridMesh");
+    if (gridMesh) gridMesh.visible = false;
 
-        // BaseFloor görünür kalabilir, üzerine duvarlar gelecek.
-        const baseFloor = scene.getObjectByName("BaseFloor");
-        const floorGroup = baseFloor?.parent; 
-
-        // --- ADIM 2: ZEMİN KALIBINI (KESİCİ) OLUŞTUR ---
-        // Bu kalıbı kullanarak dışarı taşan zemin şekillerini (Layer) keseceğiz.
-        const floorPoints = settings.floorPoints || []; 
-        let floorBrush: Brush;
-        const width = settings.width || 20;
-        const depth = settings.depth || 20;
-
-        if (settings.floorType === 'custom' && floorPoints.length > 2) {
-            const shape = new THREE.Shape();
-            const p0 = floorPoints[0];
-            if (p0) {
-                shape.moveTo(p0.x, p0.z);
-                for (let i = 1; i < floorPoints.length; i++) {
-                     const p = floorPoints[i];
-                     if(p) shape.lineTo(p.x, p.z);
-                }
-                shape.closePath();
-                // Derinliği yüksek tutuyoruz ki her şeyi kapsasın
-                const geom = new THREE.ExtrudeGeometry(shape, { depth: 50, bevelEnabled: false });
-                
-                // Zemin ile aynı merkezleme mantığı
-                geom.computeBoundingBox();
-                const center = new THREE.Vector3();
-                if (geom.boundingBox) geom.boundingBox.getCenter(center);
-                geom.translate(-center.x, -center.y, -center.z);
-                geom.rotateX(Math.PI / 2); // Zemin rotasyonuna uygun hale getir
-
-                floorBrush = new Brush(geom);
-            } else {
-                floorBrush = new Brush(new THREE.BoxGeometry(width, 50, depth));
+    const baseFloor = scene.getObjectByName("BaseFloor");
+    const floorGroup = baseFloor?.parent;
+    const originalPositions = new Map<THREE.Object3D, number>();
+    if (floorGroup) {
+        floorGroup.children.forEach((child) => {
+            if (child.name !== "BaseFloor" && child.name !== "GridMesh") {
+                originalPositions.set(child, child.position.z);
+                child.position.z = -child.position.z; 
             }
-        } else {
-            floorBrush = new Brush(new THREE.BoxGeometry(width, 50, depth));
-        }
-        
-        // Kesiciyi zemine oturt
-        floorBrush.position.set(0, 25, 0); 
-        floorBrush.updateMatrixWorld();
+        });
+    }
 
-        // --- ADIM 3: ZEMİN KATMANLARINI KES (CSG) ---
-        // Sadece 'floorLayers' (ikonlar, çizgiler) kesilecek.
-        if (floorGroup) {
-            floorGroup.children.forEach(child => {
-                // BaseFloor ve Grid hariç, diğerleri zemin katmanıdır
-                if (child.name !== "BaseFloor" && child.name !== "GridMesh" && (child as THREE.Mesh).isMesh) {
-                    const mesh = child as THREE.Mesh;
-                    
-                    // CSG işlemi için geometriyi hazırla
-                    const itemGeom = mesh.geometry.clone();
-                    itemGeom.applyMatrix4(mesh.matrixWorld); // Dünya koordinatlarına al
+    // --- ADIM 3: ÇEVRE DUVARLARINI OLUŞTUR VE EKLE ---
+    // Duvarların (texture'ların) tam yüklenmesi için await kullanıyoruz.
+    await buildPerimeterLayers(scene, settings);
 
-                    const itemBrush = new Brush(itemGeom);
-                    itemBrush.updateMatrixWorld();
-
-                    // KESİŞİM (Intersection): Sadece zeminin içinde kalanları tut
-                    const result = evaluator.evaluate(itemBrush, floorBrush, INTERSECTION);
-                    
-                    // Kesilmiş geometriyi mesh'e geri yükle ve transformu sıfırla
-                    mesh.geometry = result.geometry;
-                    mesh.position.set(0,0,0);
-                    mesh.rotation.set(0,0,0);
-                    mesh.scale.set(1,1,1);
-                }
-            });
-        }
-
-        // --- ADIM 4: ÇEVRE DUVARLARINI OLUŞTUR VE EKLE ---
-        buildPerimeterLayers(scene, settings);
-
-        // --- ADIM 5: EXPORT ---
+    // --- ADIM 4: EXPORT ---
+    return new Promise((resolve, reject) => {
         exporter.parse(
             scene,
             (gltf) => {
@@ -703,7 +613,7 @@ const triggerDownload = (blob: Blob, filename: string) => {
 // =======================================================
 // THREE.JS INIT
 // =======================================================
-const initThreeJS = () => {
+const initThreeJS = async () => {
     if (!canvasRef.value) return;
 
     // Ayarlar
@@ -922,7 +832,7 @@ const initThreeJS = () => {
 
     scene.add(floorGroup);
 
-    buildPerimeterLayers(scene, settings);
+    await buildPerimeterLayers(scene, settings);
 
     // --- KAMERA & RENDERER ---
     const width = canvasRef.value.clientWidth;

@@ -2,7 +2,7 @@ import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosReques
 
 const http: AxiosInstance = axios.create({
   baseURL: "http://localhost:3000",
-  timeout: 10000,
+  timeout: 20000,
 });
 
 http.interceptors.request.use(
