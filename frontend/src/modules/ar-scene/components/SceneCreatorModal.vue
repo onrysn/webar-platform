@@ -129,7 +129,8 @@
                             </div>
                             <div v-if="selectedTexture"
                                 class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 space-y-2">
-                                <label class="block text-[10px] font-black text-indigo-400 uppercase tracking-wider">Doku
+                                <label
+                                    class="block text-[10px] font-black text-indigo-400 uppercase tracking-wider">Doku
                                     Ölçeği</label>
                                 <div class="flex gap-2">
                                     <button v-for="val in [1, 2, 4, 8]" :key="val" @click="form.textureScale = val"
@@ -164,7 +165,8 @@
 
                     <section class="space-y-4 border-t border-slate-200 pt-4">
                         <div class="flex justify-between items-center">
-                            <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Zemin İşaretleri
+                            <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Zemin
+                                İşaretleri
                             </h4>
                         </div>
 
@@ -240,8 +242,8 @@
                             <div>
                                 <div class="flex justify-between mb-1">
                                     <span class="text-[10px] font-bold text-slate-500">Döndür</span>
-                                    <span class="text-[10px] font-bold text-indigo-600">{{ layers.find(l => l.id ===
-                                        selectedLayerId)?.rotation }}°</span>
+                                    <span class="text-[10px] font-bold text-indigo-600">{{layers.find(l => l.id ===
+                                        selectedLayerId)?.rotation}}°</span>
                                 </div>
                                 <input type="range" min="0" max="360" step="5"
                                     v-model.number="layers.find(l => l.id === selectedLayerId)!.rotation"
@@ -251,13 +253,135 @@
                             <div>
                                 <div class="flex justify-between mb-1">
                                     <span class="text-[10px] font-bold text-slate-500">Şeffaflık</span>
-                                    <span class="text-[10px] font-bold text-indigo-600">%{{ Math.round((layers.find(l =>
-                                        l.id === selectedLayerId)?.opacity || 1) * 100) }}</span>
+                                    <span class="text-[10px] font-bold text-indigo-600">%{{Math.round((layers.find(l =>
+                                        l.id === selectedLayerId)?.opacity || 1) * 100)}}</span>
                                 </div>
                                 <input type="range" min="0.1" max="1" step="0.05"
                                     v-model.number="layers.find(l => l.id === selectedLayerId)!.opacity"
                                     class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
                             </div>
+                        </div>
+                    </section>
+                    <section class="space-y-4 border-t border-slate-200 pt-4">
+                        <div class="flex justify-between items-center">
+                            <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Çevre
+                                Katmanları</h4>
+                            <div class="flex gap-2">
+                                <button @click="addPerimeterLayer('sidewalk')" title="Kaldırım Ekle"
+                                    class="w-6 h-6 bg-slate-100 hover:bg-indigo-100 text-slate-500 rounded text-xs">+</button>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div v-for="(layer, index) in form.perimeterLayers" :key="layer.id"
+                                class="bg-white border border-slate-200 rounded-xl p-3 relative group transition-all hover:shadow-md">
+
+                                <button @click="removePerimeterLayer(index)"
+                                    class="absolute top-2 right-2 text-slate-300 hover:text-red-500">&times;</button>
+
+                                <div class="flex items-center gap-2 mb-3">
+                                    <span class="text-lg">{{ layer.type === 'wall' ? '🧱' : layer.type === 'grass' ?
+                                        '🌿' : '🚶' }}</span>
+                                    <select v-model="layer.type"
+                                        class="text-[10px] font-bold bg-transparent outline-none cursor-pointer">
+                                        <option value="wall">Duvar</option>
+                                        <option value="sidewalk">Kaldırım</option>
+                                        <option value="curb">Bordür</option>
+                                        <option value="grass">Çim</option>
+                                    </select>
+                                    <span class="text-[9px] text-slate-400 bg-slate-50 px-1.5 rounded">#{{ index + 1
+                                        }}</span>
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="text-[8px] font-bold text-slate-400 uppercase block">Genişlik
+                                            (m)</label>
+                                        <input type="number" v-model.number="layer.width" step="0.1"
+                                            class="w-full bg-slate-50 text-[10px] font-bold p-1 rounded border border-transparent focus:border-indigo-300 outline-none">
+                                    </div>
+                                    <div>
+                                        <label class="text-[8px] font-bold text-slate-400 uppercase block">Yükseklik
+                                            (m)</label>
+                                        <input type="number" v-model.number="layer.height" step="0.1"
+                                            class="w-full bg-slate-50 text-[10px] font-bold p-1 rounded border border-transparent focus:border-indigo-300 outline-none">
+                                    </div>
+
+                                    <div class="col-span-2 flex gap-2 mt-1">
+
+                                        <div
+                                            class="flex-1 bg-slate-50 p-1.5 rounded-lg border border-slate-100 flex flex-col justify-between">
+                                            <label
+                                                class="text-[8px] font-bold text-slate-400 uppercase block mb-1">Renk</label>
+                                            <div class="flex items-center gap-2 relative">
+                                                <div class="w-full h-6 rounded border border-slate-200"
+                                                    :style="{ backgroundColor: layer.color }"></div>
+                                                <input type="color" v-model="layer.color" :disabled="!!layer.textureUrl"
+                                                    class="opacity-0 w-full h-full absolute top-0 left-0 cursor-pointer">
+                                            </div>
+                                        </div>
+
+                                        <div
+                                            class="flex-1 bg-slate-50 p-1.5 rounded-lg border border-slate-100 flex flex-col justify-between relative">
+                                            <label class="text-[8px] font-bold text-slate-400 uppercase block mb-1">Doku
+                                                / Desen</label>
+
+                                            <button
+                                                @click="activeTextureLayerIndex = (activeTextureLayerIndex === index ? null : index)"
+                                                class="w-full h-6 rounded border border-slate-200 flex items-center justify-center overflow-hidden transition-all"
+                                                :class="layer.textureUrl ? 'bg-white' : 'bg-white text-slate-300 hover:text-indigo-500'">
+
+                                                <img v-if="layer.textureUrl" :src="layer.textureUrl"
+                                                    class="w-full h-full object-cover">
+                                                <span v-else class="text-xs">Seç +</span>
+                                            </button>
+
+                                            <div v-if="activeTextureLayerIndex === index"
+                                                class="absolute top-full right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-slate-200 z-50 p-2 animate-in fade-in zoom-in-95 duration-200">
+
+                                                <div
+                                                    class="grid grid-cols-4 gap-1 mb-2 max-h-32 overflow-y-auto custom-scrollbar">
+                                                    <button @click="layer.textureUrl = null"
+                                                        class="aspect-square rounded-md border flex items-center justify-center text-xs text-slate-400 hover:bg-slate-50"
+                                                        :class="layer.textureUrl === null ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200'">
+                                                        🚫
+                                                    </button>
+                                                    <button v-for="tex in textureList" :key="tex.id"
+                                                        @click="layer.textureUrl = tex.textureUrl"
+                                                        class="aspect-square rounded-md border overflow-hidden hover:opacity-80"
+                                                        :class="layer.textureUrl === tex.textureUrl ? 'border-indigo-600 ring-1 ring-indigo-600' : 'border-slate-200'">
+                                                        <img :src="tex.thumbnailUrl" class="w-full h-full object-cover">
+                                                    </button>
+                                                </div>
+
+                                                <div v-if="layer.textureUrl" class="border-t border-slate-100 pt-2">
+                                                    <label
+                                                        class="text-[8px] font-bold text-slate-400 uppercase block mb-1">Ölçek:
+                                                        {{ layer.textureScale }}x</label>
+                                                    <input type="range" v-model.number="layer.textureScale" min="0.5"
+                                                        max="5" step="0.5"
+                                                        class="w-full h-1 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                                                </div>
+
+                                                <div class="text-center mt-1">
+                                                    <button @click="activeTextureLayerIndex = null"
+                                                        class="text-[9px] text-indigo-600 font-bold hover:underline">Tamam</button>
+                                                </div>
+                                            </div>
+
+                                            <div v-if="activeTextureLayerIndex === index"
+                                                @click.stop="activeTextureLayerIndex = null"
+                                                class="fixed inset-0 z-40 cursor-default"
+                                                style="background: transparent;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button v-if="form.perimeterLayers.length === 0" @click="addPerimeterLayer('sidewalk')"
+                                class="w-full py-2 text-[10px] text-slate-400 border border-dashed border-slate-300 rounded-xl hover:bg-slate-50">
+                                + Katman Ekle (Duvar, Kaldırım, Çim...)
+                            </button>
                         </div>
                     </section>
                 </div>
@@ -320,9 +444,22 @@
                                         x="0" y="0" :width="form.textureScale" :height="form.textureScale"
                                         preserveAspectRatio="xMidYMid slice" />
                                 </pattern>
+                                <pattern v-for="layer in form.perimeterLayers" :key="'pat-' + layer.id"
+                                    :id="'tex-' + layer.id" patternUnits="userSpaceOnUse" :width="layer.textureScale"
+                                    :height="layer.textureScale">
+
+                                    <image v-if="layer.textureUrl" :href="layer.textureUrl"
+                                        :xlink:href="layer.textureUrl" x="0" y="0" :width="layer.textureScale"
+                                        :height="layer.textureScale" preserveAspectRatio="xMidYMid slice" />
+                                </pattern>
                             </defs>
 
                             <rect x="-400" y="-400" width="800" height="800" fill="url(#gridMajor)" />
+
+                            <path v-for="(layer, idx) in svgPerimeterPaths" :key="'p-layer-' + idx" :d="finalPath"
+                                fill="none" :stroke="layer.textureUrl ? `url(#tex-${layer.id})` : layer.color"
+                                :stroke-width="layer.totalStrokeWidth" stroke-linejoin="round" stroke-linecap="round"
+                                class="transition-all duration-300" />
 
                             <path :d="finalPath"
                                 :fill="(form.shapeType !== 'custom' || isClosed) ? (selectedTexture ? 'url(#floorTexUI)' : form.floorColor) : 'none'"
@@ -528,6 +665,7 @@ const props = defineProps<{ isOpen: boolean; mode: 'create' | 'edit'; initialDat
 const emit = defineEmits(['close', 'save']);
 const svgEl = ref<SVGSVGElement | null>(null);
 const svgContainer = ref<HTMLDivElement | null>(null);
+const activeTextureLayerIndex = ref<number | null>(null);
 
 // --- STATE ---
 const form = reactive({
@@ -538,7 +676,61 @@ const form = reactive({
     bgColor: '#f8fafc',
     floorColor: '#ffffff',
     wallHeight: 2.8,
-    textureScale: 2
+    textureScale: 2,
+    perimeterLayers: [] as {
+        id: string;
+        type: 'wall' | 'sidewalk' | 'grass' | 'curb';
+        width: number;
+        height: number;
+        color: string;
+        elevation: number;
+        // YENİ EKLENEN ALANLAR:
+        textureUrl: string | null;  // Doku görselinin URL'i
+        textureScale: number;       // Doku sıklığı (1x, 2x...)
+    }[]
+});
+
+const addPerimeterLayer = (type: string) => {
+    form.perimeterLayers.push({
+        id: crypto.randomUUID(),
+        type: type as any,
+        width: 0.5,
+        height: type === 'wall' ? 2.0 : 0.1,
+        color: type === 'grass' ? '#4ade80' : '#94a3b8',
+        elevation: 0,
+        textureUrl: null,
+        textureScale: 1
+    });
+};
+
+const removePerimeterLayer = (index: number) => {
+    form.perimeterLayers.splice(index, 1);
+};
+
+const svgPerimeterPaths = computed(() => {
+    // 1. Katmanları kopyala
+    const layers = [...form.perimeterLayers];
+
+    // Toplam genişliği hesaplayarak dıştan içe doğru gitmeliyiz
+    // Ama SVG 'stroke' merkezden büyür. 
+    // Strateji: Her katman için birikimli genişlikte bir stroke çizip en arkaya atmak.
+
+    let cumulativeWidth = 0;
+
+    // Katmanları tersten değil, düzden gezip birikimli width hesaplayacağız
+    // Çizimi ise Vue template'de "reverse" sırayla yapacağız ki geniş olan arkada kalsın.
+
+    const calculatedLayers = layers.map(layer => {
+        cumulativeWidth += layer.width;
+        return {
+            ...layer,
+            totalStrokeWidth: cumulativeWidth * 2 // SVG stroke yarı yarıya içe girer, bu yüzden 2 katı
+        };
+    });
+
+    // En dıştaki en önce çizilmeli (HTML sırasında en üstte = en arkada)
+    // Bu yüzden listeyi ters çevirip template'e yolluyoruz.
+    return calculatedLayers.reverse();
 });
 
 const textureList = ref<any[]>([]);
@@ -980,7 +1172,8 @@ const handleSave = () => {
             width: finalWidth,
             depth: finalDepth,
             gridVisible: true,
-            floorLayers: layers.value
+            floorLayers: layers.value,
+            perimeterLayers: form.perimeterLayers
         }
     });
 };
@@ -1019,7 +1212,14 @@ watch(() => props.isOpen, (val) => {
                 bgColor: s.backgroundColor || '#f8fafc',
                 floorColor: s.floorColor || '#ffffff',
                 wallHeight: s.wallHeight ?? 2.8,
-                textureScale: s.textureScale || 2
+                textureScale: s.textureScale || 2,
+                perimeterLayers: s.perimeterLayers
+                    ? s.perimeterLayers.map((layer: any) => ({ // <--- DÜZELTME BURADA
+                        ...layer,
+                        textureUrl: layer.textureUrl || null,
+                        textureScale: layer.textureScale ?? 1,
+                    }))
+                    : []
             });
             selectedTexture.value = s.floorTextureUrl;
             if (s.floorPoints) {

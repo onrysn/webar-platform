@@ -1,5 +1,16 @@
 import type { ARModelDto } from "../../ar-model/dto/arModel.dto";
 
+export interface PerimeterLayer {
+  id: string;
+  type: 'wall' | 'sidewalk' | 'grass' | 'curb';
+  width: number;
+  height: number;
+  color: string;
+  elevation: number;
+  textureUrl?: string | null;
+  textureScale?: number;
+}
+
 export interface FloorLayer {
   id: string;        
   shapeId: string;
@@ -52,6 +63,7 @@ export interface SceneSettings {
   wallHeight?: number;
   textureScale?: number;
   floorLayers?: FloorLayer[];
+  perimeterLayers?: PerimeterLayer[];
 }
 
 // --- ANA VERİ MODELLERİ (Response Types) ---

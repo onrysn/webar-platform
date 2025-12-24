@@ -19,7 +19,43 @@ export class Vector3Dto {
   z: number;
 }
 
-// 2. Özel Şekil (Poligon) Noktaları için
+export class PerimeterLayerDto {
+  @ApiProperty({ description: 'Frontend UUID', example: 'uuid-v4' })
+  @IsString()
+  id: string;
+
+  @ApiProperty({ enum: ['wall', 'sidewalk', 'grass', 'curb'], description: 'Katman Tipi' })
+  @IsEnum(['wall', 'sidewalk', 'grass', 'curb'])
+  type: 'wall' | 'sidewalk' | 'grass' | 'curb';
+
+  @ApiProperty({ description: 'Genişlik/Kalınlık (metre)', example: 0.5 })
+  @IsNumber()
+  width: number;
+
+  @ApiProperty({ description: 'Yükseklik (metre)', example: 1.0 })
+  @IsNumber()
+  height: number;
+
+  @ApiProperty({ description: 'Renk (Hex)', example: '#94a3b8' })
+  @IsString()
+  color: string;
+
+  @ApiProperty({ description: 'Zemin seviyesinden yükseklik', example: 0 })
+  @IsNumber()
+  elevation: number;
+
+  @ApiPropertyOptional({ description: 'Doku URL', example: '/textures/brick.jpg' })
+  @IsOptional()
+  @IsString()
+  textureUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Doku Ölçeği', example: 1 })
+  @IsOptional()
+  @IsNumber()
+  textureScale?: number;
+}
+
+// Özel Şekil (Poligon) Noktaları için
 export class FloorPointDto {
   @ApiProperty({ example: 0 })
   @IsNumber()
@@ -141,6 +177,13 @@ export class SceneSettingsDto {
   @ValidateNested({ each: true })
   @Type(() => FloorLayerDto)
   floorLayers?: FloorLayerDto[];
+
+  @ApiPropertyOptional({ type: [PerimeterLayerDto], description: 'Zemin etrafındaki duvar, kaldırım vb. katmanlar' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => PerimeterLayerDto)
+  perimeterLayers?: PerimeterLayerDto[];
 }
 
 // --- ANA DTO'LAR ---
