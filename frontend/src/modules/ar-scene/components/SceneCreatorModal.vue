@@ -778,6 +778,21 @@ const calculatedArea = computed(() => {
     return '0.00';
 });
 
+const getSignedArea = (points: {x: number, z: number}[]) => {
+    let area = 0;
+    for (let i = 0; i < points.length; i++) {
+        const j = (i + 1) % points.length;
+        
+        const p1 = points[i];
+        const p2 = points[j];
+
+        if (!p1 || !p2) continue; 
+
+        area += (p2.x - p1.x) * (p2.z + p1.z);
+    }
+    return area;
+};
+
 const calculatePresetPoints = (type: string, w: number, d: number) => {
     if (type === 'rectangle') return [{ x: 0, z: 0 }, { x: w, z: 0 }, { x: w, z: d }, { x: 0, z: d }];
     if (type === 'circle' || type === 'ellipse') {
@@ -1148,7 +1163,17 @@ const setShape = (id: string) => {
 const close = () => emit('close');
 
 const handleSave = () => {
-    let pts = form.shapeType === 'custom' ? [...customPoints.value] : calculatePresetPoints(form.shapeType, form.width, form.depth);
+    let pts = form.shapeType === 'custom' 
+        ? [...customPoints.value] 
+        : calculatePresetPoints(form.shapeType, form.width, form.depth);
+
+    if (form.shapeType === 'custom' && pts.length > 2) {
+        if (getSignedArea(pts) > 0) {
+            console.log("Çizim yönü otomatik düzeltildi (CCW -> CW)");
+            pts.reverse();
+        }
+    }
+
     let finalWidth = form.width;
     let finalDepth = form.depth;
 
