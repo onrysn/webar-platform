@@ -145,6 +145,7 @@ import { TextureLoader } from 'three';
 // Service Imports
 import { arSceneService } from '../../../services/arSceneService';
 import { arModelService } from '../../../services/arModelService';
+import { compressGLB } from '../../../utils/compression';
 
 // DTO Imports
 import type { ARSceneDto, SceneItemDto } from '../dto/arScene.dto';
@@ -510,6 +511,12 @@ const getSceneAsBlob = async (): Promise<Blob> => {
     // Duvarların (texture'ların) tam yüklenmesi için await kullanıyoruz.
     await buildPerimeterLayers(scene, settings);
 
+    const options = {
+        binary: true,
+        onlyVisible: true,
+        maxTextureSize: 1024 
+    };
+
     // --- ADIM 4: EXPORT ---
     return new Promise((resolve, reject) => {
         exporter.parse(
@@ -525,7 +532,7 @@ const getSceneAsBlob = async (): Promise<Blob> => {
                 restoreSceneState(controlsObj, gridMesh, floorGroup);
                 reject(error);
             },
-            { binary: true, onlyVisible: true }
+            options
         );
     });
 };
@@ -570,13 +577,17 @@ const handleExport = async (format: 'glb' | 'usdz') => {
     isExporting.value = true;
 
     try {
-        const glbBlob = await getSceneAsBlob();
+        const rawBlob = await getSceneAsBlob();
         const fileName = sceneData.value?.name || 'sahne';
 
+        console.log("Draco sıkıştırma işlemi başlatılıyor...");
+        const compressedBlob = await compressGLB(rawBlob);
+        console.log(`Sıkıştırma tamamlandı. Ham: ${(rawBlob.size / 1024 / 1024).toFixed(2)}MB -> Sıkışmış: ${(compressedBlob.size / 1024 / 1024).toFixed(2)}MB`);
+
         if (format === 'glb') {
-            triggerDownload(glbBlob, `${fileName}.glb`);
+            triggerDownload(compressedBlob, `${fileName}.glb`);
         } else {
-            await convertAndDownloadUsdz(glbBlob, fileName);
+            await convertAndDownloadUsdz(compressedBlob, fileName);
         }
 
     } catch (error) {
