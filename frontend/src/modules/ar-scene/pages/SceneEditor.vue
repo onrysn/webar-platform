@@ -145,7 +145,6 @@ import { TextureLoader } from 'three';
 // Service Imports
 import { arSceneService } from '../../../services/arSceneService';
 import { arModelService } from '../../../services/arModelService';
-import { compressGLB } from '../../../utils/compression';
 
 // DTO Imports
 import type { ARSceneDto, SceneItemDto } from '../dto/arScene.dto';
@@ -577,17 +576,13 @@ const handleExport = async (format: 'glb' | 'usdz') => {
     isExporting.value = true;
 
     try {
-        const rawBlob = await getSceneAsBlob();
+        const glbBlob = await getSceneAsBlob();
         const fileName = sceneData.value?.name || 'sahne';
 
-        console.log("Draco sıkıştırma işlemi başlatılıyor...");
-        const compressedBlob = await compressGLB(rawBlob);
-        console.log(`Sıkıştırma tamamlandı. Ham: ${(rawBlob.size / 1024 / 1024).toFixed(2)}MB -> Sıkışmış: ${(compressedBlob.size / 1024 / 1024).toFixed(2)}MB`);
-
         if (format === 'glb') {
-            triggerDownload(compressedBlob, `${fileName}.glb`);
+            triggerDownload(glbBlob, `${fileName}.glb`);
         } else {
-            await convertAndDownloadUsdz(compressedBlob, fileName);
+            await convertAndDownloadUsdz(glbBlob, fileName);
         }
 
     } catch (error) {
@@ -597,6 +592,7 @@ const handleExport = async (format: 'glb' | 'usdz') => {
         isExporting.value = false;
     }
 };
+
 
 const convertAndDownloadUsdz = async (glbBlob: Blob, baseName: string) => {
     const data = await arModelService.convertGlbToUsdz(glbBlob, `${baseName}.glb`);
