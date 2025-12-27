@@ -28,7 +28,7 @@ export default defineComponent({
     const models = ref<any[]>([]);
     const loading = ref(false);
     const error = ref<string | null>(null);
-    const baseUrl = 'http://localhost:3000'; // backend URL, thumbnail için
+    const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000'; // backend URL, thumbnail için
 
     const fetchModels = async () => {
       loading.value = true;
