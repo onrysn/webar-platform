@@ -4,8 +4,6 @@ import { useAuthStore } from '../store/modules/auth';
 // Dashboard sayfaları
 import MainLayout from '../layouts/MainLayout.vue';
 import DashboardHome from '../modules/dashboard/pages/Dashboard.vue';
-import Profile from '../modules/dashboard/pages/Profile.vue';
-import Projects from '../modules/dashboard/pages/Projects.vue';
 import Settings from '../modules/dashboard/pages/settings.vue';
 
 // Companies sayfaları
@@ -46,10 +44,8 @@ const routes = [
     component: MainLayout,
     meta: { requiresAuth: true },
     children: [
-      { path: '', component: DashboardHome },      // /dashboard
-      { path: 'profile', component: Profile },    // /dashboard/profile
-      { path: 'projects', component: Projects },  // /dashboard/projects
-      { path: 'settings', component: Settings },  // /dashboard/settings
+      { path: '', component: DashboardHome },
+      { path: 'settings', component: Settings },
 
       // Companies
       { path: 'companies', component: CompaniesList, meta: { adminOnly: true } },

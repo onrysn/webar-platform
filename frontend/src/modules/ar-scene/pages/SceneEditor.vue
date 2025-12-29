@@ -1,133 +1,219 @@
 <template>
-    <div class="flex h-screen overflow-hidden bg-gray-100 text-gray-900">
+    <div class="relative w-full h-screen overflow-hidden bg-gray-900 text-gray-100 font-sans select-none">
 
-        <div class="w-80 flex flex-col border-r border-gray-300 bg-white shadow-lg z-10">
-            <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
+        <div class="absolute inset-0 z-0 touch-none">
+            <canvas ref="canvasRef" class="w-full h-full block outline-none"></canvas>
+        </div>
+
+        <div v-if="isLoading"
+            class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-900/90 backdrop-blur-md">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mb-4"></div>
+            <p class="text-white font-medium tracking-wide animate-pulse">3D Sahne Hazırlanıyor...</p>
+        </div>
+
+        <div class="absolute top-0 left-0 right-0 z-40 p-4 flex justify-between items-start pointer-events-none">
+
+            <div
+                class="flex items-center gap-3 pointer-events-auto bg-black/40 backdrop-blur-md p-2 pr-4 rounded-xl border border-white/10 shadow-lg">
+                <button @click="$router.back()"
+                    class="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-300 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd"
+                            d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
+                            clip-rule="evenodd" />
+                    </svg>
+                </button>
                 <div>
-                    <h2 class="font-bold text-gray-800 truncate w-32" :title="sceneData?.name">
-                        {{ sceneData?.name || 'Yükleniyor...' }}
-                    </h2>
-                    <p v-if="sceneData?.settings" class="text-[10px] text-gray-500">
+                    <h1 class="font-bold text-sm text-white leading-tight truncate max-w-[150px] sm:max-w-xs">{{
+                        sceneData?.name || 'Yükleniyor...' }}</h1>
+                    <p v-if="sceneData?.settings" class="text-[10px] text-gray-400">
                         {{ sceneData.settings.width }}m x {{ sceneData.settings.depth }}m
                     </p>
                 </div>
+            </div>
 
-                <div class="flex items-center gap-2">
-                    <div class="relative">
-                        <button @click="showDownloadMenu = !showDownloadMenu"
-                            :disabled="isExporting"
-                            class="text-xs flex items-center gap-1 px-2 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50 text-gray-700 transition-colors disabled:opacity-50">
-                            <svg v-if="!isExporting" xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            <svg v-else class="animate-spin h-3 w-3 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                            </svg>
-                            {{ isExporting ? 'Hazırlanıyor...' : 'İndir' }}
-                        </button>
+            <div class="flex gap-2 pointer-events-auto">
+                <button @click="showSidebar = !showSidebar"
+                    class="p-3 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg text-white hover:bg-white/10 transition-colors"
+                    :class="showSidebar ? 'bg-blue-600/80 border-blue-500' : ''">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                </button>
 
-                        <div v-if="showDownloadMenu" 
-                             class="absolute right-0 top-full mt-1 w-32 bg-white border border-gray-200 rounded shadow-lg z-50 flex flex-col py-1">
-                            <button @click="handleExport('glb')" class="text-left px-3 py-2 text-xs hover:bg-gray-100 text-gray-700 w-full">
-                                .GLB (Android)
+                <div class="relative">
+                    <button @click="showDownloadMenu = !showDownloadMenu" :disabled="isExporting"
+                        class="flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                        <span v-if="isExporting" class="flex items-center gap-2">
+                            <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                    stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor"
+                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                </path>
+                            </svg>
+                        </span>
+                        <span v-else class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Dışa Aktar
+                        </span>
+                    </button>
+
+                    <div v-if="showDownloadMenu"
+                        class="absolute right-0 top-full mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up">
+                        <div class="p-2 space-y-1">
+                            <button @click="handleExport('glb')"
+                                class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-700 text-sm text-gray-200 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-green-500"></span> Android (GLB)
                             </button>
-                            <button @click="handleExport('usdz')" class="text-left px-3 py-2 text-xs hover:bg-gray-100 text-gray-700 w-full">
-                                .USDZ (iOS)
+                            <button @click="handleExport('usdz')"
+                                class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-700 text-sm text-gray-200 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-blue-500"></span> iOS (USDZ)
                             </button>
                         </div>
-                        
-                        <div v-if="showDownloadMenu" @click="showDownloadMenu = false" class="fixed inset-0 z-40 cursor-default"></div>
                     </div>
-
-                    <button @click="$router.back()"
-                        class="text-xs text-gray-500 hover:text-red-600 font-medium transition-colors">Çıkış</button>
+                    <div v-if="showDownloadMenu" @click="showDownloadMenu = false" class="fixed inset-0 z-[-1]"></div>
                 </div>
-            </div>
-
-            <div class="flex-1 overflow-y-auto p-2 space-y-2">
-                <div v-if="sceneItems.length === 0" class="text-center text-xs text-gray-400 mt-4">
-                    Henüz model eklenmedi.
-                </div>
-                <div v-for="item in sceneItems" :key="item.id" @click="selectItemFromTree(item.id)"
-                    class="p-2 rounded cursor-pointer flex justify-between items-center group transition-all border border-transparent"
-                    :class="selectedItemId === item.id ? 'bg-blue-100 border-blue-300 text-blue-700' : 'hover:bg-gray-100 hover:border-gray-200'">
-                    <span class="text-sm truncate font-medium">{{ item.name || item.model.fileName }}</span>
-                    <button @click.stop="deleteItem(item.id)"
-                        class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-600 p-1 transition-opacity">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-            <div class="p-4 border-t border-gray-200 bg-gray-50">
-                <button @click="showModelSelector = true"
-                    class="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded shadow-sm text-sm font-semibold flex items-center justify-center gap-2 transition-colors">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"
-                            clip-rule="evenodd" />
-                    </svg>
-                    Model Ekle
-                </button>
             </div>
         </div>
 
-        <div class="flex-1 relative bg-gray-200">
-            <canvas ref="canvasRef" class="w-full h-full block outline-none"></canvas>
+        <transition name="slide-fade">
+            <div v-if="showSidebar"
+                class="absolute top-20 left-4 bottom-24 w-64 md:w-72 bg-gray-800/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-30 flex flex-col overflow-hidden transform transition-transform">
 
-            <div v-if="isLoading"
-                class="absolute inset-0 flex items-center justify-center bg-white/80 backdrop-blur-sm z-50">
-                <div class="text-center">
-                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-2"></div>
-                    <p class="text-gray-600 font-medium">Sahne Hazırlanıyor...</p>
+                <div class="p-4 border-b border-white/10 flex justify-between items-center">
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Sahne Objeleri</span>
+                    <span class="bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-300">{{ sceneItems.length }}</span>
+                </div>
+
+                <div class="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                    <div v-if="sceneItems.length === 0"
+                        class="flex flex-col items-center justify-center h-40 text-gray-500 text-xs text-center p-4">
+                        <svg class="w-8 h-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
+                        </svg>
+                        Model ekleyerek başlayın.
+                    </div>
+
+                    <div v-for="item in sceneItems" :key="item.id" @click="selectItemFromTree(item.id)"
+                        class="group flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all border border-transparent"
+                        :class="selectedItemId === item.id ? 'bg-blue-600/20 border-blue-500/50 text-white' : 'hover:bg-white/5 text-gray-300'">
+
+                        <div class="flex items-center gap-3 truncate">
+                            <div class="w-2 h-2 rounded-full"
+                                :class="selectedItemId === item.id ? 'bg-blue-400' : 'bg-gray-600'"></div>
+                            <span class="text-sm truncate">{{ item.name || item.model.fileName }}</span>
+                        </div>
+
+                        <button @click.stop="deleteItem(item.id)"
+                            class="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 hover:text-red-400 rounded transition-all">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="p-4 border-t border-white/10 bg-gray-900/50">
+                    <button @click="showModelSelector = true"
+                        class="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg shadow-lg text-sm font-bold flex items-center justify-center gap-2 transition-all transform active:scale-95">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                        </svg>
+                        Model Ekle
+                    </button>
                 </div>
             </div>
+        </transition>
 
-            <div
-                class="absolute top-4 left-4 bg-white/90 border border-gray-200 p-3 rounded-lg shadow-md text-xs text-gray-600 pointer-events-none select-none">
-                <p class="font-bold text-gray-800 mb-1">Kontroller</p>
-                <p>Sol Tık: Seç / Çevir</p>
-                <p>Sağ Tık: Kaydır</p>
-                <div class="border-t border-gray-200 my-1"></div>
-                <p>Modlar: <b>W</b>: Taşı | <b>E</b>: Döndür | <b>R</b>: Ölçekle</p>
-            </div>
+        <div
+            class="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-40 flex items-center gap-2 p-2 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl">
+            <button @click="setTransformMode('translate')"
+                class="p-3 rounded-xl transition-all flex flex-col items-center gap-1 min-w-[60px]"
+                :class="currentTransformMode === 'translate' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
+                </svg>
+                <span class="text-[10px] font-bold">Taşı</span>
+            </button>
+
+            <button @click="setTransformMode('rotate')"
+                class="p-3 rounded-xl transition-all flex flex-col items-center gap-1 min-w-[60px]"
+                :class="currentTransformMode === 'rotate' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+                <span class="text-[10px] font-bold">Döndür</span>
+            </button>
+
+            <button @click="setTransformMode('scale')"
+                class="p-3 rounded-xl transition-all flex flex-col items-center gap-1 min-w-[60px]"
+                :class="currentTransformMode === 'scale' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                </svg>
+                <span class="text-[10px] font-bold">Ölçekle</span>
+            </button>
+
+            <div class="w-px h-8 bg-white/20 mx-1"></div>
+
+            <button @click="deleteSelectedItem" :disabled="!selectedItemId"
+                class="p-3 rounded-xl transition-all flex flex-col items-center gap-1 min-w-[60px] text-red-400 hover:text-red-200 hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed">
+                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span class="text-[10px] font-bold">Sil</span>
+            </button>
         </div>
 
         <div v-if="showModelSelector"
-            class="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div
-                class="bg-white text-gray-900 w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]">
-                <div class="p-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                    <h3 class="font-bold text-lg text-gray-800">Kütüphaneden Model Seç</h3>
+            class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[85vh]">
+                <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <h3 class="font-bold text-lg text-gray-800">Kütüphaneden Ekle</h3>
                     <button @click="showModelSelector = false"
-                        class="text-gray-400 hover:text-gray-600 transition-colors">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24"
-                            stroke="currentColor">
+                        class="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12" />
+                                d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
-                <div class="p-4 overflow-y-auto grid grid-cols-2 md:grid-cols-3 gap-4 bg-gray-50">
+                <div class="p-6 overflow-y-auto bg-gray-50 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                     <div v-for="model in availableModels" :key="model.id" @click="addModelToScene(model)"
-                        class="bg-white border border-gray-200 rounded-lg p-2 cursor-pointer hover:border-blue-500 hover:shadow-md transition-all">
-                        <div
-                            class="aspect-square bg-gray-100 rounded mb-2 overflow-hidden flex items-center justify-center relative">
+                        class="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-blue-500 cursor-pointer transition-all duration-200 flex flex-col overflow-hidden relative">
+                        <div class="aspect-square bg-gray-100 relative">
                             <img v-if="model.thumbnailPath" :src="getThumbnailUrl(model.thumbnailPath)"
-                                class="w-full h-full object-cover">
-                            <div v-else class="text-gray-400 text-xs font-medium">Görsel Yok</div>
+                                class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500">
+                            <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                                Görsel Yok</div>
+                            <div
+                                class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                <span
+                                    class="bg-white/90 text-blue-600 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Ekle
+                                    +</span>
+                            </div>
                         </div>
-                        <p class="text-xs font-semibold truncate text-gray-700">{{ model.fileName }}</p>
+                        <div class="p-3">
+                            <p class="text-sm font-bold text-gray-800 truncate">{{ model.fileName }}</p>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-
     </div>
 </template>
 
@@ -153,9 +239,6 @@ import { offsetPolygon } from '../../../utils/mathUtils';
 
 // --- CONSTANTS: SHAPE LIBRARY ---
 const SHAPE_LIBRARY = [
-    // ==========================================
-    // 1. TEMEL GEOMETRİ (BASIC GEOMETRY)
-    // ==========================================
     { id: 'rect', label: 'Kare/Dikdörtgen', icon: '⬛', path: 'M -0.5 -0.5 L 0.5 -0.5 L 0.5 0.5 L -0.5 0.5 Z' },
     { id: 'circle', label: 'Daire', icon: '⚪', path: 'M 0 0 m -0.5 0 a 0.5 0.5 0 1 0 1 0 a 0.5 0.5 0 1 0 -1 0' },
     { id: 'triangle', label: 'Üçgen', icon: '🔺', path: 'M 0 -0.5 L 0.5 0.5 L -0.5 0.5 Z' },
@@ -171,10 +254,6 @@ const SHAPE_LIBRARY = [
     { id: 'donut', label: 'Halka', icon: '⭕', path: 'M 0 0 m -0.5 0 a 0.5 0.5 0 1 0 1 0 a 0.5 0.5 0 1 0 -1 0 M 0 0 m -0.3 0 a 0.3 0.3 0 1 1 0.6 0 a 0.3 0.3 0 1 1 -0.6 0' },
     { id: 'plus', label: 'Artı', icon: '➕', path: 'M -0.15 -0.5 L 0.15 -0.5 L 0.15 -0.15 L 0.5 -0.15 L 0.5 0.15 L 0.15 0.15 L 0.15 0.5 L -0.15 0.5 L -0.15 0.15 L -0.5 0.15 L -0.5 -0.15 L -0.15 -0.15 Z' },
     { id: 'cross', label: 'Çarpı', icon: '❌', path: 'M -0.4 -0.3 L -0.3 -0.4 L 0 -0.1 L 0.3 -0.4 L 0.4 -0.3 L 0.1 0 L 0.4 0.3 L 0.3 0.4 L 0 0.1 L -0.3 0.4 L -0.4 0.3 L -0.1 0 Z' },
-
-    // ==========================================
-    // 2. MİMARİ & YAPI (ARCHITECTURE)
-    // ==========================================
     { id: 'l-shape', label: 'L Köşe', icon: 'L', path: 'M -0.5 -0.5 L 0.5 -0.5 L 0.5 -0.1 L -0.1 -0.1 L -0.1 0.5 L -0.5 0.5 Z' },
     { id: 't-shape', label: 'T Profil', icon: 'T', path: 'M -0.5 -0.5 L 0.5 -0.5 L 0.5 -0.15 L 0.15 -0.15 L 0.15 0.5 L -0.15 0.5 L -0.15 -0.15 L -0.5 -0.15 Z' },
     { id: 'u-shape', label: 'U Profil', icon: '∪', path: 'M -0.5 -0.5 L -0.15 -0.5 L -0.15 0.15 L 0.15 0.15 L 0.15 -0.5 L 0.5 -0.5 L 0.5 0.5 L -0.5 0.5 Z' },
@@ -182,10 +261,6 @@ const SHAPE_LIBRARY = [
     { id: 'door', label: 'Kapı Yayı', icon: '🚪', path: 'M -0.5 0.5 L -0.5 -0.5 L -0.4 -0.5 L -0.4 0.5 Z M -0.4 -0.5 A 1 1 0 0 1 0.6 0.5 L 0.5 0.5 A 0.9 0.9 0 0 0 -0.4 -0.4 Z' },
     { id: 'arc-wall', label: 'Yay Duvar', icon: '🌈', path: 'M -0.5 0.5 L -0.5 0.2 A 0.5 0.5 0 0 1 0.5 0.2 L 0.5 0.5 L 0.2 0.5 A 0.2 0.2 0 0 0 -0.2 0.5 Z' },
     { id: 'pillar', label: 'Kolon', icon: '🏛️', path: 'M -0.3 -0.5 L 0.3 -0.5 L 0.3 -0.4 L 0.2 -0.4 L 0.2 0.4 L 0.3 0.4 L 0.3 0.5 L -0.3 0.5 L -0.3 0.4 L -0.2 0.4 L -0.2 -0.4 L -0.3 -0.4 Z' },
-
-    // ==========================================
-    // 3. YÖNLENDİRME & OKLAR (ARROWS)
-    // ==========================================
     { id: 'arrow-up', label: 'İleri Ok', icon: '⬆️', path: 'M -0.15 0.5 L -0.15 -0.1 L -0.4 -0.1 L 0 -0.5 L 0.4 -0.1 L 0.15 -0.1 L 0.15 0.5 Z' },
     { id: 'arrow-down', label: 'Geri Ok', icon: '⬇️', path: 'M -0.15 -0.5 L -0.15 0.1 L -0.4 0.1 L 0 0.5 L 0.4 0.1 L 0.15 0.1 L 0.15 -0.5 Z' },
     { id: 'arrow-left', label: 'Sola Ok', icon: '⬅️', path: 'M 0.5 -0.15 L -0.1 -0.15 L -0.1 -0.4 L -0.5 0 L -0.1 0.4 L -0.1 0.15 L 0.5 0.15 Z' },
@@ -195,10 +270,6 @@ const SHAPE_LIBRARY = [
     { id: 'chevron-up', label: 'Yön (Chevron)', icon: '⏫', path: 'M -0.5 -0.1 L 0 -0.5 L 0.5 -0.1 L 0.5 0.2 L 0 -0.2 L -0.5 0.2 Z M -0.5 0.2 L 0 -0.2 L 0.5 0.2 L 0.5 0.5 L 0 0.1 L -0.5 0.5 Z' },
     { id: 'u-turn-left', label: 'U Dönüşü', icon: '↩️', path: 'M 0.2 0.5 L 0.2 -0.1 A 0.2 0.2 0 0 0 -0.2 -0.1 L -0.2 0.1 L 0 0.1 L -0.35 0.5 L -0.7 0.1 L -0.5 0.1 L -0.5 -0.1 A 0.5 0.5 0 0 1 0.5 -0.1 L 0.5 0.5 Z' },
     { id: 'curve-arrow', label: 'Dönüş', icon: '⤴️', path: 'M -0.4 0.4 L -0.4 0 A 0.4 0.4 0 0 1 0 -0.4 L 0.1 -0.4 L 0.1 -0.55 L 0.5 -0.25 L 0.1 0.05 L 0.1 -0.1 L 0 -0.1 A 0.1 0.1 0 0 0 -0.1 0 L -0.1 0.4 Z' },
-
-    // ==========================================
-    // 4. ARAYÜZ & İKONLAR (UI & ICONS)
-    // ==========================================
     { id: 'check', label: 'Onay', icon: '✅', path: 'M -0.4 0 L -0.15 0.25 L 0.4 -0.3 L 0.3 -0.4 L -0.15 0.05 L -0.3 -0.1 Z' },
     { id: 'info', label: 'Bilgi', icon: 'ℹ️', path: 'M -0.1 -0.1 L 0.1 -0.1 L 0.1 0.4 L -0.1 0.4 Z M 0 -0.4 A 0.1 0.1 0 1 1 0 -0.2 A 0.1 0.1 0 1 1 0 -0.4 Z' },
     { id: 'warning', label: 'Uyarı', icon: '⚠️', path: 'M 0 -0.5 L 0.45 0.35 L -0.45 0.35 Z M -0.05 -0.1 L 0.05 -0.1 L 0.05 0.15 L -0.05 0.15 Z M -0.05 0.2 L 0.05 0.2 L 0.05 0.3 L -0.05 0.3 Z' },
@@ -207,31 +278,23 @@ const SHAPE_LIBRARY = [
     { id: 'play', label: 'Oynat', icon: '▶️', path: 'M -0.2 -0.4 L 0.4 0 L -0.2 0.4 Z' },
     { id: 'stop', label: 'Dur', icon: '⏹️', path: 'M -0.4 -0.4 L 0.4 -0.4 L 0.4 0.4 L -0.4 0.4 Z' },
     { id: 'menu', label: 'Menü', icon: '☰', path: 'M -0.4 -0.4 L 0.4 -0.4 L 0.4 -0.2 L -0.4 -0.2 Z M -0.4 -0.1 L 0.4 -0.1 L 0.4 0.1 L -0.4 0.1 Z M -0.4 0.2 L 0.4 0.2 L 0.4 0.4 L -0.4 0.4 Z' },
-
-    // ==========================================
-    // 5. YER & LOKASYON (LOCATION)
-    // ==========================================
     { id: 'pin', label: 'Konum/Pin', icon: '📍', path: 'M 0 -0.5 A 0.3 0.3 0 1 1 0 0.1 L 0 0.5 L 0 0.1 A 0.3 0.3 0 1 1 0 -0.5 Z M 0 -0.35 A 0.1 0.1 0 1 0 0 -0.15 A 0.1 0.1 0 1 0 0 -0.35 Z' },
     { id: 'home', label: 'Ev', icon: '🏠', path: 'M 0 -0.5 L 0.5 -0.1 L 0.4 -0.1 L 0.4 0.5 L 0.1 0.5 L 0.1 0.1 L -0.1 0.1 L -0.1 0.5 L -0.4 0.5 L -0.4 -0.1 L -0.5 -0.1 Z' },
     { id: 'flag', label: 'Bayrak', icon: '🚩', path: 'M -0.4 -0.5 L -0.4 0.5 L -0.3 0.5 L -0.3 0 L 0.4 -0.25 L -0.3 -0.5 Z' },
     { id: 'map', label: 'Harita', icon: '🗺️', path: 'M -0.5 -0.4 L -0.2 -0.5 L 0.2 -0.4 L 0.5 -0.5 L 0.5 0.4 L 0.2 0.5 L -0.2 0.4 L -0.5 0.5 Z M -0.2 -0.5 L -0.2 0.4 M 0.2 -0.4 L 0.2 0.5' },
-
-    // ==========================================
-    // 6. GÜNLÜK NESNELER & EMOJİLER (OBJECTS)
-    // ==========================================
     { id: 'user', label: 'Kullanıcı', icon: '👤', path: 'M 0 -0.4 A 0.2 0.2 0 1 1 0 0 A 0.2 0.2 0 1 1 0 -0.4 Z M -0.4 0.5 A 0.4 0.4 0 0 1 0.4 0.5 L -0.4 0.5 Z' },
     { id: 'heart', label: 'Kalp', icon: '❤️', path: 'M 0 0.2 C 0.1 -0.1 0.5 -0.4 0.5 -0.15 C 0.5 0.1 0.1 0.3 0 0.5 C -0.1 0.3 -0.5 0.1 -0.5 -0.15 C -0.5 -0.4 -0.1 -0.1 0 0.2 Z' },
     { id: 'lightning', label: 'Şimşek', icon: '⚡', path: 'M 0.1 -0.5 L -0.3 0 L 0 0 L -0.1 0.5 L 0.3 0 L 0 0 Z' },
     { id: 'cloud', label: 'Bulut', icon: '☁️', path: 'M -0.2 0.2 L 0.2 0.2 A 0.15 0.15 0 0 0 0.2 -0.1 A 0.2 0.2 0 0 0 -0.2 -0.1 A 0.15 0.15 0 0 0 -0.2 0.2 Z' },
     { id: 'moon', label: 'Hilal', icon: '🌙', path: 'M 0.1 -0.4 A 0.4 0.4 0 1 1 0.1 0.4 A 0.3 0.3 0 1 0 0.1 -0.4 Z' },
-    { id: 'sun', label: 'Güneş', icon: '☀️', path: 'M 0 0 m -0.2 0 a 0.2 0.2 0 1 0 0.4 0 a 0.2 0.2 0 1 0 -0.4 0 M 0 -0.3 L 0 -0.45 M 0.21 -0.21 L 0.32 -0.32 M 0.3 0 L 0.45 0 M 0.21 0.21 L 0.32 0.32 M 0 0.3 L 0 0.45 M -0.21 0.21 L -0.32 0.32 M -0.3 0 L -0.45 0 M -0.21 -0.21 L -0.32 -0.32' }, // Rays as lines, SVG loader handles strokes if specified or simplified
+    { id: 'sun', label: 'Güneş', icon: '☀️', path: 'M 0 0 m -0.2 0 a 0.2 0.2 0 1 0 0.4 0 a 0.2 0.2 0 1 0 -0.4 0 M 0 -0.3 L 0 -0.45 M 0.21 -0.21 L 0.32 -0.32 M 0.3 0 L 0.45 0 M 0.21 0.21 L 0.32 0.32 M 0 0.3 L 0 0.45 M -0.21 0.21 L -0.32 0.32 M -0.3 0 L -0.45 0 M -0.21 -0.21 L -0.32 -0.32' },
     { id: 'drop', label: 'Su Damlası', icon: '💧', path: 'M 0 -0.5 Q 0.4 0 0.4 0.25 A 0.4 0.4 0 1 1 -0.4 0.25 Q -0.4 0 0 -0.5 Z' },
     { id: 'fire', label: 'Ateş', icon: '🔥', path: 'M 0 -0.5 Q 0.4 0 0.3 0.3 A 0.3 0.3 0 1 1 -0.3 0.3 Q -0.4 0 0 -0.5 Z M 0 0 Q 0.1 0.2 0 0.4 Q -0.1 0.2 0 0 Z' },
     { id: 'leaf', label: 'Yaprak', icon: '🍃', path: 'M -0.4 0.4 Q -0.4 -0.4 0.4 -0.4 Q 0.4 0.4 -0.4 0.4 Z M -0.4 0.4 L 0.2 -0.2' },
     { id: 'box', label: 'Kutu', icon: '📦', path: 'M -0.4 -0.3 L 0.4 -0.3 L 0.4 0.4 L -0.4 0.4 Z M -0.4 -0.3 L -0.5 -0.5 L 0.5 -0.5 L 0.4 -0.3 M 0 -0.3 L 0 0.4' },
     { id: 'lock', label: 'Kilit', icon: '🔒', path: 'M -0.3 0 L 0.3 0 L 0.3 0.5 L -0.3 0.5 Z M -0.2 0 L -0.2 -0.2 A 0.2 0.2 0 1 1 0.2 -0.2 L 0.2 0 Z' },
     { id: 'key', label: 'Anahtar', icon: '🔑', path: 'M -0.3 -0.3 A 0.2 0.2 0 1 1 -0.1 -0.1 L 0.4 0.4 L 0.4 0.5 L 0.3 0.5 L 0.3 0.4 L 0.2 0.4 L 0.2 0.3 L -0.1 -0.1 Z M -0.25 -0.25 A 0.05 0.05 0 1 0 -0.2 -0.2 Z' },
-    { id: 'tool', label: 'Tamir/Ayarlar', icon: '🔧', path: 'M -0.4 -0.2 L -0.2 -0.4 L 0.4 0.2 L 0.2 0.4 Z M -0.5 -0.5 L -0.3 -0.5 L -0.3 -0.3 L -0.5 -0.3 Z' }, // Simplified Wrench
+    { id: 'tool', label: 'Tamir/Ayarlar', icon: '🔧', path: 'M -0.4 -0.2 L -0.2 -0.4 L 0.4 0.2 L 0.2 0.4 Z M -0.5 -0.5 L -0.3 -0.5 L -0.3 -0.3 L -0.5 -0.3 Z' },
     { id: 'camera', label: 'Kamera', icon: '📷', path: 'M -0.4 -0.2 L -0.1 -0.2 L 0 -0.3 L 0.3 -0.3 L 0.4 -0.2 L 0.4 0.3 L -0.4 0.3 Z M 0 0.05 A 0.15 0.15 0 1 0 0 0.06 Z' },
     { id: 'mail', label: 'Mektup', icon: '✉️', path: 'M -0.5 -0.3 L 0.5 -0.3 L 0.5 0.3 L -0.5 0.3 Z M -0.5 -0.3 L 0 0.1 L 0.5 -0.3' },
     { id: 'bubble', label: 'Balon', icon: '💬', path: 'M -0.5 -0.3 L 0.5 -0.3 L 0.5 0.2 L 0.1 0.2 L -0.2 0.5 L -0.2 0.2 L -0.5 0.2 Z' }
@@ -244,12 +307,15 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 
 const isLoading = ref(true);
 const isExporting = ref(false);
+
+// [YENİ] UI Durumları
+const showSidebar = ref(true);
+const showModelSelector = ref(false);
 const showDownloadMenu = ref(false);
+const currentTransformMode = ref<'translate' | 'rotate' | 'scale'>('translate');
 
 const sceneData = ref<ARSceneDto | null>(null);
 const sceneItems = ref<SceneItemDto[]>([]);
-
-const showModelSelector = ref(false);
 const availableModels = ref<ARModelDto[]>([]);
 const selectedItemId = ref<number | null>(null);
 
@@ -263,13 +329,18 @@ let renderer: THREE.WebGLRenderer;
 let orbit: OrbitControls;
 let transformControl: TransformControls;
 let raycaster: THREE.Raycaster;
-let mouse: THREE.Vector2;
+let mouse: THREE.Vector2 = new THREE.Vector2();
 let animationId: number;
 
 const itemsMap = new Map<number, THREE.Object3D>();
 
 // --- LIFECYCLE ---
 onMounted(async () => {
+    // [YENİ] Mobilde sidebar'ı varsayılan olarak kapalı başlat
+    if (window.innerWidth < 768) {
+        showSidebar.value = false;
+    }
+
     if (!sceneId) return;
 
     try {
@@ -305,6 +376,20 @@ const loadSceneData = async () => {
 
 const getThumbnailUrl = (path: string) => arModelService.getPreviewUrl(path);
 
+// --- [YENİ] UI AKSİYONLARI ---
+const setTransformMode = (mode: 'translate' | 'rotate' | 'scale') => {
+    currentTransformMode.value = mode;
+    if (transformControl) {
+        transformControl.setMode(mode);
+    }
+};
+
+const deleteSelectedItem = () => {
+    if (selectedItemId.value) {
+        deleteItem(selectedItemId.value);
+    }
+};
+
 // --- YARDIMCI: Grid Texture ---
 const createGridTexture = () => {
     const size = 1024;
@@ -328,21 +413,14 @@ const createGridTexture = () => {
 };
 
 const createPerimeterMaterial = async (layer: any) => {
-    // Eğer doku URL'i varsa
     if (layer.textureUrl) {
         const loader = new TextureLoader();
         try {
-            // .load() yerine .loadAsync() kullanıyoruz ve işlemin bitmesini bekliyoruz
             const texture = await loader.loadAsync(layer.textureUrl);
-            
-            // Dokuyu tekrarla
             texture.wrapS = THREE.RepeatWrapping;
             texture.wrapT = THREE.RepeatWrapping;
             texture.colorSpace = THREE.SRGBColorSpace;
-            
-            // GLTF Export için önemli: Texture'ın dikey çevrilmesini kapatıyoruz
-            // Bu satır "No valid image data found" hatasını çözmeye yardımcı olur.
-            texture.flipY = false; 
+            texture.flipY = false;
 
             const scale = layer.textureScale || 1;
             texture.repeat.set(scale * 0.5, scale * 0.5);
@@ -355,15 +433,13 @@ const createPerimeterMaterial = async (layer: any) => {
             });
         } catch (error) {
             console.warn("Doku yüklenemedi, renk kullanılıyor:", error);
-            // Hata olursa (örn: link kırık) varsayılan renk ile devam et
             return new THREE.MeshStandardMaterial({
                 color: layer.color || '#94a3b8',
                 roughness: 0.8,
                 metalness: 0.1
             });
         }
-    } 
-    // Doku yoksa düz renk materyali döndür
+    }
     else {
         return new THREE.MeshStandardMaterial({
             color: layer.color || '#94a3b8',
@@ -377,7 +453,6 @@ const buildPerimeterLayers = async (targetScene: THREE.Scene, settings: any) => 
     const layers = settings.perimeterLayers || [];
     if (layers.length === 0) return;
 
-    // 1. ZEMİN NOKTALARINI HAZIRLA
     let basePoints: { x: number, z: number }[] = [];
 
     if (settings.floorType === 'custom' && Array.isArray(settings.floorPoints) && settings.floorPoints.length > 2) {
@@ -393,7 +468,6 @@ const buildPerimeterLayers = async (targetScene: THREE.Scene, settings: any) => 
         ];
     }
 
-    // 2. MERKEZ NOKTASINI HESAPLA
     const tempShape = new THREE.Shape();
     const tp0 = basePoints[0];
     if (tp0) {
@@ -408,34 +482,27 @@ const buildPerimeterLayers = async (targetScene: THREE.Scene, settings: any) => 
     const center = new THREE.Vector3();
     if (tempGeom.boundingBox) tempGeom.boundingBox.getCenter(center);
 
-    // 3. PERIMETER GRUBU OLUŞTUR
     const perimeterGroup = new THREE.Group();
     perimeterGroup.name = "GeneratedPerimeterGroup";
     perimeterGroup.position.x = -center.x;
     perimeterGroup.position.z = center.y;
 
-    // --- SOĞAN KABUĞU DÖNGÜSÜ ---
-    let currentInnerBoundary = [...basePoints]; 
+    let currentInnerBoundary = [...basePoints];
 
-    // ÖNEMLİ: await kullanabilmek için standart for döngüsü kullanıyoruz
     for (let index = 0; index < layers.length; index++) {
         const layer = layers[index];
-
-        // A. DIŞ SINIRI HESAPLA
         const currentOuterBoundary = offsetPolygon(currentInnerBoundary, Number(layer.width));
         if (!currentOuterBoundary || currentOuterBoundary.length < 3) continue;
 
-        // B. SHAPE OLUŞTUR
         const shape = new THREE.Shape();
         const p0 = currentOuterBoundary[0];
-        if (p0) shape.moveTo(p0.x, -p0.z); 
+        if (p0) shape.moveTo(p0.x, -p0.z);
         for (let i = 1; i < currentOuterBoundary.length; i++) {
             const p = currentOuterBoundary[i];
             if (p) shape.lineTo(p.x, -p.z);
         }
         shape.closePath();
 
-        // C. DELİK OLUŞTUR
         const holePath = new THREE.Path();
         const h0 = currentInnerBoundary[0];
         if (h0) holePath.moveTo(h0.x, -h0.z);
@@ -446,28 +513,21 @@ const buildPerimeterLayers = async (targetScene: THREE.Scene, settings: any) => 
         holePath.closePath();
         shape.holes.push(holePath);
 
-        // D. EXTRUDE
         const geometry = new THREE.ExtrudeGeometry(shape, {
             depth: Number(layer.height),
             bevelEnabled: false
         });
 
-        // E. MATERYAL VE MESH (BURADA BEKLİYORUZ)
-        // Texture'ın inmesini ve materyalin oluşmasını bekliyoruz
         const material = await createPerimeterMaterial(layer);
-        
-        const mesh = new THREE.Mesh(geometry, material);
 
-        // F. POZİSYONLAMA
-        mesh.rotation.x = -Math.PI / 2; 
+        const mesh = new THREE.Mesh(geometry, material);
+        mesh.rotation.x = -Math.PI / 2;
         mesh.position.y = layer.elevation ? Number(layer.elevation) : 0;
         mesh.renderOrder = index + 1;
         mesh.castShadow = true;
         mesh.receiveShadow = true;
 
         perimeterGroup.add(mesh);
-
-        // G. REFERANS GÜNCELLEME
         currentInnerBoundary = currentOuterBoundary;
     }
 
@@ -478,16 +538,11 @@ const buildPerimeterLayers = async (targetScene: THREE.Scene, settings: any) => 
 // EXPORT & CONVERT
 // =======================================================
 const getSceneAsBlob = async (): Promise<Blob> => {
-    
-    if (!scene) {
-        throw new Error("Sahne bulunamadı");
-    }
+    if (!scene) throw new Error("Sahne bulunamadı");
 
     const exporter = new GLTFExporter();
-    // CSG (Evaluator) işlemini zemin şekilleri için kaldırdık, çünkü 2D şekilleri siliyor.
     const settings = sceneData.value?.settings || {};
 
-    // --- ADIM 1: ARAYÜZ ELEMANLARINI GİZLE ---
     const controlsObj = transformControl as unknown as THREE.Object3D;
     controlsObj.visible = false;
 
@@ -496,34 +551,27 @@ const getSceneAsBlob = async (): Promise<Blob> => {
 
     const baseFloor = scene.getObjectByName("BaseFloor");
     const floorGroup = baseFloor?.parent;
-    const originalPositions = new Map<THREE.Object3D, number>();
     if (floorGroup) {
         floorGroup.children.forEach((child) => {
             if (child.name !== "BaseFloor" && child.name !== "GridMesh") {
-                originalPositions.set(child, child.position.z);
-                child.position.z = -child.position.z; 
+                child.position.z = -child.position.z;
             }
         });
     }
 
-    // --- ADIM 3: ÇEVRE DUVARLARINI OLUŞTUR VE EKLE ---
-    // Duvarların (texture'ların) tam yüklenmesi için await kullanıyoruz.
     await buildPerimeterLayers(scene, settings);
 
     const options = {
         binary: true,
         onlyVisible: true,
-        maxTextureSize: 1024 
+        maxTextureSize: 1024
     };
 
-    // --- ADIM 4: EXPORT ---
     return new Promise((resolve, reject) => {
         exporter.parse(
             scene,
             (gltf) => {
                 const blob = new Blob([gltf as ArrayBuffer], { type: 'model/gltf-binary' });
-                
-                // İşlem bitti, sahneyi eski haline getir
                 restoreSceneState(controlsObj, gridMesh, floorGroup);
                 resolve(blob);
             },
@@ -537,36 +585,28 @@ const getSceneAsBlob = async (): Promise<Blob> => {
 };
 
 const restoreSceneState = (
-    controls: THREE.Object3D, 
-    grid: THREE.Object3D | undefined | null, 
+    controls: THREE.Object3D,
+    grid: THREE.Object3D | undefined | null,
     floorGroup: THREE.Object3D | undefined | null
 ) => {
-    // 1. Kontrolleri aç
     controls.visible = true;
     if (grid) grid.visible = true;
 
-    // 2. Oluşturulan Duvar Grubunu Sil
     const generatedPerimeter = scene.getObjectByName("GeneratedPerimeterGroup");
     if (generatedPerimeter) {
         scene.remove(generatedPerimeter);
-        // Bellek temizliği (isteğe bağlı ama iyi olur)
         generatedPerimeter.traverse((child) => {
-             if ((child as THREE.Mesh).isMesh) {
-                 (child as THREE.Mesh).geometry.dispose();
-                 // Materyal dispose işlemleri...
-             }
+            if ((child as THREE.Mesh).isMesh) {
+                (child as THREE.Mesh).geometry.dispose();
+            }
         });
     }
 
-    // 3. Kesilen şekilleri düzeltmek için sahneyi yeniden yükle
-    // CSG işlemi orijinal meshlerin geometrisini kalıcı bozduğu için en temizi budur.
     if (floorGroup) {
         scene.remove(floorGroup);
     }
-    
-    // Sahneyi veriden tekrar oluştur
-    // Not: Bu işlem çok hızlı olduğu için kullanıcı sadece bir 'blink' görür.
-    initThreeJS(); 
+
+    initThreeJS();
     loadSceneObjects();
 };
 
@@ -593,14 +633,13 @@ const handleExport = async (format: 'glb' | 'usdz') => {
     }
 };
 
-
 const convertAndDownloadUsdz = async (glbBlob: Blob, baseName: string) => {
     const data = await arModelService.convertGlbToUsdz(glbBlob, `${baseName}.glb`);
     if (data.usdz && data.usdz.url) {
         const downloadUrl = arModelService.getPreviewUrl(data.usdz.url);
         const link = document.createElement('a');
         link.href = downloadUrl;
-        link.download = `${baseName}.usdz`; 
+        link.download = `${baseName}.usdz`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -623,23 +662,22 @@ const triggerDownload = (blob: Blob, filename: string) => {
 const initThreeJS = async () => {
     if (!canvasRef.value) return;
 
-    // Ayarlar
     const settings = sceneData.value?.settings || {};
     const sceneWidth = settings.width || 20;
     const sceneDepth = settings.depth || 20;
-    const bgColor = settings.backgroundColor || '#f5f5f5';
+    // [GÜNCELLEME]: Kullanıcının belirttiği rengi kullan, yoksa gri yap.
+    const bgColor = settings.backgroundColor || '#e5e7eb';
     const floorColor = settings.floorColor || '#ffffff';
     const floorType = settings.floorType || 'rectangle';
     const floorTextureUrl = settings.floorTextureUrl;
     const floorLayers = settings.floorLayers || [];
     const points = settings.floorPoints || [];
-    const texScale = settings.textureScale || 1; 
+    const texScale = settings.textureScale || 1;
 
-    // Scene
     scene = new THREE.Scene();
     scene.background = new THREE.Color(bgColor);
     const maxDim = Math.max(sceneWidth, sceneDepth);
-    scene.fog = new THREE.Fog(bgColor, 30, maxDim * 8);
+    scene.fog = new THREE.Fog(bgColor, 60, maxDim * 16);
 
     // Lights
     scene.add(new THREE.AmbientLight(0xffffff, 0.7));
@@ -652,7 +690,7 @@ const initThreeJS = async () => {
     dirLight.shadow.mapSize.set(2048, 2048);
     scene.add(dirLight);
 
-    // --- ZEMİN (Base Floor) GEOMETRİSİ ---
+    // --- ZEMİN ---
     let geometry: THREE.BufferGeometry;
     if (floorType === 'custom' && points.length > 2) {
         const shape = new THREE.Shape();
@@ -666,16 +704,12 @@ const initThreeJS = async () => {
         geometry = new THREE.ShapeGeometry(shape);
     } else {
         geometry = new THREE.PlaneGeometry(sceneWidth, sceneDepth);
-        // Önceki düzeltme: Geometriyi pozitif alana taşı
         geometry.translate(sceneWidth / 2, sceneDepth / 2, 0);
     }
 
-    // --- OFFSET HESAPLAMA ---
     geometry.computeBoundingBox();
     const centerOffset = new THREE.Vector3();
-    if (geometry.boundingBox) {
-        geometry.boundingBox.getCenter(centerOffset);
-    }
+    if (geometry.boundingBox) geometry.boundingBox.getCenter(centerOffset);
     geometry.translate(-centerOffset.x, -centerOffset.y, -centerOffset.z);
 
     // UV Map
@@ -694,8 +728,6 @@ const initThreeJS = async () => {
         uvAttribute.needsUpdate = true;
     }
 
-    // --- ZEMİN MATERYALİ (STENCIL WRITE EKLENDİ) ---
-    // Ortak ayarlar
     const baseMaterialParams = {
         roughness: 0.8,
         metalness: 0.1,
@@ -704,12 +736,10 @@ const initThreeJS = async () => {
         polygonOffsetFactor: 2,
         polygonOffsetUnits: 2,
         depthWrite: false,
-        
-        // >>> MASK LEME AYARLARI (YAZMA) <<<
         stencilWrite: true,
-        stencilRef: 1,                    // Referans ID: 1
-        stencilFunc: THREE.AlwaysStencilFunc, // Her zaman çiz
-        stencilZPass: THREE.ReplaceStencilOp  // Çizilen pikselin stencil değerini '1' yap
+        stencilRef: 1,
+        stencilFunc: THREE.AlwaysStencilFunc,
+        stencilZPass: THREE.ReplaceStencilOp
     };
 
     let baseMaterial: THREE.MeshStandardMaterial;
@@ -722,7 +752,6 @@ const initThreeJS = async () => {
         const repeatFactor = 1 / safeScale;
         texture.repeat.set(repeatFactor, repeatFactor);
         texture.colorSpace = THREE.SRGBColorSpace;
-
         baseMaterial = new THREE.MeshStandardMaterial({
             map: texture,
             ...baseMaterialParams
@@ -734,13 +763,11 @@ const initThreeJS = async () => {
         });
     }
 
-    // Base mesh'in render order'ı en düşük olsun (0)
     const baseMesh = new THREE.Mesh(geometry, baseMaterial);
     baseMesh.receiveShadow = true;
     baseMesh.name = "BaseFloor";
-    baseMesh.renderOrder = 0; // İlk bu çizilmeli ki stencil buffer dolsun
+    baseMesh.renderOrder = 0;
 
-    // --- GRID ---
     const gridTexture = createGridTexture();
     if (gridTexture) gridTexture.repeat.set(1, 1);
     const gridMaterial = new THREE.MeshBasicMaterial({
@@ -750,35 +777,28 @@ const initThreeJS = async () => {
         side: THREE.DoubleSide,
         depthWrite: false,
         polygonOffset: true,
-        polygonOffsetFactor: -2, 
+        polygonOffsetFactor: -2,
         polygonOffsetUnits: -2
     });
     const gridMesh = new THREE.Mesh(geometry, gridMaterial);
     gridMesh.name = "GridMesh";
     gridMesh.visible = settings.gridVisible !== false;
-    
-    // Grid her zaman en üstte görünsün
-    gridMesh.renderOrder = 999; 
+    gridMesh.renderOrder = 999;
 
-    // --- FLOOR GROUP ---
     const floorGroup = new THREE.Group();
     floorGroup.add(baseMesh);
     floorGroup.add(gridMesh);
 
-    // --- FLOOR LAYERS (SVG Şekiller - MASK UYGULAMALI) ---
     if (floorLayers.length > 0) {
-        // 1. Z-Index Sıralaması
         const sortedLayers = [...floorLayers].sort((a, b) => a.zIndex - b.zIndex);
-        const svgLoader = new SVGLoader(); 
+        const svgLoader = new SVGLoader();
 
         sortedLayers.forEach((layer, index) => {
             const shapeDef = SHAPE_LIBRARY.find(s => s.id === layer.shapeId) || SHAPE_LIBRARY[0];
             if (!shapeDef) return;
 
-            // ÖNEMLİ: SVG Wrapper (loader.parse bunu bekler)
             const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg"><path d="${shapeDef.path}" /></svg>`;
             const shapeData = svgLoader.parse(svgMarkup);
-
             if (!shapeData.paths || shapeData.paths.length === 0) return;
 
             const shapes: THREE.Shape[] = [];
@@ -786,62 +806,44 @@ const initThreeJS = async () => {
                 const pathShapes = path.toShapes(true);
                 shapes.push(...pathShapes);
             });
-
             if (shapes.length === 0) return;
 
             const layerGeo = new THREE.ShapeGeometry(shapes);
-            
-            // Geometriyi ortala (Scale ve Rotate işlemleri merkezden olsun diye)
             layerGeo.computeBoundingBox();
             const center = new THREE.Vector3();
-            if(layerGeo.boundingBox) layerGeo.boundingBox.getCenter(center);
+            if (layerGeo.boundingBox) layerGeo.boundingBox.getCenter(center);
             layerGeo.translate(-center.x, -center.y, -center.z);
 
-            // --- KATMAN MATERYALİ (STENCIL READ EKLENDİ) ---
             const layerMat = new THREE.MeshBasicMaterial({
                 color: layer.color,
                 transparent: true,
                 opacity: layer.opacity !== undefined ? layer.opacity : 1,
                 side: THREE.DoubleSide,
-                depthWrite: false, 
+                depthWrite: false,
                 depthTest: true,
-
-                // >>> MASKELEME AYARLARI (OKUMA) <<<
                 stencilWrite: true,
-                stencilRef: 1,                   // Zeminin ID'si ile eşleşmeli (1)
-                stencilFunc: THREE.EqualStencilFunc, // Sadece değer '1' ise çiz (Zeminin olduğu yer)
+                stencilRef: 1,
+                stencilFunc: THREE.EqualStencilFunc,
             });
 
             const layerMesh = new THREE.Mesh(layerGeo, layerMat);
-
-            // Scale (Genişlik ve Yükseklik)
             layerMesh.scale.set(layer.width, layer.height, 1);
-
-            // Pozisyonlama (Offset ve Z-Fighting önleme)
             const correctedX = layer.x - centerOffset.x;
             const correctedZ = layer.z - centerOffset.y;
-            
-            // Fiziksel olarak çok az yukarı kaldırıyoruz (Y Ekseni)
             const zFightOffset = 0.005 * (index + 1);
             layerMesh.position.set(correctedX, correctedZ, zFightOffset);
-
-            // Render Order: 
-            layerMesh.renderOrder = layer.zIndex; 
-
-            // Rotasyon
+            layerMesh.renderOrder = layer.zIndex;
             layerMesh.rotation.z = -layer.rotation;
-
             floorGroup.add(layerMesh);
         });
     }
 
     floorGroup.rotation.x = Math.PI / 2;
-
     scene.add(floorGroup);
 
     await buildPerimeterLayers(scene, settings);
 
-    // --- KAMERA & RENDERER ---
+    // [GÜNCELLEME]: Canvas boyutunu doğru elementten al
     const width = canvasRef.value.clientWidth;
     const height = canvasRef.value.clientHeight;
     camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
@@ -849,23 +851,22 @@ const initThreeJS = async () => {
     camera.position.set(camDist, camDist, camDist);
     camera.lookAt(0, 0, 0);
 
-    renderer = new THREE.WebGLRenderer({ 
-        canvas: canvasRef.value, 
+    renderer = new THREE.WebGLRenderer({
+        canvas: canvasRef.value,
         antialias: true,
         stencil: true
     });
     renderer.setSize(width, height);
-    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
     orbit = new OrbitControls(camera, renderer.domElement);
     orbit.enableDamping = true;
     orbit.dampingFactor = 0.05;
-    
-    // --- KAMERA AÇISI KISITLAMASI ---
-    orbit.maxPolarAngle = Math.PI / 2 - 0.05; 
+    orbit.maxPolarAngle = Math.PI / 2 - 0.05;
 
+    // [GÜNCELLEME]: Transform Controls'u UI state ile bağla
     transformControl = markRaw(new TransformControls(camera, renderer.domElement));
     transformControl.addEventListener('dragging-changed', (event) => { orbit.enabled = !event.value; });
     transformControl.addEventListener('mouseUp', async () => {
@@ -873,6 +874,8 @@ const initThreeJS = async () => {
             await saveTransform(selectedItemId.value, transformControl.object);
         }
     });
+    // Başlangıç modunu ayarla
+    transformControl.setMode(currentTransformMode.value);
     scene.add(transformControl.getHelper());
 
     raycaster = new THREE.Raycaster();
@@ -888,8 +891,9 @@ const initThreeJS = async () => {
 
 const handleResize = () => {
     if (!canvasRef.value || !camera || !renderer) return;
-    const width = canvasRef.value.parentElement?.clientWidth || window.innerWidth;
-    const height = canvasRef.value.parentElement?.clientHeight || window.innerHeight;
+    // Full screen olduğu için window boyutunu kullanmak daha güvenlidir
+    const width = window.innerWidth;
+    const height = window.innerHeight;
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     renderer.setSize(width, height);
@@ -1007,7 +1011,7 @@ const onMouseUp = (event: MouseEvent) => {
     raycaster.setFromCamera(mouse, camera);
 
     const intersects = raycaster.intersectObjects(scene.children, true);
-    
+
     const hit = intersects.find(i => {
         let obj = i.object;
         while (obj.parent && obj.parent !== scene) {
@@ -1035,15 +1039,22 @@ const selectItemFromTree = (itemId: number) => {
     if (mesh) transformControl.attach(mesh);
 };
 
+// [GÜNCELLEME]: Klavye kısayollarını UI State ile eşle
 const handleKeyDown = (event: KeyboardEvent) => {
     if (document.activeElement?.tagName === 'INPUT') return;
     switch (event.key.toLowerCase()) {
-        case 'w': transformControl.setMode('translate'); break;
-        case 'e': transformControl.setMode('rotate'); break;
-        case 'r': transformControl.setMode('scale'); break;
+        case 'w':
+            setTransformMode('translate');
+            break;
+        case 'e':
+            setTransformMode('rotate');
+            break;
+        case 'r':
+            setTransformMode('scale');
+            break;
         case 'delete':
         case 'backspace':
-            if (selectedItemId.value) deleteItem(selectedItemId.value);
+            deleteSelectedItem();
             break;
     }
 };
@@ -1079,3 +1090,63 @@ const deleteItem = async (itemId: number) => {
     }
 };
 </script>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.4);
+}
+
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+    transition: all 0.3s ease-out;
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+    transform: translateX(-20px);
+    opacity: 0;
+}
+
+.animate-fade-in-up {
+    animation: fadeInUp 0.2s ease-out forwards;
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.2s ease-out forwards;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+</style>

@@ -1,173 +1,241 @@
 <template>
-  <div class="max-w-4xl mx-auto p-6">
-    <h1 class="text-3xl font-bold mb-6 text-gray-800">3D Model Yükle</h1>
+  <div class="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
+    <div class="max-w-4xl mx-auto">
 
-    <div v-if="!tempData"
-      class="border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center cursor-pointer transition hover:bg-gray-50 hover:border-blue-400 bg-white mb-6 group"
-      @drop.prevent="(e) => handleDrop(e, 'auto')" @dragover.prevent @click="triggerFileSelect('auto')">
-
-      <div class="flex flex-col items-center justify-center pointer-events-none">
-        <div class="p-4 bg-blue-50 rounded-full mb-4 group-hover:scale-110 transition-transform">
-          <svg class="w-10 h-10 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
-          </svg>
-        </div>
-        <p class="text-gray-700 font-semibold text-lg">Model Dosyasını Sürükleyin</p>
-        <p class="text-gray-400 text-sm mt-2">veya dosya seçmek için tıklayın</p>
-        <div class="flex gap-2 mt-4 text-xs font-mono text-gray-500 bg-gray-100 px-3 py-1 rounded-md">
-          <span class="text-blue-600 font-bold">.FBX (Otomatik Dönüştür)</span>
-          <span class="border-l border-gray-300 pl-2">.GLB + .USDZ (Manuel)</span>
-        </div>
-      </div>
-      <input ref="mainInput" type="file" class="hidden" accept=".glb,.gltf,.fbx,.usdz"
-        @change="(e) => onFileChange(e, 'auto')" />
-    </div>
-
-    <div v-if="uploading" class="mb-6 p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
-      <div class="flex justify-between text-sm font-medium text-gray-700 mb-2">
-        <span>{{ progress === 100 ? 'İşleniyor...' : 'Yükleniyor...' }}</span>
-        <span>{{ progress }}%</span>
-      </div>
-      <div class="w-full bg-gray-100 rounded-full h-2.5 overflow-hidden">
-        <div class="bg-blue-600 h-full rounded-full transition-all duration-300 ease-out"
-          :style="{ width: progress + '%' }"></div>
-      </div>
-    </div>
-
-    <div v-if="tempData" class="flex flex-col gap-6">
-
-      <div v-if="previewUrl"
-        class="w-full h-96 shadow-lg rounded-2xl overflow-hidden border border-gray-200 bg-gray-50 relative">
-        <ArPreview ref="previewRef" :src="previewUrl" />
-        <div
-          class="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-gray-600 shadow-sm">
-          3D Önizleme
-        </div>
+      <div class="mb-8">
+        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Yeni Model Yükle</h1>
+        <p class="mt-2 text-gray-500 text-sm">
+          Modelinizi yükleyin, önizleyin ve yayınlayın. FBX dosyaları otomatik dönüştürülür.
+        </p>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-        <div class="p-4 rounded-xl border shadow-sm flex flex-col gap-3 relative transition-colors"
-          :class="tempData.glb ? 'bg-white border-blue-100' : 'bg-gray-50 border-dashed border-gray-300 hover:bg-blue-50 cursor-pointer'"
-          @click="!tempData.glb ? triggerFileSelect('glb') : null"
-          @drop.prevent="(e) => !tempData?.glb && handleDrop(e, 'glb')" @dragover.prevent>
-
-          <div class="flex items-start gap-3">
-            <div class="p-2 rounded-lg transition-colors"
-              :class="tempData.glb ? 'bg-blue-50 text-blue-600' : 'bg-gray-200 text-gray-400'">
-              <span class="font-bold text-xs">GLB</span>
-            </div>
-
-            <div v-if="tempData.glb" class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-900 truncate">{{ tempData.glb.filename }}</p>
-              <p class="text-xs text-gray-500 mt-0.5">{{ formatBytes(tempData.glb.size) }} • Web & Android</p>
-              <a :href="getDownloadUrl(tempData.glb.url)" target="_blank"
-                class="text-xs text-blue-600 hover:underline mt-1 inline-block">İndir</a>
-            </div>
-
-            <div v-else class="flex-1 flex flex-col justify-center h-full min-h-[50px]">
-              <p class="text-sm font-medium text-gray-600">GLB Dosyası Eksik</p>
-              <p class="text-xs text-gray-400">Yüklemek için tıklayın</p>
-            </div>
-
-            <div v-if="tempData.glb" class="text-green-500">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+      <div v-if="!tempData"
+        class="relative border-2 border-dashed border-gray-300 rounded-3xl p-8 md:p-16 text-center hover:bg-white hover:border-blue-400 hover:shadow-lg transition-all duration-300 group cursor-pointer bg-gray-50/50"
+        @drop.prevent="(e) => handleDrop(e, 'auto')" @dragover.prevent @click="triggerFileSelect('auto')">
+        <div class="flex flex-col items-center justify-center pointer-events-none space-y-4">
+          <div
+            class="p-5 bg-white shadow-sm rounded-full group-hover:scale-110 group-hover:shadow-md transition-transform duration-300">
+            <div class="bg-blue-50 p-3 rounded-full">
+              <svg class="w-10 h-10 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path>
               </svg>
             </div>
           </div>
-          <input ref="glbInput" type="file" class="hidden" accept=".glb,.gltf"
-            @change="(e) => onFileChange(e, 'glb')" />
-        </div>
 
-        <div class="p-4 rounded-xl border shadow-sm flex flex-col gap-3 relative transition-colors"
-          :class="tempData.usdz ? 'bg-white border-purple-100' : 'bg-gray-50 border-dashed border-gray-300 hover:bg-purple-50 cursor-pointer'"
-          @click="!tempData.usdz ? triggerFileSelect('usdz') : null"
-          @drop.prevent="(e) => !tempData?.usdz && handleDrop(e, 'usdz')" @dragover.prevent>
-
-          <div class="flex items-start gap-3">
-            <div class="p-2 rounded-lg transition-colors"
-              :class="tempData.usdz ? 'bg-purple-50 text-purple-600' : 'bg-gray-200 text-gray-400'">
-              <span class="font-bold text-xs">USDZ</span>
-            </div>
-
-            <div v-if="tempData.usdz" class="flex-1 min-w-0">
-              <p class="text-sm font-medium text-gray-900 truncate">{{ tempData.usdz.filename }}</p>
-              <p class="text-xs text-gray-500 mt-0.5">{{ formatBytes(tempData.usdz.size) }} • iOS AR</p>
-              <a :href="getDownloadUrl(tempData.usdz.url)" target="_blank"
-                class="text-xs text-purple-600 hover:underline mt-1 inline-block">İndir</a>
-            </div>
-
-            <div v-else class="flex-1 flex flex-col justify-center h-full min-h-[50px]">
-              <p class="text-sm font-medium text-gray-600">USDZ Dosyası Eksik</p>
-              <p class="text-xs text-gray-400">Yüklemek için tıklayın</p>
-            </div>
-
-            <div v-if="tempData.usdz" class="text-green-500">
-              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-              </svg>
-            </div>
+          <div>
+            <p class="text-gray-900 font-bold text-lg md:text-xl">Dosyayı buraya bırakın</p>
+            <p class="text-gray-500 text-sm mt-1">veya tarayıcıyı açmak için tıklayın</p>
           </div>
-          <input ref="usdzInput" type="file" class="hidden" accept=".usdz" @change="(e) => onFileChange(e, 'usdz')" />
+
+          <div class="flex flex-wrap justify-center gap-2 mt-2">
+            <span
+              class="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-lg shadow-sm border border-blue-200">
+              FBX (Otomatik)
+            </span>
+            <span class="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg border border-gray-200">
+              GLB
+            </span>
+            <span class="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg border border-gray-200">
+              USDZ
+            </span>
+          </div>
         </div>
 
+        <input ref="mainInput" type="file" class="hidden" accept=".glb,.gltf,.fbx,.usdz"
+          @change="(e) => onFileChange(e, 'auto')" />
       </div>
 
-      <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-        <h3 class="font-semibold text-gray-800 mb-4">Model Yayınlama</h3>
+      <div v-if="uploading"
+        class="mb-8 bg-white p-6 rounded-2xl shadow-lg border border-gray-100 relative overflow-hidden">
+        <div class="flex justify-between items-end mb-2 relative z-10">
+          <div>
+            <span class="text-lg font-bold text-gray-900 block">Dosya Yükleniyor</span>
+            <span class="text-sm text-gray-500">{{ progress === 100 ? 'İşleniyor, lütfen bekleyin...' : 'Sunucuya aktarılıyor...' }}</span>
+          </div>
+          <span class="text-2xl font-black text-blue-600">{{ progress }}%</span>
+        </div>
+        <div class="w-full bg-gray-100 rounded-full h-3 overflow-hidden relative z-10">
+          <div
+            class="bg-gradient-to-r from-blue-500 to-blue-600 h-full rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(37,99,235,0.5)]"
+            :style="{ width: progress + '%' }"></div>
+        </div>
+        <div class="absolute -right-10 -top-10 w-32 h-32 bg-blue-50 rounded-full blur-2xl opacity-50"></div>
+      </div>
 
-        <div class="mb-4">
-          <label class="block text-sm font-medium text-gray-700 mb-1">Model Adı</label>
-          <input v-model="modelName" type="text"
-            class="w-full px-4 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition"
-            placeholder="Örn: iPhone 15 Pro Max">
+      <div v-if="tempData" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-fade-in-up">
+
+        <div class="lg:col-span-7 space-y-6">
+
+          <div class="relative w-full bg-gray-900 rounded-3xl overflow-hidden shadow-xl group border border-gray-800">
+            <div class="h-64 md:h-96 w-full">
+              <ArPreview ref="previewRef" :src="previewUrl" v-if="previewUrl" />
+              <div v-else class="w-full h-full flex items-center justify-center text-gray-500">
+                <span class="text-sm">Önizleme hazırlanamadı</span>
+              </div>
+            </div>
+
+            <div
+              class="absolute top-4 left-4 bg-black/60 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-xs font-medium border border-white/10 flex items-center gap-2">
+              <svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Bu açı kapak fotoğrafı olacak
+            </div>
+
+            <div
+              class="absolute top-4 right-4 bg-white/90 backdrop-blur text-gray-800 px-3 py-1 rounded-full text-xs font-bold shadow-sm">
+              Canlı Önizleme
+            </div>
+          </div>
+
+          <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+            <label class="block text-sm font-bold text-gray-700 mb-2">Model Adı</label>
+            <div class="relative">
+              <input v-model="modelName" type="text"
+                class="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition bg-gray-50 focus:bg-white"
+                placeholder="Örn: Modern Ahşap Sandalye">
+              <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-gray-400">
+                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                    d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+              </div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2 ml-1">Kullanıcıların göreceği başlık.</p>
+          </div>
+
         </div>
 
-        <div v-if="!isReadyToFinalize"
-          class="mb-4 text-sm text-amber-700 bg-amber-50 p-3 rounded-lg border border-amber-100 flex items-center gap-2">
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
-            </path>
-          </svg>
-          <span>Kaydetmek için hem GLB hem de USDZ dosyasının yüklenmiş olması gerekmektedir.</span>
-        </div>
+        <div class="lg:col-span-5 space-y-4">
 
-        <div class="flex gap-3 mt-6">
-          <button @click="finalizeUpload" :disabled="!isReadyToFinalize || finalizing"
-            class="flex-1 bg-gray-900 hover:bg-black disabled:bg-gray-300 text-white font-semibold py-3 px-6 rounded-xl transition disabled:cursor-not-allowed flex items-center justify-center gap-2">
-            <svg v-if="finalizing" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none"
-              viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor"
-                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-              </path>
+          <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Gerekli Dosyalar</h3>
+
+          <div class="relative rounded-2xl p-4 transition-all duration-300 border"
+            :class="tempData.glb ? 'bg-white border-blue-200 shadow-sm' : 'bg-gray-50 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer'"
+            @click="!tempData.glb ? triggerFileSelect('glb') : null"
+            @drop.prevent="(e) => !tempData?.glb && handleDrop(e, 'glb')" @dragover.prevent>
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors"
+                :class="tempData.glb ? 'bg-blue-100 text-blue-600' : 'bg-gray-200 text-gray-400'">
+                <span class="font-black text-xs">GLB</span>
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <div v-if="tempData.glb">
+                  <p class="text-sm font-bold text-gray-900 truncate">{{ tempData.glb.filename }}</p>
+                  <p class="text-xs text-green-600 flex items-center mt-0.5">
+                    <svg class="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Yüklendi ({{ formatBytes(tempData.glb.size) }})
+                  </p>
+                </div>
+                <div v-else>
+                  <p class="text-sm font-bold text-gray-600">GLB Dosyası</p>
+                  <p class="text-xs text-gray-400">Android ve Web için zorunlu</p>
+                </div>
+              </div>
+
+              <div v-if="!tempData.glb" class="text-blue-500">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+            </div>
+            <input ref="glbInput" type="file" class="hidden" accept=".glb,.gltf"
+              @change="(e) => onFileChange(e, 'glb')" />
+          </div>
+
+          <div class="relative rounded-2xl p-4 transition-all duration-300 border"
+            :class="tempData.usdz ? 'bg-white border-indigo-200 shadow-sm' : 'bg-gray-50 border-dashed border-gray-300 hover:border-indigo-400 hover:bg-indigo-50/30 cursor-pointer'"
+            @click="!tempData.usdz ? triggerFileSelect('usdz') : null"
+            @drop.prevent="(e) => !tempData?.usdz && handleDrop(e, 'usdz')" @dragover.prevent>
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors"
+                :class="tempData.usdz ? 'bg-indigo-100 text-indigo-600' : 'bg-gray-200 text-gray-400'">
+                <span class="font-black text-xs">USDZ</span>
+              </div>
+
+              <div class="flex-1 min-w-0">
+                <div v-if="tempData.usdz">
+                  <p class="text-sm font-bold text-gray-900 truncate">{{ tempData.usdz.filename }}</p>
+                  <p class="text-xs text-green-600 flex items-center mt-0.5">
+                    <svg class="w-3 h-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Yüklendi ({{ formatBytes(tempData.usdz.size) }})
+                  </p>
+                </div>
+                <div v-else>
+                  <p class="text-sm font-bold text-gray-600">USDZ Dosyası</p>
+                  <p class="text-xs text-gray-400">iOS (iPhone/iPad) için zorunlu</p>
+                </div>
+              </div>
+
+              <div v-if="!tempData.usdz" class="text-indigo-500">
+                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+            </div>
+            <input ref="usdzInput" type="file" class="hidden" accept=".usdz" @change="(e) => onFileChange(e, 'usdz')" />
+          </div>
+
+          <div v-if="!isReadyToFinalize"
+            class="p-4 bg-amber-50 border border-amber-100 rounded-xl flex gap-3 items-start">
+            <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            {{ finalizing ? 'Kaydediliyor...' : 'Kaydet ve Yayınla' }}
-          </button>
+            <p class="text-xs text-amber-800 font-medium">Modeli yayınlayabilmek için hem GLB hem de USDZ dosyasının
+              eksiksiz yüklenmesi gerekmektedir.</p>
+          </div>
 
-          <button @click="cancelProcess" :disabled="finalizing"
-            class="px-6 py-3 bg-white border border-gray-300 text-gray-700 font-semibold rounded-xl hover:bg-gray-50 transition">
-            İptal
-          </button>
+          <hr class="border-gray-200 my-4" />
+
+          <div class="flex flex-col gap-3">
+            <button @click="finalizeUpload" :disabled="!isReadyToFinalize || finalizing"
+              class="w-full py-4 px-6 rounded-xl font-bold text-white transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none disabled:shadow-none disabled:bg-gray-300 disabled:cursor-not-allowed"
+              :class="isReadyToFinalize ? 'bg-gradient-to-r from-gray-900 to-black hover:from-gray-800 hover:to-gray-900' : 'bg-gray-300'">
+              <svg v-if="finalizing" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none"
+                viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor"
+                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                </path>
+              </svg>
+              <span v-else>Kaydet ve Yayınla</span>
+            </button>
+
+            <button @click="cancelProcess" :disabled="finalizing"
+              class="w-full py-3 px-6 rounded-xl font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50">
+              Vazgeç ve Sil
+            </button>
+          </div>
+
         </div>
       </div>
-    </div>
 
-    <div v-if="error" class="mt-6 p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 flex items-start gap-3">
-      <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-          d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-      </svg>
-      <span>{{ error }}</span>
-    </div>
+      <div v-if="error"
+        class="mt-6 p-4 bg-red-50 text-red-700 rounded-xl border border-red-100 flex items-start gap-3 animate-pulse">
+        <svg class="w-5 h-5 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+            d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+        </svg>
+        <span class="font-medium text-sm">{{ error }}</span>
+      </div>
 
+    </div>
   </div>
 </template>
 
 <script lang="ts" setup>
+// Script kısmını mevcut kodunuzdaki ile aynı bıraktım, sadece mantıksal temizlik yaptım.
+// Template tarafındaki tüm ref'ler (mainInput, glbInput vs.) burada tanımlı olmalı.
 import { ref, computed } from "vue";
 import ArPreview from "../components/ArPreview.vue";
 import type { TempModelResponse } from "../dto/arModel.dto";
@@ -192,31 +260,24 @@ const COMPANY_ID = 1;
 // --- Computed ---
 const previewUrl = computed(() => {
   if (!tempData.value) return '';
-  // Öncelik GLB'de
   if (tempData.value.glb?.url) return arModelService.getPreviewUrl(tempData.value.glb.url);
-  // Yoksa genel preview
   if (tempData.value.previewUrl) return arModelService.getPreviewUrl(tempData.value.previewUrl);
   return '';
 });
 
-// Finalize butonu sadece iki dosya da varsa aktif olur
 const isReadyToFinalize = computed(() => {
   return tempData.value && tempData.value.glb && tempData.value.usdz;
 });
 
 // --- Helper Functions ---
 const formatBytes = (bytes: number) => {
-  if (!+bytes) return '0 Bytes';
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  if (!+bytes) return '0 B';
+  const sizes = ['B', 'KB', 'MB', 'GB'];
   const i = Math.floor(Math.log(bytes) / Math.log(1024));
   return `${parseFloat((bytes / Math.pow(1024, i)).toFixed(2))} ${sizes[i]}`;
 };
 
-const getDownloadUrl = (path: string) => arModelService.getPreviewUrl(path);
-
 // --- Actions ---
-
-// Hangi input'un tetikleneceğini belirler
 const triggerFileSelect = (type: 'auto' | 'glb' | 'usdz') => {
   if (type === 'auto') mainInput.value?.click();
   else if (type === 'glb') glbInput.value?.click();
@@ -233,7 +294,6 @@ const handleDrop = (event: DragEvent, type: 'auto' | 'glb' | 'usdz') => {
   if (file) processUpload(file, type);
 };
 
-// --- Ana Yükleme Mantığı ---
 const processUpload = async (file: File, type: 'auto' | 'glb' | 'usdz') => {
   error.value = null;
   uploading.value = true;
@@ -245,51 +305,40 @@ const processUpload = async (file: File, type: 'auto' | 'glb' | 'usdz') => {
 
   try {
     const ext = file.name.split('.').pop()?.toLowerCase();
-    // Gelen yanıtın tipini 'any' olarak işaretliyoruz çünkü manuel upload yanıtı 
-    // standart TempModelResponse yapısından (iç içe yapıdan) farklı dönüyor.
     let res: any = null;
     const currentTempId = tempData.value?.tempId;
 
-    // --- 1. FBX Yükleme (Bu kısımda sorun yok, backend zaten nested dönüyor) ---
     if (ext === 'fbx') {
       if (type !== 'auto') throw new Error("FBX dosyaları sadece ana ekrandan yüklenebilir.");
       res = await arModelService.uploadFbx(file, (p) => progress.value = p);
       tempData.value = res;
     }
-
-    // --- 2. GLB Yükleme (DÜZELTİLDİ) ---
     else if (ext === 'glb' || ext === 'gltf') {
       if (type === 'usdz') throw new Error("Lütfen buraya USDZ dosyası yükleyin.");
-
       res = await arModelService.uploadGlb(file, currentTempId, (p) => progress.value = p);
 
-      // Backend'den düz gelen veriyi, frontend'in beklediği 'glb' objesi içine paketliyoruz
+      // Manuel Mapping (Backend uyumluluğu için korundu)
       tempData.value = {
-        tempId: res.tempId,          // ID güncellenir
-        previewUrl: res.previewUrl,  // Ana önizleme URL'i GLB'den gelir
-        glb: {                       // <--- İŞTE BURASI EKSİKTİ
+        tempId: res.tempId,
+        previewUrl: res.previewUrl,
+        glb: {
           filename: res.filename,
           url: res.previewUrl,
           size: res.size
         },
-        usdz: tempData.value?.usdz || undefined // Varsa eski USDZ'yi koru
+        usdz: tempData.value?.usdz || undefined
       };
     }
-
-    // --- 3. USDZ Yükleme (DÜZELTİLDİ) ---
     else if (ext === 'usdz') {
       if (type === 'glb') throw new Error("Lütfen buraya GLB dosyası yükleyin.");
-
       res = await arModelService.uploadUsdz(file, currentTempId, (p) => progress.value = p);
 
-      // Backend'den düz gelen veriyi, frontend'in beklediği 'usdz' objesi içine paketliyoruz
+      // Manuel Mapping (Backend uyumluluğu için korundu)
       tempData.value = {
         tempId: res.tempId,
-        // Eğer önceden yüklenmiş bir GLB varsa onun previewUrl'ini koru, yoksa boş kalsın 
-        // (USDZ web'de doğrudan render edilemez)
         previewUrl: tempData.value?.previewUrl,
-        glb: tempData.value?.glb || undefined, // Varsa eski GLB'yi koru
-        usdz: {                      // <--- BURAYI OLUŞTURUYORUZ
+        glb: tempData.value?.glb || undefined,
+        usdz: {
           filename: res.filename,
           url: res.previewUrl,
           size: res.size
@@ -298,7 +347,6 @@ const processUpload = async (file: File, type: 'auto' | 'glb' | 'usdz') => {
     } else {
       throw new Error("Desteklenmeyen dosya formatı.");
     }
-
   } catch (err: any) {
     console.error(err);
     error.value = err.message || err.response?.data?.message || "Yükleme hatası";
@@ -312,24 +360,13 @@ const processUpload = async (file: File, type: 'auto' | 'glb' | 'usdz') => {
 
 const dataURLtoBlob = (dataurl: string): Blob => {
   const [header, base64Data] = dataurl.split(',');
-
-  if (!header || !base64Data) {
-    throw new Error('Geçersiz DataURL formatı: Parçalar eksik.');
-  }
-  const match = header.match(/:(.*?);/);
-  const mime = (match && match[1]) ? match[1] : 'image/png';
-
-  try {
-    const bstr = atob(base64Data);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new Blob([u8arr], { type: mime });
-  } catch (e) {
-    throw new Error('Base64 verisi decode edilemedi: ' + e);
-  }
+  if (!header || !base64Data) throw new Error('Geçersiz DataURL');
+  const mime = header.match(/:(.*?);/)?.[1] || 'image/png';
+  const bstr = atob(base64Data);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) u8arr[n] = bstr.charCodeAt(n);
+  return new Blob([u8arr], { type: mime });
 };
 
 const finalizeUpload = async () => {
@@ -341,16 +378,13 @@ const finalizeUpload = async () => {
   try {
     const screenshotBase64 = previewRef.value?.takeScreenshot();
     let thumbnailBlob: Blob | undefined;
-
-    if (screenshotBase64) {
-      thumbnailBlob = dataURLtoBlob(screenshotBase64);
-    }
+    if (screenshotBase64) thumbnailBlob = dataURLtoBlob(screenshotBase64);
 
     await arModelService.finalizeModel({
       tempId: tempData.value.tempId,
       companyId: COMPANY_ID,
       modelName: modelName.value,
-      thumbnail: thumbnailBlob // Artık Blob gönderiyoruz
+      thumbnail: thumbnailBlob
     });
 
     alert("Model ve thumbnail başarıyla kaydedildi!");
@@ -365,7 +399,6 @@ const finalizeUpload = async () => {
 };
 
 const cancelProcess = () => resetForm();
-
 const resetForm = () => {
   tempData.value = null;
   progress.value = 0;

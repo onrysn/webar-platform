@@ -1,54 +1,121 @@
 <template>
-  <div class="p-6 bg-gray-50 min-h-screen">
+  <div class="min-h-screen bg-gray-50 py-8 px-4 sm:px-6 lg:px-8">
     <div class="max-w-7xl mx-auto">
 
-      <div class="flex justify-between items-center mb-8">
+      <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900">AR Sahnelerim</h1>
-          <p class="text-gray-500 text-sm mt-1">Projelerinizi ve 3D alanlarınızı yönetin</p>
+          <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">AR Sahnelerim</h1>
+          <p class="mt-1 text-sm text-gray-500">Müşterilerinize sunacağınız 3D ortamları buradan tasarlayın.</p>
         </div>
+
         <button @click="openCreateModal"
-          class="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 shadow-sm font-medium transition-colors flex items-center gap-2">
-          <span>+</span> Yeni Sahne
+          class="group w-full sm:w-auto flex items-center justify-center px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 hover:shadow-blue-300 transform hover:-translate-y-0.5 font-medium">
+          <svg xmlns="http://www.w3.org/2000/svg"
+            class="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+          </svg>
+          Yeni Sahne Oluştur
         </button>
       </div>
 
-      <div v-if="loading" class="flex justify-center items-center py-20">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div v-for="n in 6" :key="n" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 animate-pulse">
+          <div class="h-48 bg-gray-200 rounded-xl mb-4"></div>
+          <div class="h-5 bg-gray-200 rounded w-2/3 mb-2"></div>
+          <div class="h-3 bg-gray-200 rounded w-1/3"></div>
+        </div>
+      </div>
+
+      <div v-else-if="scenes.length === 0"
+        class="text-center py-20 bg-white rounded-3xl border border-dashed border-gray-300">
+        <div class="mx-auto h-24 w-24 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mb-4">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12" fill="none" viewBox="0 0 24 24"
+            stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+          </svg>
+        </div>
+        <h3 class="mt-2 text-lg font-bold text-gray-900">Henüz hiç sahne yok</h3>
+        <p class="mt-1 text-sm text-gray-500 max-w-sm mx-auto">İlk AR sahnenizi oluşturarak ürünlerinizi sanal ortamda
+          sergilemeye başlayın.</p>
+        <div class="mt-6">
+          <button @click="openCreateModal"
+            class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-blue-700 bg-blue-100 hover:bg-blue-200">
+            Sahne Oluştur
+          </button>
+        </div>
       </div>
 
       <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div v-for="scene in scenes" :key="scene.id"
-          class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:shadow-md transition-all group relative">
+          class="group relative bg-white rounded-2xl shadow-sm hover:shadow-xl border border-gray-200 transition-all duration-300 hover:-translate-y-1 overflow-hidden">
 
-          <div class="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+          <div
+            class="absolute top-3 right-3 flex gap-2 z-20 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <button @click.stop="openEditModal(scene)"
-              class="p-2 bg-white rounded-full shadow hover:text-blue-600 text-gray-500">
-              <span class="text-xs">✏️</span>
+              class="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm text-gray-500 hover:text-blue-600 hover:bg-white transition-colors border border-gray-200"
+              title="Düzenle">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
             </button>
             <button @click.stop="deleteScene(scene.id)"
-              class="p-2 bg-white rounded-full shadow hover:text-red-600 text-gray-500">
-              <span class="text-xs">🗑️</span>
+              class="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm text-gray-500 hover:text-red-600 hover:bg-white transition-colors border border-gray-200"
+              title="Sil">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
             </button>
           </div>
 
           <div @click="goToEditor(scene.id)" class="cursor-pointer">
-            <div
-              class="h-40 bg-gray-100 rounded-lg mb-4 flex items-center justify-center relative overflow-hidden border border-gray-100">
 
-              <div v-if="scene.settings?.backgroundColor" class="absolute inset-0 opacity-50"
+            <div class="h-48 w-full bg-gray-100 relative overflow-hidden border-b border-gray-100">
+
+              <div v-if="scene.settings?.backgroundColor"
+                class="absolute inset-0 opacity-50 transition-colors duration-300"
                 :style="{ backgroundColor: scene.settings.backgroundColor }"></div>
 
-              <div v-if="scene.settings?.floorTextureUrl"
-                class="absolute w-20 h-20 shadow-sm transform rotate-45 border border-white/20 bg-cover bg-center"
-                :style="{ backgroundImage: `url(${scene.settings.floorTextureUrl})` }"></div>
+              <div class="absolute inset-0 opacity-10 pointer-events-none"
+                style="background-image: radial-gradient(#000 1px, transparent 1px); background-size: 20px 20px;"></div>
 
-              <div v-else-if="scene.settings?.floorColor"
-                class="absolute w-16 h-16 rounded shadow-sm transform rotate-45 border border-black/10"
-                :style="{ backgroundColor: scene.settings.floorColor }"></div>
+              <div class="absolute inset-0 flex items-center justify-center">
+                <div v-if="scene.settings?.floorTextureUrl"
+                  class="w-24 h-24 shadow-2xl transform rotate-45 border-4 border-white/30 bg-cover bg-center rounded-xl transition-transform group-hover:scale-110 duration-500"
+                  :style="{ backgroundImage: `url(${scene.settings.floorTextureUrl})` }"></div>
+
+                <div v-else-if="scene.settings?.floorColor"
+                  class="w-24 h-24 shadow-2xl transform rotate-45 border-4 border-white/30 rounded-xl transition-transform group-hover:scale-110 duration-500"
+                  :style="{ backgroundColor: scene.settings.floorColor }"></div>
+
+                <div v-else class="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center text-gray-400">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              </div>
             </div>
 
-            <h3 class="font-bold text-lg text-gray-800">{{ scene.name }}</h3>
+            <div class="p-5">
+              <h3 class="font-bold text-gray-900 text-lg mb-1 truncate group-hover:text-blue-600 transition-colors">{{
+                scene.name }}</h3>
+              <div class="flex items-center text-xs text-gray-500 gap-2">
+                <span class="flex items-center bg-gray-100 px-2 py-1 rounded">
+                  ID: #{{ scene.id }}
+                </span>
+                <span v-if="scene.createdAt" class="text-gray-400">
+                  {{ new Date(scene.createdAt).toLocaleDateString('tr-TR') }}
+                </span>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -64,7 +131,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { arSceneService } from '../../../services/arSceneService';
-import SceneCreatorModal from '../components/SceneCreatorModal.vue'; // Yolu düzenleyin
+import SceneCreatorModal from '../components/SceneCreatorModal.vue';
 import type { ARSceneDto } from '../dto/arScene.dto';
 
 const router = useRouter();
@@ -79,9 +146,14 @@ const modal = reactive({
 });
 
 const fetchScenes = async () => {
-  try { scenes.value = await arSceneService.listScenes(COMPANY_ID); }
-  catch (e) { console.error(e); }
-  finally { loading.value = false; }
+  loading.value = true;
+  try {
+    scenes.value = await arSceneService.listScenes(COMPANY_ID);
+  } catch (e) {
+    console.error(e);
+  } finally {
+    loading.value = false;
+  }
 };
 
 const openCreateModal = () => {
@@ -97,59 +169,41 @@ const openEditModal = (scene: ARSceneDto) => {
 };
 
 const handleSaveFromModal = async (payload: any) => {
-    loading.value = true;
-    try {
-        // ... (Dosya yükleme işlemleri varsa buraya gelir) ...
-
-        if (modal.mode === 'create') {
-            // 1. OLUŞTURMA MODU: companyId ZORUNLU
-            // Payload'a companyId ekleyip gönderiyoruz.
-            const createData = { ...payload, companyId: COMPANY_ID };
-            await arSceneService.createScene(createData);
-
-        } else if (modal.mode === 'edit' && modal.editingData) {
-            // 2. GÜNCELLEME MODU: companyId YASAK 🚫
-            // Backend UpdateSceneDto'sunda companyId yok.
-            // Payload'dan sadece name ve settings'i alıyoruz.
-            
-            const updateData = { ...payload };
-            
-            // Eğer payload içinde companyId varsa SİLİYORUZ
-            if ('companyId' in updateData) {
-                delete updateData.companyId;
-            }
-
-            await arSceneService.updateScene(modal.editingData.id, updateData);
-        }
-
-        modal.isOpen = false;
-        await fetchScenes();
-    } catch (err: any) {
-        console.error(err);
-        // Hata mesajını göster
-        const msg = err.response?.data?.message;
-        alert("Hata: " + (Array.isArray(msg) ? msg.join(', ') : msg));
-    } finally {
-        loading.value = false;
+  loading.value = true;
+  try {
+    if (modal.mode === 'create') {
+      const createData = { ...payload, companyId: COMPANY_ID };
+      await arSceneService.createScene(createData);
+    } else if (modal.mode === 'edit' && modal.editingData) {
+      const updateData = { ...payload };
+      if ('companyId' in updateData) delete updateData.companyId;
+      await arSceneService.updateScene(modal.editingData.id, updateData);
     }
+    modal.isOpen = false;
+    await fetchScenes();
+  } catch (err: any) {
+    console.error(err);
+    const msg = err.response?.data?.message || 'Bir hata oluştu';
+    alert("Hata: " + (Array.isArray(msg) ? msg.join(', ') : msg));
+  } finally {
+    loading.value = false;
+  }
 };
 
 const deleteScene = async (id: number) => {
   if (!confirm('Bu sahneyi silmek istediğinize emin misiniz?')) return;
 
-  loading.value = true;
+  // Optimistik UI Update (Kullanıcıya hemen silindi hissi vermek için)
+  const previousScenes = [...scenes.value];
+  scenes.value = scenes.value.filter(s => s.id !== id);
+
   try {
     await arSceneService.deleteScene(id);
-    
-    scenes.value = scenes.value.filter(s => s.id !== id);
-    
-    console.log("Sahne başarıyla silindi.");
   } catch (err: any) {
+    // Hata olursa geri al
+    scenes.value = previousScenes;
     console.error("Silme hatası:", err);
-    const msg = err.response?.data?.message || "Sahne silinirken bir hata oluştu.";
-    alert("Hata: " + msg);
-  } finally {
-    loading.value = false;
+    alert("Silme işlemi başarısız oldu.");
   }
 };
 

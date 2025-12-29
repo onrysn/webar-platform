@@ -1,5 +1,5 @@
 <template>
-  <div class="relative w-full h-full bg-gray-100 rounded-xl overflow-hidden border border-gray-200 group">
+  <div class="relative w-full h-full bg-gray-100 rounded-xl overflow-hidden border border-gray-200 group touch-none">
     
     <canvas ref="canvasRef" class="w-full h-full block outline-none cursor-move"></canvas>
     
