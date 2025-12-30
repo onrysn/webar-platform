@@ -8,6 +8,7 @@ import { AuthModule } from './modules/auth/auth.module';
 import { CompanyModule } from './modules/company/company.module';
 import { ARModelModule } from './modules/ar-model/ar-model.module';
 import { ARSceneModule } from './modules/ar-scene/ar-scene.module';
+import { DashboardModule } from './modules/dashboard/dashboard.module';
 
 @Module({
   imports: [
@@ -34,7 +35,8 @@ import { ARSceneModule } from './modules/ar-scene/ar-scene.module';
     ProductModule,
     CompanyModule,
     ARModelModule,
-    ARSceneModule
+    ARSceneModule,
+    DashboardModule
   ],
 })
 export class AppModule { }

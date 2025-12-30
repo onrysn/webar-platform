@@ -28,6 +28,7 @@ model User {
 
   userCompanies UserCompany[]
   models        ARModel[]    
+  activities    ActivityLog[]
 }
 
 model Company {
@@ -38,9 +39,10 @@ model Company {
   createdAt DateTime  @default(now())
   isDeleted Boolean @default(false)
 
-  users     UserCompany[]
-  arModels  ARModel[]   
-  scenes    ARScene[]   
+  users       UserCompany[]
+  arModels    ARModel[]   
+  scenes      ARScene[] 
+  activities  ActivityLog[]  
 }
 
 model UserCompany {
@@ -127,4 +129,24 @@ model FloorTexture {
   
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
+}
+
+model ActivityLog {
+  id          Int      @id @default(autoincrement())
+  action      String   // Örn: "CREATE_SCENE", "DELETE_USER", "LOGIN"
+  description String   // Frontend'de gösterilecek okunabilir metin
+  metadata    Json?    // İşlemle ilgili detay veriler (IP, Browser, Eski Değer/Yeni Değer vb.)
+  createdAt   DateTime @default(now())
+
+  // İlişkiler (Opsiyonel olabilir, çünkü sistem tarafından yapılan otomatik işlemler de olabilir)
+  userId      Int?
+  user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  companyId   Int?
+  company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  // Performans için Indexler
+  @@index([userId])
+  @@index([companyId])
+  @@index([createdAt])
 }

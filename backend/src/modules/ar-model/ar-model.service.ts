@@ -9,6 +9,7 @@ import { spawn } from 'child_process';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
 import { v4 as uuidv4 } from 'uuid';
+import { ActivityLogService } from '../activity-log/activity-log.service';
 
 @Injectable()
 export class ARModelService {
@@ -17,7 +18,10 @@ export class ARModelService {
     private TEMP_ROOT = path.join(process.cwd(), 'uploads', 'temp');
     private FINAL_ROOT = path.join(process.cwd(), 'uploads', 'models');
 
-    constructor(private prisma: PrismaService) {
+    constructor(
+        private prisma: PrismaService,
+        private activityLogger: ActivityLogService
+    ) {
         const keyHex = process.env.ENCRYPTION_KEY;
         if (!keyHex || keyHex.length !== 64) {
             throw new Error('ENCRYPTION_KEY is missing or invalid (must be 32 bytes hex)!');
@@ -248,6 +252,14 @@ export class ARModelService {
                 thumbnailPath,
             },
         });
+        
+        await this.activityLogger.log(
+            uploadedBy,
+            'UPLOAD_MODEL',
+            `"${created.fileName}" modeli yüklendi (GLB+USDZ).`,
+            { modelId: created.id, companyId: created.companyId, size: created.fileSize }
+        );
+
         try {
             fs.rmSync(tempDir, { recursive: true, force: true });
         } catch (err) {

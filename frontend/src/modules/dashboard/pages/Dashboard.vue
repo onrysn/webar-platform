@@ -13,8 +13,9 @@
             class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs border border-indigo-200">
             {{ userInitials }}
           </div>
-          <span class="text-sm font-semibold text-slate-700 pr-2 truncate max-w-[100px]">{{ auth.user?.name ||
-            'Kullanıcı' }}</span>
+          <span class="text-sm font-semibold text-slate-700 pr-2 truncate max-w-[100px]">
+            {{ auth.user?.name || 'Kullanıcı' }}
+          </span>
         </div>
       </div>
     </header>
@@ -22,7 +23,6 @@
     <div class="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-
         <router-link to="/dashboard/companies"
           class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col transition-all hover:shadow-md hover:border-indigo-200 group cursor-pointer">
           <div class="flex justify-between items-start mb-4">
@@ -37,14 +37,8 @@
             </div>
           </div>
           <div class="flex justify-between items-end mt-auto">
-            <span class="text-3xl font-extrabold text-slate-800 group-hover:text-indigo-600 transition-colors">12</span>
-            <span
-              class="text-green-600 text-xs font-bold bg-green-50 px-2 py-1 rounded-lg border border-green-100 flex items-center gap-1">
-              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-              </svg>
-              +2
+            <span class="text-3xl font-extrabold text-slate-800 group-hover:text-indigo-600 transition-colors">
+              {{ loading ? '-' : stats.totalCompanies }}
             </span>
           </div>
         </router-link>
@@ -63,7 +57,9 @@
             </div>
           </div>
           <div class="flex justify-between items-end mt-auto">
-            <span class="text-3xl font-extrabold text-slate-800 group-hover:text-indigo-600 transition-colors">84</span>
+            <span class="text-3xl font-extrabold text-slate-800 group-hover:text-indigo-600 transition-colors">
+              {{ loading ? '-' : stats.activeScenes }}
+            </span>
             <span
               class="text-indigo-600 text-xs font-bold bg-indigo-50 px-2 py-1 rounded-lg border border-indigo-100">Yayında</span>
           </div>
@@ -83,10 +79,14 @@
             </div>
           </div>
           <div class="flex justify-between items-end mt-auto">
-            <span class="text-3xl font-extrabold text-slate-800 group-hover:text-indigo-600 transition-colors">1.2
-              <small class="text-lg text-slate-400 font-medium">GB</small></span>
+            <span class="text-3xl font-extrabold text-slate-800 group-hover:text-indigo-600 transition-colors">
+              {{ loading ? '-' : stats.storage.used }}
+              <small class="text-lg text-slate-400 font-medium">{{ stats.storage.unit }}</small>
+            </span>
             <div class="w-16 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-2">
-              <div class="h-full bg-orange-500 rounded-full" style="width: 45%"></div>
+              <div class="h-full bg-orange-500 rounded-full transition-all duration-500 ease-out"
+                :style="{ width: `${stats.storage.percentage}%` }">
+              </div>
             </div>
           </div>
         </router-link>
@@ -105,8 +105,9 @@
             </div>
           </div>
           <div class="flex justify-between items-end mt-auto">
-            <span
-              class="text-3xl font-extrabold text-slate-800 group-hover:text-indigo-600 transition-colors">340</span>
+            <span class="text-3xl font-extrabold text-slate-800 group-hover:text-indigo-600 transition-colors">
+              {{ loading ? '-' : stats.totalUsers }}
+            </span>
             <div class="flex -space-x-2">
               <div class="w-6 h-6 rounded-full bg-slate-200 border-2 border-white"></div>
               <div class="w-6 h-6 rounded-full bg-slate-300 border-2 border-white"></div>
@@ -120,6 +121,42 @@
 
         <div class="xl:col-span-1 space-y-6">
 
+          <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <h3 class="font-bold text-slate-800 mb-6 text-sm uppercase tracking-wide">Son 7 Günlük Görüntülenme</h3>
+
+            <div class="flex justify-between h-32 gap-2">
+
+              <div v-if="loading" class="w-full h-full flex items-center justify-center text-xs text-slate-400">
+                Veri yükleniyor...
+              </div>
+
+              <div v-else v-for="day in chartData" :key="day.date"
+                class="flex flex-col items-center gap-2 flex-1 h-full group cursor-pointer">
+
+                <div
+                  class="w-full bg-slate-50 rounded-t-lg relative flex-1 flex items-end hover:bg-slate-100 transition-colors">
+
+                  <div
+                    class="w-full bg-indigo-500 hover:bg-indigo-600 transition-all duration-500 rounded-t-sm min-h-[1px] relative"
+                    :style="{ height: `${(day.count / maxChartValue) * 100}%` }">
+
+                    <div
+                      class="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] font-bold py-1.5 px-2.5 rounded shadow-xl transition-all duration-200 whitespace-nowrap z-50 pointer-events-none transform group-hover:-translate-y-1">
+                      {{ day.count }}
+
+                      <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 rotate-45"></div>
+                    </div>
+
+                  </div>
+                </div>
+
+                <span class="text-[10px] font-bold text-slate-400 group-hover:text-indigo-600 transition-colors">
+                  {{ new Date(day.date).getDate() }}
+                </span>
+              </div>
+            </div>
+          </div>
+
           <div
             class="bg-gradient-to-br from-indigo-600 to-violet-600 rounded-2xl p-6 text-white shadow-xl shadow-indigo-200 overflow-hidden relative group">
             <div
@@ -129,7 +166,6 @@
               <h3 class="text-xl font-bold mb-2">Yeni Deneyim Başlat</h3>
               <p class="text-indigo-100 text-sm mb-6 leading-relaxed opacity-90">Müşteriniz için etkileyici bir AR
                 sahnesi tasarlamaya hemen başlayın.</p>
-
               <router-link to="/dashboard/ar-scene"
                 class="w-full py-3 bg-white text-indigo-700 font-bold rounded-xl hover:bg-indigo-50 transition-all shadow-sm flex items-center justify-center gap-2 transform hover:-translate-y-0.5">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
@@ -145,7 +181,6 @@
           <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <h3 class="font-bold text-slate-800 mb-4 text-sm uppercase tracking-wide">Hızlı Erişim</h3>
             <div class="space-y-3">
-
               <router-link to="/dashboard/companies/create"
                 class="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-slate-100 hover:border-slate-200 group transition-all">
                 <div class="flex items-center gap-3">
@@ -173,7 +208,6 @@
                 <span
                   class="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-1 transition-all">→</span>
               </router-link>
-
             </div>
           </div>
         </div>
@@ -196,27 +230,43 @@
                 </tr>
               </thead>
               <tbody class="divide-y divide-slate-100">
-                <tr v-for="i in 5" :key="i" class="hover:bg-slate-50 transition-colors group">
+                <tr v-if="loading && activities.length === 0">
+                  <td colspan="4" class="px-6 py-8 text-center text-slate-400">Yükleniyor...</td>
+                </tr>
+
+                <tr v-else-if="activities.length === 0">
+                  <td colspan="4" class="px-6 py-8 text-center text-slate-400">Henüz bir aktivite kaydı yok.</td>
+                </tr>
+
+                <tr v-else v-for="activity in activities" :key="activity.id"
+                  class="hover:bg-slate-50 transition-colors group">
                   <td class="px-6 py-4">
                     <div class="flex items-center gap-3">
                       <div class="w-2 h-2 rounded-full bg-indigo-500"></div>
-                      <span class="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">Yeni Sahne:
-                        "Mutfak Showroom"</span>
+                      <span class="font-bold text-slate-700 group-hover:text-indigo-600 transition-colors">
+                        {{ activity.description || activity.action }}
+                      </span>
                     </div>
                   </td>
                   <td class="px-6 py-4">
                     <div class="flex items-center gap-2">
                       <div
-                        class="w-6 h-6 rounded-full bg-slate-200 text-[10px] flex items-center justify-center font-bold text-slate-500">
-                        ON</div>
-                      <span class="text-slate-600 font-medium">Onur (Admin)</span>
+                        class="w-6 h-6 rounded-full bg-slate-200 text-[10px] flex items-center justify-center font-bold text-slate-500 uppercase">
+                        {{ activity.user ? activity.user.substring(0, 2) : '??' }}
+                      </div>
+                      <span class="text-slate-600 font-medium">{{ activity.user }}</span>
                     </div>
                   </td>
-                  <td class="px-6 py-4 text-slate-400 font-medium">2 saat önce</td>
+                  <td class="px-6 py-4 text-slate-400 font-medium">
+                    {{ new Date(activity.date).toLocaleDateString('tr-TR', {
+                      day: 'numeric', month: 'short', hour:
+                        '2-digit', minute: '2-digit'
+                    }) }}
+                  </td>
                   <td class="px-6 py-4">
                     <span
                       class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-100">
-                      Tamamlandı
+                      {{ activity.status }}
                     </span>
                   </td>
                 </tr>
@@ -228,31 +278,66 @@
       </div>
 
     </div>
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
-import { useAuthStore } from '../../../store/modules/auth'
+import { onMounted, ref, computed } from 'vue';
+import { useAuthStore } from '../../../store/modules/auth';
+import { dashboardService } from '../../../services/dashboardService';
+import type { DashboardStats, ActivityLog, ChartData } from '../dto/dashboard.dto';
 
-const auth = useAuthStore()
+const auth = useAuthStore();
 
-// Kullanıcı baş harflerini alma (Avatar için)
+const loading = ref(true);
+const stats = ref<DashboardStats>({
+  totalCompanies: 0,
+  activeScenes: 0,
+  totalUsers: 0,
+  storage: { used: '0', unit: 'GB', percentage: 0 }
+});
+const activities = ref<ActivityLog[]>([]);
+const chartData = ref<ChartData[]>([]);
+
 const userInitials = computed(() => {
   const name = auth.user?.name || 'User';
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-})
+});
+
+const maxChartValue = computed(() => {
+  if (chartData.value.length === 0) return 1;
+  const max = Math.max(...chartData.value.map(d => d.count));
+  return max === 0 ? 1 : max;
+});
+
+const fetchDashboardData = async () => {
+  loading.value = true;
+  try {
+    const [statsData, activitiesData, chartDataRes] = await Promise.all([
+      dashboardService.getStats(),
+      dashboardService.getActivities(),
+      dashboardService.getChartData()
+    ]);
+
+    stats.value = statsData;
+    activities.value = activitiesData;
+    chartData.value = chartDataRes;
+  } catch (error) {
+    console.error("Dashboard verisi yüklenemedi", error);
+  } finally {
+    loading.value = false;
+  }
+};
 
 onMounted(async () => {
   if (!auth.user && auth.token) {
-    await auth.fetchMe()
+    await auth.fetchMe();
   }
-})
+  await fetchDashboardData();
+});
 </script>
 
 <style scoped>
-/* Scrollbar Güzelleştirme */
 .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;

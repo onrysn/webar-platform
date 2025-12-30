@@ -20,81 +20,35 @@
         </button>
       </div>
 
-      <nav class="flex-1 flex flex-col space-y-1 px-3 py-6 overflow-y-auto custom-scrollbar">
+      <nav class="flex-1 flex flex-col space-y-6 px-3 py-6 overflow-y-auto custom-scrollbar">
 
-        <p class="px-3 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Genel Bakış</p>
+        <div v-for="(group, index) in navigation" :key="index">
+          <p v-if="group.items.some(item => item.visible)"
+            class="px-3 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
+            {{ group.title }}
+          </p>
 
-        <router-link to="/dashboard" active-class="bg-indigo-600/10 text-indigo-400 border-r-2 border-indigo-500"
-          class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-r-none rounded-l-lg hover:bg-slate-800 hover:text-white transition-all">
-          <svg class="mr-3 h-5 w-5 transition-colors"
-            :class="$route.path === '/dashboard' ? 'text-indigo-400' : 'text-slate-500 group-hover:text-white'"
-            fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-              d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-          </svg>
-          Dashboard
-        </router-link>
+          <div class="space-y-1">
+            <template v-for="item in group.items" :key="item.to">
+              <router-link v-if="item.visible" :to="item.to"
+                active-class="bg-indigo-600/10 text-indigo-400 border-r-2 border-indigo-500"
+                class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-r-none rounded-l-lg hover:bg-slate-800 hover:text-white transition-all border-r-2 border-transparent">
 
-        <div class="pt-6">
-          <p class="px-3 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">AR Studio</p>
+                <svg class="mr-3 h-5 w-5 transition-colors"
+                  :class="$route.path.startsWith(item.to) && item.to !== '/' ? 'text-indigo-400' : 'text-slate-500 group-hover:text-white'"
+                  fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon" />
+                </svg>
 
-          <router-link to="/dashboard/ar-scene"
-            active-class="bg-indigo-600/10 text-indigo-400 border-r-2 border-indigo-500"
-            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-r-none rounded-l-lg hover:bg-slate-800 hover:text-white transition-all">
-            <svg class="mr-3 h-5 w-5 transition-colors"
-              :class="$route.path.includes('ar-scene') ? 'text-indigo-400' : 'text-slate-500 group-hover:text-white'"
-              fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-            </svg>
-            Sahnelerim
-          </router-link>
-
-          <router-link to="/dashboard/ar-model"
-            active-class="bg-indigo-600/10 text-indigo-400 border-r-2 border-indigo-500"
-            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-r-none rounded-l-lg hover:bg-slate-800 hover:text-white transition-all">
-            <svg class="mr-3 h-5 w-5 transition-colors"
-              :class="$route.path.includes('ar-model') ? 'text-indigo-400' : 'text-slate-500 group-hover:text-white'"
-              fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-            3D Modeller
-          </router-link>
-
-          <router-link v-if="isAdmin" to="/dashboard/ar-model/upload"
-            active-class="bg-indigo-600/10 text-indigo-400 border-r-2 border-indigo-500"
-            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-r-none rounded-l-lg hover:bg-slate-800 hover:text-white transition-all">
-            <svg class="mr-3 h-5 w-5 transition-colors"
-              :class="$route.path.includes('upload') ? 'text-indigo-400' : 'text-slate-500 group-hover:text-white'"
-              fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-            </svg>
-            Model Yükle
-          </router-link>
-        </div>
-
-        <div v-if="isAdmin" class="pt-6">
-          <p class="px-3 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Yönetim</p>
-
-          <router-link to="/dashboard/companies"
-            active-class="bg-indigo-600/10 text-indigo-400 border-r-2 border-indigo-500"
-            class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-r-none rounded-l-lg hover:bg-slate-800 hover:text-white transition-all">
-            <svg class="mr-3 h-5 w-5 transition-colors"
-              :class="$route.path.includes('companies') ? 'text-indigo-400' : 'text-slate-500 group-hover:text-white'"
-              fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-            </svg>
-            Şirketler
-          </router-link>
+                {{ item.name }}
+              </router-link>
+            </template>
+          </div>
         </div>
 
       </nav>
 
       <div class="border-t border-slate-800 p-4 shrink-0 bg-slate-900">
-
         <div class="flex items-center gap-3 mb-4 px-2">
           <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
             {{ userInitials }}
@@ -119,7 +73,6 @@
     </aside>
 
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
-
       <header
         class="md:hidden bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 shrink-0 z-20">
         <span class="font-bold text-lg text-slate-800 tracking-tight">WebAR Admin</span>
@@ -133,58 +86,87 @@
       <main class="flex-1 overflow-y-auto relative w-full custom-scrollbar-light">
         <router-view />
       </main>
-
     </div>
 
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, computed, ref, watch } from 'vue';
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../store/modules/auth';
 
-export default defineComponent({
-  setup() {
-    const auth = useAuthStore();
-    const router = useRouter();
-    const route = useRoute();
-    const isSidebarOpen = ref(false);
+const auth = useAuthStore();
+const router = useRouter();
+const route = useRoute();
 
-    const toggleSidebar = () => { isSidebarOpen.value = !isSidebarOpen.value; };
-    const closeSidebar = () => { isSidebarOpen.value = false; };
+const isSidebarOpen = ref(false);
+const toggleSidebar = () => { isSidebarOpen.value = !isSidebarOpen.value; };
+const closeSidebar = () => { isSidebarOpen.value = false; };
 
-    // Mobil menü açıkken sayfa değişirse menüyü kapat
-    watch(() => route.path, () => { closeSidebar(); });
+watch(() => route.path, () => closeSidebar());
 
-    const logout = () => {
-      auth.logout();
-      router.push('/login');
-    };
-
-    const isAdmin = computed(() => auth.user?.role === 'admin');
-
-    // Kullanıcı baş harflerini hesapla
-    const userInitials = computed(() => {
-      const name = auth.user?.name || 'U';
-      return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
-    });
-
-    return {
-      auth,
-      logout,
-      isAdmin,
-      isSidebarOpen,
-      toggleSidebar,
-      closeSidebar,
-      userInitials
-    };
-  },
+const isAdmin = computed(() => auth.user?.role === 'admin');
+const userInitials = computed(() => {
+  const name = auth.user?.name || 'U';
+  return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 });
+
+const logout = () => {
+  auth.logout();
+  router.push('/login');
+};
+
+const navigation = computed(() => [
+  {
+    title: 'Genel Bakış',
+    items: [
+      {
+        name: 'Dashboard',
+        to: '/dashboard',
+        icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z',
+        visible: true
+      }
+    ]
+  },
+  {
+    title: 'AR Studio',
+    items: [
+      {
+        name: 'Sahnelerim',
+        to: '/dashboard/ar-scene',
+        icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10',
+        visible: true
+      },
+      {
+        name: '3D Modeller',
+        to: '/dashboard/ar-model',
+        icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
+        visible: true
+      },
+      {
+        name: 'Model Yükle',
+        to: '/dashboard/ar-model/upload',
+        icon: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12',
+        visible: isAdmin.value
+      }
+    ]
+  },
+  {
+    title: 'Yönetim',
+    items: [
+      {
+        name: 'Şirketler',
+        to: '/dashboard/companies',
+        icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+        visible: isAdmin.value
+      }
+    ]
+  }
+]);
 </script>
 
 <style scoped>
-/* Sidebar için koyu scrollbar */
 .custom-scrollbar::-webkit-scrollbar {
   width: 5px;
 }
@@ -198,7 +180,6 @@ export default defineComponent({
   border-radius: 10px;
 }
 
-/* İçerik alanı için açık scrollbar */
 .custom-scrollbar-light::-webkit-scrollbar {
   width: 6px;
   height: 6px;
