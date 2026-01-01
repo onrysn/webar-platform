@@ -96,45 +96,55 @@ export class ARModelService {
         return { tempId, kind, filename, previewUrl, size: buffer.length };
     }
 
-    // Convert FBX to GLB & USDZ and save both in temp/<tempId>/
+    async convertStepToTemp(file: MulterFile, userId?: number) {
+        return this._genericConvertToTemp(file, userId, 'step');
+    }
+
     async convertFbxToTemp(file: MulterFile, userId?: number) {
-        // create tempId and dir
+        return this._genericConvertToTemp(file, userId, 'fbx');
+    }
+
+    private async _genericConvertToTemp(file: MulterFile, userId: number| undefined, type: 'fbx' | 'step') {
         const tempId = `${Date.now()}_${uuidv4()}`;
         const tempDir = this.ensureTempDir(tempId);
 
-        // read input buffer/path
-        let inputBuffer: Buffer;
         let inputPath: string | undefined;
+
+        // Dosyayı diske kaydet
         if (file.buffer && file.buffer.length > 0) {
-            inputBuffer = file.buffer;
-            // write to temp file
             const inputName = `${Date.now()}_${path.basename(file.originalname)}`;
             inputPath = path.join(tempDir, inputName);
-            fs.writeFileSync(inputPath, inputBuffer);
+            fs.writeFileSync(inputPath, file.buffer);
         } else if (file.path && fs.existsSync(file.path)) {
-            // copy disk-stored upload into temp
             inputPath = path.join(tempDir, `${Date.now()}_${path.basename(file.path) + path.extname(file.originalname)}`);
             fs.copyFileSync(file.path, inputPath);
         } else {
-            throw new InternalServerErrorException('No file buffer or path for FBX upload');
+            throw new InternalServerErrorException(`No file buffer or path for ${type.toUpperCase()} upload`);
         }
 
-        // Ensure file extension
-        const ext = path.extname(inputPath).toLowerCase();
-        if (ext !== '.fbx' && ext !== '.obj' && ext !== '.dae' && ext !== '.gltf' && ext !== '.glb') {
-            // still try to run, but better to validate
+        // --- 1. Adım: GLB Formatına Çevir ---
+        let glbPath: string;
+        
+        try {
+            if (type === 'fbx') {
+                // FBX -> GLB (Blender)
+                const fakeMulterFile = { originalname: path.basename(inputPath), path: inputPath } as unknown as MulterFile;
+                glbPath = await this.convertCadToGlb(fakeMulterFile); 
+            } else {
+                // STEP -> GLB (FreeCAD Python Script)
+                glbPath = await this.convertStepToGlb(inputPath);
+            }
+        } catch (error) {
+            // Hata durumunda temp klasörünü temizleyelim mi? (Debug için tutabilirsin)
+            throw error;
         }
 
-        // --- 1) Convert to GLB via blender script (convertCadToGlb) ---
-        // We can reuse your convertCadToGlb logic by creating a MulterFile-like object or calling the function directly.
-        // For simplicity, call convertCadToGlb with a synthetic MulterFile-like input
-        const fakeMulterFile = { originalname: path.basename(inputPath), path: inputPath } as unknown as MulterFile;
-        const glbPath = await this.convertCadToGlb(fakeMulterFile); // returns output path
-
-        // --- 2) Convert GLB -> USDZ via converter service (HTTP) ---
-        // Use the converter endpoint used earlier (same logic as convertForTest earlier)
+        // --- 2. Adım: GLB -> USDZ (Converter Servisi) ---
         const formData = new FormData();
-        formData.append('file', fs.createReadStream(glbPath), { filename: path.basename(glbPath), contentType: this.getMimeByExt('.glb') });
+        formData.append('file', fs.createReadStream(glbPath), { 
+            filename: path.basename(glbPath), 
+            contentType: 'model/gltf-binary' 
+        });
 
         const convertResp = await fetch(`${this.converterUrl}/api/convert`, {
             method: 'POST',
@@ -144,13 +154,13 @@ export class ARModelService {
 
         if (!convertResp.ok) {
             const text = await convertResp.text();
-            throw new InternalServerErrorException('Converter failed: ' + text);
+            throw new InternalServerErrorException('USDZ Converter failed: ' + text);
         }
 
         const convertJson = await convertResp.json();
         const { id, name } = convertJson as { id: string; name: string };
 
-        // download usd
+        // USDZ İndir
         const downloadUrl = `${this.converterUrl}/api/download?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`;
         const usdzResp = await fetch(downloadUrl);
         if (!usdzResp.ok) {
@@ -158,24 +168,22 @@ export class ARModelService {
         }
         const usdzBuffer = await usdzResp.buffer();
 
-        // move or copy glb/usdz into tempDir with stable filenames
+        // Dosyaları temiz isimlerle kaydet
         const safeBase = path.basename(this.getFileNameWithoutExt(file.originalname));
         const glbName = `${safeBase}.glb`;
         const usdzName = `${safeBase}.usdz`;
 
         const finalGlbPath = path.join(tempDir, glbName);
         const finalUsdzPath = path.join(tempDir, usdzName);
-        // copy/move glb
+
         fs.copyFileSync(glbPath, finalGlbPath);
-        // write usdz
         fs.writeFileSync(finalUsdzPath, usdzBuffer);
 
-        // optionally remove intermediate glbPath if different
+        // Ara dosyayı (otomatik oluşan karmaşık isimli glb) temizle
         if (glbPath !== finalGlbPath && fs.existsSync(glbPath)) {
             try { fs.unlinkSync(glbPath); } catch (e) { /* ignore */ }
         }
 
-        // return preview urls + tempId
         return {
             tempId,
             glb: { filename: glbName, url: `/temp/${tempId}/${glbName}`, path: finalGlbPath, size: fs.statSync(finalGlbPath).size },
@@ -322,6 +330,39 @@ export class ARModelService {
                     console.error(`Blender Process Failed (Code: ${code})`);
                     console.error(`Full Log:\n${combinedLog}`);
                     reject(new InternalServerErrorException(`CAD conversion failed with code ${code}. Check server logs for details.`));
+                }
+            });
+        });
+    }
+
+    async convertStepToGlb(inputPath: string): Promise<string> {
+        const outputDir = path.dirname(inputPath);
+        const fileName = path.basename(inputPath, path.extname(inputPath));
+        const glbOutputName = `${fileName}.glb`;
+        const glbOutputPath = path.join(outputDir, glbOutputName);
+
+        // Dockerfile ile eklediğin scriptin yolu
+        const scriptPath = path.join(process.cwd(), 'scripts', 'convert_step_to_glb.py');
+
+        if (!fs.existsSync(scriptPath)) {
+            throw new InternalServerErrorException('STEP conversion script not found at ' + scriptPath);
+        }
+
+        return new Promise((resolve, reject) => {
+            // 'python3' komutunu kullanıyoruz (Docker image'da yüklü)
+            const pythonProcess = spawn('python3', [scriptPath, inputPath, glbOutputPath]);
+            
+            let combinedLog = '';
+            pythonProcess.stdout.on('data', (data) => { combinedLog += data.toString(); });
+            pythonProcess.stderr.on('data', (data) => { combinedLog += data.toString(); });
+
+            pythonProcess.on('close', (code) => {
+                if (code === 0 && fs.existsSync(glbOutputPath)) {
+                    resolve(glbOutputPath);
+                } else {
+                    console.error(`STEP Conversion Failed (Code: ${code})`);
+                    console.error(`Log:\n${combinedLog}`);
+                    reject(new InternalServerErrorException(`STEP conversion failed. Check logs.`));
                 }
             });
         });

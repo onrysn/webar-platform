@@ -2,7 +2,7 @@ import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosReques
 
 const http: AxiosInstance = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000',
-  timeout: 20000,
+  timeout: 200000,
 });
 
 http.interceptors.request.use(

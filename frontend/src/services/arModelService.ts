@@ -23,6 +23,17 @@ export const arModelService = {
     return res.data;
   },
 
+  async uploadStep(file: File, onProgress?: (percent: number) => void): Promise<TempModelResponse> {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await apiService.post<TempModelResponse>('/ar-model/upload-step', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+      onUploadProgress: (e) => handleProgress(e, onProgress),
+    });
+    return res.data;
+  },
+
   // 3. GLB Yükleme (Manuel - Varsa tempId alır)
   async uploadGlb(file: File, tempId?: string, onProgress?: (percent: number) => void): Promise<TempModelResponse> {
     const formData = new FormData();

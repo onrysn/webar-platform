@@ -5,7 +5,7 @@
       <div class="mb-8">
         <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Yeni Model Yükle</h1>
         <p class="mt-2 text-gray-500 text-sm">
-          Modelinizi yükleyin, önizleyin ve yayınlayın. FBX dosyaları otomatik dönüştürülür.
+          Modelinizi yükleyin, önizleyin ve yayınlayın. FBX ve STEP dosyaları otomatik dönüştürülür.
         </p>
       </div>
 
@@ -33,6 +33,10 @@
               class="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-lg shadow-sm border border-blue-200">
               FBX (Otomatik)
             </span>
+            <span
+              class="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded-lg shadow-sm border border-orange-200">
+              STEP (Otomatik)
+            </span>
             <span class="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg border border-gray-200">
               GLB
             </span>
@@ -42,7 +46,7 @@
           </div>
         </div>
 
-        <input ref="mainInput" type="file" class="hidden" accept=".glb,.gltf,.fbx,.usdz"
+        <input ref="mainInput" type="file" class="hidden" accept=".glb,.gltf,.fbx,.usdz,.step,.stp"
           @change="(e) => onFileChange(e, 'auto')" />
       </div>
 
@@ -313,11 +317,14 @@ const processUpload = async (file: File, type: 'auto' | 'glb' | 'usdz') => {
       res = await arModelService.uploadFbx(file, (p) => progress.value = p);
       tempData.value = res;
     }
+    else if (ext === 'step' || ext === 'stp') {
+      if (type !== 'auto') throw new Error("STEP dosyaları sadece ana ekrandan yüklenebilir.");
+      res = await arModelService.uploadStep(file, (p) => progress.value = p);
+      tempData.value = res;
+    }
     else if (ext === 'glb' || ext === 'gltf') {
       if (type === 'usdz') throw new Error("Lütfen buraya USDZ dosyası yükleyin.");
       res = await arModelService.uploadGlb(file, currentTempId, (p) => progress.value = p);
-
-      // Manuel Mapping (Backend uyumluluğu için korundu)
       tempData.value = {
         tempId: res.tempId,
         previewUrl: res.previewUrl,

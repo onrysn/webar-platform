@@ -76,12 +76,25 @@ export class ARModelController {
     @Post('upload-fbx')
     @UseInterceptors(FileInterceptor('file', modelUploadConfig))
     @ApiConsumes('multipart/form-data')
+    @ApiOperation({ summary: 'FBX dosyasını yükler ve GLB/USDZ formatına çevirir' })
     @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
     async uploadFbx(@UploadedFile() file: MulterFile, @Req() req: any) {
         if (!file) throw new BadRequestException('File is required');
         const userId = req.user.userId;
         // convertFbxToTemp returns { tempId, glbUrl, usdzUrl, names... }
         return this.arModelService.convertFbxToTemp(file, userId);
+    }
+
+    @Post('upload-step')
+    @UseInterceptors(FileInterceptor('file', modelUploadConfig))
+    @ApiConsumes('multipart/form-data')
+    @ApiOperation({ summary: 'STEP/STP dosyasını yükler ve GLB/USDZ formatına çevirir' })
+    @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+    async uploadStep(@UploadedFile() file: MulterFile, @Req() req: any) {
+        if (!file) throw new BadRequestException('File is required');
+        const userId = req.user.userId;
+        // Servisteki yeni yazdığımız metodu çağırıyoruz
+        return this.arModelService.convertStepToTemp(file, userId);
     }
 
     // --------------------------

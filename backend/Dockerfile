@@ -5,14 +5,18 @@ FROM node:20-bookworm-slim
 WORKDIR /app
 
 # 2. Sistem bağımlılıklarını yükle
+# Not: Debian 12 (Bookworm) kullandığın için freecad paketini doğrudan apt'den alabiliriz.
 RUN apt-get update && apt-get install -y \
     # Node ve Prisma için gerekli araçlar
     python3 \
+    python3-pip \
     build-essential \
     openssl \
     # Blender indirmek için
     wget \
     xz-utils \
+    # [YENİ] FreeCAD Kurulumu (STEP dosyalarını okumak için)
+    freecad \
     # Blender GUI/Headless kütüphaneleri
     libgl1 \
     libxi6 \
@@ -28,6 +32,11 @@ RUN apt-get update && apt-get install -y \
     libasound2 \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
+
+# [YENİ] Python Kütüphanelerini Yükle
+# Scriptin çalışması için trimesh ve numpy gerekiyor.
+# Debian 12'de pip kullanırken '--break-system-packages' flag'i gerekebilir (Docker içinde güvenlidir).
+RUN pip3 install trimesh numpy scipy --break-system-packages
 
 # 3. Blender Kurulumu (Cache mekanizması için package.json'dan önce)
 WORKDIR /opt/blender

@@ -7,7 +7,7 @@ export const modelUploadConfig = {
     }),
     fileFilter: (req: any, file: any, callback: (error: Error | null, acceptFile: boolean) => void) => {
         // İzin verilen tüm uzantıları buraya ekleyin
-        const allowedExtensions = ['.glb', '.gltf', '.fbx', '.obj', '.dxf', '.usdz'];
+        const allowedExtensions = ['.glb', '.gltf', '.fbx', '.obj', '.stp', '.step', '.dxf', '.usdz'];
         
         // Dosya uzantısını alıp küçültüyoruz
         const ext = extname(file.originalname).toLowerCase();
