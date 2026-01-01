@@ -204,11 +204,13 @@ export class ARModelController {
         // Service'den decrypt edilmiş buffer'ı al
         const { buffer, mimeType, filename } = await this.arModelService.getModelFileBuffer(model, format);
 
+        const encodedFilename = encodeURIComponent(filename);
+
         // Header ayarları
         res.set({
             'Content-Type': mimeType,
             'Content-Length': buffer.length,
-            'Content-Disposition': `${mode === 'download' ? 'attachment' : 'inline'}; filename="${filename}"`,
+            'Content-Disposition': `${mode === 'download' ? 'attachment' : 'inline'}; filename="${encodedFilename}"; filename*=UTF-8''${encodedFilename}`,
             // Cache kontrolü eklemek performansı artırır (opsiyonel)
             'Cache-Control': 'private, max-age=3600'
         });
