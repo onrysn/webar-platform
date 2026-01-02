@@ -104,7 +104,7 @@ export class ARModelService {
         return this._genericConvertToTemp(file, userId, 'fbx');
     }
 
-    private async _genericConvertToTemp(file: MulterFile, userId: number| undefined, type: 'fbx' | 'step') {
+    private async _genericConvertToTemp(file: MulterFile, userId: number | undefined, type: 'fbx' | 'step') {
         const tempId = `${Date.now()}_${uuidv4()}`;
         const tempDir = this.ensureTempDir(tempId);
 
@@ -124,12 +124,12 @@ export class ARModelService {
 
         // --- 1. Adım: GLB Formatına Çevir ---
         let glbPath: string;
-        
+
         try {
             if (type === 'fbx') {
                 // FBX -> GLB (Blender)
                 const fakeMulterFile = { originalname: path.basename(inputPath), path: inputPath } as unknown as MulterFile;
-                glbPath = await this.convertCadToGlb(fakeMulterFile); 
+                glbPath = await this.convertCadToGlb(fakeMulterFile);
             } else {
                 // STEP -> GLB (FreeCAD Python Script)
                 glbPath = await this.convertStepToGlb(inputPath);
@@ -141,9 +141,9 @@ export class ARModelService {
 
         // --- 2. Adım: GLB -> USDZ (Converter Servisi) ---
         const formData = new FormData();
-        formData.append('file', fs.createReadStream(glbPath), { 
-            filename: path.basename(glbPath), 
-            contentType: 'model/gltf-binary' 
+        formData.append('file', fs.createReadStream(glbPath), {
+            filename: path.basename(glbPath),
+            contentType: 'model/gltf-binary'
         });
 
         const convertResp = await fetch(`${this.converterUrl}/api/convert`, {
@@ -260,7 +260,7 @@ export class ARModelService {
                 thumbnailPath,
             },
         });
-        
+
         await this.activityLogger.log(
             uploadedBy,
             'UPLOAD_MODEL',
@@ -340,29 +340,58 @@ export class ARModelService {
         const fileName = path.basename(inputPath, path.extname(inputPath));
         const glbOutputName = `${fileName}.glb`;
         const glbOutputPath = path.join(outputDir, glbOutputName);
-
-        // Dockerfile ile eklediğin scriptin yolu
         const scriptPath = path.join(process.cwd(), 'scripts', 'convert_step_to_glb.py');
 
         if (!fs.existsSync(scriptPath)) {
-            throw new InternalServerErrorException('STEP conversion script not found at ' + scriptPath);
+            throw new InternalServerErrorException('Script not found: ' + scriptPath);
         }
 
         return new Promise((resolve, reject) => {
-            // 'python3' komutunu kullanıyoruz (Docker image'da yüklü)
-            const pythonProcess = spawn('python3', [scriptPath, inputPath, glbOutputPath]);
-            
+            console.log(`[NODE] Python işlemi başlatılıyor: ${scriptPath}`);
+
+            // Process'i başlat
+            const pythonProcess = spawn('python3', ['-u', scriptPath, inputPath, glbOutputPath]);
+
             let combinedLog = '';
-            pythonProcess.stdout.on('data', (data) => { combinedLog += data.toString(); });
-            pythonProcess.stderr.on('data', (data) => { combinedLog += data.toString(); });
+
+            // --- [EKLEME] ZAMAN AŞIMI KONTROLÜ (ÖRNEĞİN 3 DAKİKA) ---
+            const TIME_LIMIT = 3 * 60 * 1000;
+            const timeout = setTimeout(() => {
+                console.error('[NODE] İşlem zaman aşımına uğradı, süreç öldürülüyor...');
+                pythonProcess.kill('SIGKILL'); // İşlemi zorla öldür
+                reject(new InternalServerErrorException({
+                    message: 'Conversion timed out',
+                    logs: combinedLog + '\n[ERROR] Timeout reached, process killed.'
+                }));
+            }, TIME_LIMIT);
+
+            const handleData = (data: Buffer) => {
+                const text = data.toString();
+                combinedLog += text;
+                process.stdout.write(text);
+            };
+
+            pythonProcess.stdout.on('data', handleData);
+            pythonProcess.stderr.on('data', handleData);
+
+            pythonProcess.on('error', (err) => {
+                clearTimeout(timeout); // Timeout'u iptal et
+                console.error('[NODE] Process Hatası:', err);
+                reject(new InternalServerErrorException(`Python process failed to start: ${err.message}`));
+            });
 
             pythonProcess.on('close', (code) => {
+                clearTimeout(timeout); // Timeout'u iptal et
+                console.log(`[NODE] İşlem bitti. Exit Code: ${code}`);
+
                 if (code === 0 && fs.existsSync(glbOutputPath)) {
                     resolve(glbOutputPath);
                 } else {
-                    console.error(`STEP Conversion Failed (Code: ${code})`);
-                    console.error(`Log:\n${combinedLog}`);
-                    reject(new InternalServerErrorException(`STEP conversion failed. Check logs.`));
+                    reject(new InternalServerErrorException({
+                        message: 'STEP conversion failed',
+                        exitCode: code,
+                        logs: combinedLog
+                    }));
                 }
             });
         });
