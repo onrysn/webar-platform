@@ -77,7 +77,7 @@ const router = useRouter();
 const models = ref<any[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
-const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const baseUrl = `${window.location.origin}/api`;
 
 const fetchModels = async () => {
   loading.value = true;

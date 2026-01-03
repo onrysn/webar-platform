@@ -2,7 +2,7 @@ import type { ARModelDto, TempModelResponse, FinalizeModelDto, ModelDetailDto } 
 import { apiService } from "./httpService/apiService"; // Yolunu projene göre ayarla
 import type { AxiosProgressEvent } from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3000';
+const API_BASE_URL = `${window.location.origin}/api`;
 
 export const arModelService = {
   // 1. Listeleme
