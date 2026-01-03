@@ -111,6 +111,7 @@ model SceneItem {
   position  Json     @default("{\"x\": 0, \"y\": 0, \"z\": 0}")
   rotation  Json     @default("{\"x\": 0, \"y\": 0, \"z\": 0}")
   scale     Json     @default("{\"x\": 1, \"y\": 1, \"z\": 1}")
+  materialConfig Json? @default("{}")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

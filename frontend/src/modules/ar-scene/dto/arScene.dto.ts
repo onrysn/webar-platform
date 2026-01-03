@@ -77,6 +77,11 @@ export interface SceneItemDto {
   rotation: Vector3;
   scale: Vector3;
   model: ARModelDto; 
+  materialConfig?: Record<string, {
+    color: string;
+    metalness: number;
+    roughness: number;
+  }>;
 }
 
 export interface ARSceneDto {

@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsNumber, IsOptional, ValidateNested, IsArray, IsEnum, IsBoolean, Min, Max } from 'class-validator';
+import { IsString, IsNotEmpty, IsNumber, IsOptional, ValidateNested, IsArray, IsEnum, IsBoolean, Min, Max, IsObject } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -273,6 +273,10 @@ export class UpdateSceneItemDto {
   @ValidateNested()
   @Type(() => Vector3Dto)
   scale?: Vector3Dto;
+
+  @IsOptional()
+  @IsObject() 
+  materialConfig?: Record<string, any>;
 }
 
 // 5. Texture Oluşturma DTO

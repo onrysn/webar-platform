@@ -11,8 +11,40 @@
             <p class="text-white font-medium tracking-wide animate-pulse">3D Sahne Hazırlanıyor...</p>
         </div>
 
-        <div class="absolute top-0 left-0 right-0 z-40 p-4 flex justify-between items-start pointer-events-none">
+        <div class="absolute top-10 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none transition-opacity duration-500"
+            :class="saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'">
 
+            <div v-if="saveStatus === 'saving'"
+                class="flex items-center gap-2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-xl">
+                <svg class="animate-spin h-3 w-3 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none"
+                    viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                    </path>
+                </svg>
+                <span class="text-xs text-gray-300 font-medium whitespace-nowrap">Kaydediliyor...</span>
+            </div>
+
+            <div v-if="saveStatus === 'saved'"
+                class="flex items-center gap-2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-green-500/30 shadow-xl">
+                <svg class="h-3 w-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                <span class="text-xs text-green-100 font-medium whitespace-nowrap">Kaydedildi</span>
+            </div>
+
+            <div v-if="saveStatus === 'error'"
+                class="flex items-center gap-2 bg-red-900/80 backdrop-blur-md px-4 py-2 rounded-full border border-red-500/50 shadow-xl">
+                <svg class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span class="text-xs text-white font-medium whitespace-nowrap">Kayıt Hatası</span>
+            </div>
+        </div>
+
+        <div class="absolute top-0 left-0 right-0 z-40 p-4 flex justify-between items-start pointer-events-none">
             <div
                 class="flex items-center gap-3 pointer-events-auto bg-black/40 backdrop-blur-md p-2 pr-4 rounded-xl border border-white/10 shadow-lg">
                 <button @click="$router.back()"
@@ -169,6 +201,13 @@
 
             <div class="w-px h-8 bg-white/20 mx-1"></div>
 
+            <button @click="togglePaintMode"
+                class="p-3 rounded-xl transition-all flex flex-col items-center gap-1 min-w-[60px]"
+                :class="isPaintMode ? 'bg-purple-600 text-white shadow-lg ring-2 ring-purple-400 ring-offset-2 ring-offset-black' : 'text-gray-400 hover:text-white hover:bg-white/10'">
+                <span class="text-xl">🎨</span>
+                <span class="text-[10px] font-bold">Boya</span>
+            </button>
+
             <button @click="deleteSelectedItem" :disabled="!selectedItemId"
                 class="p-3 rounded-xl transition-all flex flex-col items-center gap-1 min-w-[60px] text-red-400 hover:text-red-200 hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed">
                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -215,10 +254,12 @@
             </div>
         </div>
     </div>
+    <MaterialEditor v-if="isPaintMode && selectedSubMesh" :selectedMesh="selectedSubMesh"
+        @close="selectedSubMesh = null" @update="handleMaterialUpdate" />
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, markRaw } from 'vue';
+import { ref, onMounted, onBeforeUnmount, nextTick, markRaw, shallowRef } from 'vue';
 import { useRoute } from 'vue-router';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -236,6 +277,7 @@ import { arModelService } from '../../../services/arModelService';
 import type { ARSceneDto, SceneItemDto } from '../dto/arScene.dto';
 import type { ARModelDto } from '../../ar-model/dto/arModel.dto';
 import { offsetPolygon } from '../../../utils/mathUtils';
+import MaterialEditor from '../components/MaterialEditor.vue';
 
 // --- CONSTANTS: SHAPE LIBRARY ---
 const SHAPE_LIBRARY = [
@@ -318,6 +360,10 @@ const sceneData = ref<ARSceneDto | null>(null);
 const sceneItems = ref<SceneItemDto[]>([]);
 const availableModels = ref<ARModelDto[]>([]);
 const selectedItemId = ref<number | null>(null);
+const isPaintMode = ref(false);
+const selectedSubMesh = shallowRef<THREE.Mesh | null>(null);
+const saveStatus = ref<'idle' | 'saved' | 'saving' | 'error'>('idle');
+let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // Mouse
 const mouseStart = new THREE.Vector2();
@@ -372,6 +418,46 @@ onBeforeUnmount(() => {
 const loadSceneData = async () => {
     sceneData.value = await arSceneService.getScene(sceneId);
     sceneItems.value = sceneData.value.items;
+};
+
+// [EKLE] DEBOUNCED AUTO-SAVE TETİKLEYİCİSİ
+const triggerAutoSave = (itemId: number) => {
+    saveStatus.value = 'saving';
+    if (saveTimeout) clearTimeout(saveTimeout);
+
+    // 1.5 saniye bekle, sonra kaydet
+    saveTimeout = setTimeout(async () => {
+        await performSave(itemId);
+    }, 1500);
+};
+
+// [EKLE] GERÇEK KAYIT İŞLEMİ
+const performSave = async (itemId: number) => {
+    try {
+        const item = sceneItems.value.find(i => i.id === itemId);
+        const mesh = itemsMap.get(itemId);
+
+        if (!item || !mesh) return;
+        const updateData = {
+            position: { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z },
+            rotation: { x: mesh.rotation.x, y: mesh.rotation.y, z: mesh.rotation.z },
+            scale: { x: mesh.scale.x, y: mesh.scale.y, z: mesh.scale.z },
+            materialConfig: item.materialConfig || {}
+        };
+
+        await arSceneService.updateItem(itemId, updateData);
+
+        saveStatus.value = 'saved';
+        setTimeout(() => {
+            if (saveStatus.value === 'saved') {
+                saveStatus.value = 'idle';
+            }
+        }, 2000);
+
+    } catch (err) {
+        console.error("Auto-save error:", err);
+        saveStatus.value = 'error';
+    }
 };
 
 const getThumbnailUrl = (path: string) => arModelService.getPreviewUrl(path);
@@ -656,6 +742,59 @@ const triggerDownload = (blob: Blob, filename: string) => {
     URL.revokeObjectURL(link.href);
 };
 
+
+// --- MOD DEĞİŞTİRME ---
+const togglePaintMode = () => {
+    isPaintMode.value = !isPaintMode.value;
+
+    // Mod değişince seçimleri sıfırla
+    selectedItemId.value = null; // Ana grup seçimi
+    selectedSubMesh.value = null; // Alt parça seçimi
+    transformControl.detach();
+
+    if (isPaintMode.value) {
+        transformControl.enabled = false; // Gizmo'yu kapat
+        document.body.style.cursor = 'crosshair'; // İmleci değiştir
+    } else {
+        transformControl.enabled = true;
+        document.body.style.cursor = 'default';
+    }
+};
+
+// --- MATERYAL GÜNCELLEME ---
+const handleMaterialUpdate = (data: any) => {
+    if (!selectedSubMesh.value) return;
+
+    let parent = selectedSubMesh.value.parent;
+    let sceneItemId: number | null = null;
+
+    while (parent) {
+        if (parent.userData?.itemId) {
+            sceneItemId = parent.userData.itemId;
+            break;
+        }
+        parent = parent.parent;
+    }
+
+    if (sceneItemId) {
+        const item = sceneItems.value.find(i => i.id === sceneItemId);
+        if (item) {
+            if (!item.materialConfig) item.materialConfig = {};
+
+            // Yerel state'i güncelle
+            item.materialConfig[data.meshName] = {
+                color: data.color,
+                metalness: data.metalness,
+                roughness: data.roughness
+            };
+
+            // [EKLE] Oto-Kayıt Tetikle
+            triggerAutoSave(sceneItemId);
+        }
+    }
+};
+
+
 // =======================================================
 // THREE.JS INIT
 // =======================================================
@@ -871,7 +1010,7 @@ const initThreeJS = async () => {
     transformControl.addEventListener('dragging-changed', (event) => { orbit.enabled = !event.value; });
     transformControl.addEventListener('mouseUp', async () => {
         if (transformControl.object && selectedItemId.value) {
-            await saveTransform(selectedItemId.value, transformControl.object);
+            await saveTransform(selectedItemId.value);
         }
     });
     // Başlangıç modunu ayarla
@@ -916,6 +1055,36 @@ const loadSceneObjects = async () => {
             const url = URL.createObjectURL(blob);
             const gltf = await loader.loadAsync(url);
             const model = gltf.scene;
+
+            if (item.materialConfig) {
+                model.traverse((child) => {
+                    if ((child as THREE.Mesh).isMesh) {
+                        const mesh = child as THREE.Mesh;
+                        
+                        const config = (item.materialConfig as any)?.[mesh.name];
+
+                        if (config) {
+                            let material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+                            
+                            if (material) {
+                                material = material.clone();
+
+                                if ((material as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
+                                    const stdMat = material as THREE.MeshStandardMaterial;
+                                    
+                                    if (config.color) stdMat.color.set(config.color);
+                                    if (config.metalness !== undefined) stdMat.metalness = config.metalness;
+                                    if (config.roughness !== undefined) stdMat.roughness = config.roughness;
+                                }
+
+                                mesh.material = material;
+                                
+                                mesh.userData.hasCustomMaterial = true;
+                            }
+                        }
+                    }
+                });
+            }
 
             model.traverse((child) => {
                 if ((child as THREE.Mesh).isMesh) {
@@ -1001,8 +1170,10 @@ const onMouseDown = (event: MouseEvent) => {
 
 const onMouseUp = (event: MouseEvent) => {
     if (!canvasRef.value) return;
+
+    // Tıklama hassasiyetini biraz artırdık (5 -> 10)
     const distance = mouseStart.distanceTo(new THREE.Vector2(event.clientX, event.clientY));
-    if (distance > 5) return;
+    if (distance > 10) return;
 
     const rect = canvasRef.value.getBoundingClientRect();
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
@@ -1010,26 +1181,64 @@ const onMouseUp = (event: MouseEvent) => {
 
     raycaster.setFromCamera(mouse, camera);
 
-    const intersects = raycaster.intersectObjects(scene.children, true);
+    if (isPaintMode.value) {
+        console.log("🎨 Boyama Modu: Tıklama algılandı.");
 
-    const hit = intersects.find(i => {
-        let obj = i.object;
-        while (obj.parent && obj.parent !== scene) {
-            if (obj.userData?.isSceneItem) return true;
-            obj = obj.parent;
-        }
-        return obj.userData?.isSceneItem;
-    });
+        // Sahnedeki her şeyi kontrol et
+        const intersects = raycaster.intersectObjects(scene.children, true);
 
-    if (hit) {
-        let target = hit.object;
-        while (target.parent && target.parent !== scene && !target.userData?.itemId) {
-            target = target.parent!;
+        if (intersects.length === 0) {
+            console.log("❌ Hiçbir nesneye denk gelmedi.");
+            selectedSubMesh.value = null;
+            return;
         }
-        if (target.userData?.itemId) selectItemFromTree(target.userData.itemId);
+
+        // SceneItem'a ait olan ilk MESH'i bul
+        const hit = intersects.find(i => {
+            // Sadece Mesh olsun
+            if (!(i.object as THREE.Mesh).isMesh) return false;
+
+            // Grid veya Helper olmasın, bir SceneItem parçası mı?
+            let p = i.object.parent;
+            while (p) {
+                if (p.userData?.isSceneItem) return true;
+                p = p.parent;
+            }
+            return false;
+        });
+
+        if (hit) {
+            const mesh = hit.object as THREE.Mesh;
+            console.log("✅ PARÇA SEÇİLDİ:", mesh.name || 'İsimsiz Parça');
+            // ShallowRef güncellemesi
+            selectedSubMesh.value = mesh;
+        } else {
+            console.log("⚠️ Tıklanan nesne bir model parçası değil (Grid veya zemin olabilir).");
+            selectedSubMesh.value = null;
+        }
+
     } else {
-        transformControl.detach();
-        selectedItemId.value = null;
+        // --- NORMAL MOD (Mevcut kodunuz) ---
+        const intersects = raycaster.intersectObjects(scene.children, true);
+        const hit = intersects.find(i => {
+            let obj = i.object;
+            while (obj.parent && obj.parent !== scene) {
+                if (obj.userData?.isSceneItem) return true;
+                obj = obj.parent;
+            }
+            return obj.userData?.isSceneItem;
+        });
+
+        if (hit) {
+            let target = hit.object;
+            while (target.parent && target.parent !== scene && !target.userData?.itemId) {
+                target = target.parent!;
+            }
+            if (target.userData?.itemId) selectItemFromTree(target.userData.itemId);
+        } else {
+            transformControl.detach();
+            selectedItemId.value = null;
+        }
     }
 };
 
@@ -1059,17 +1268,8 @@ const handleKeyDown = (event: KeyboardEvent) => {
     }
 };
 
-const saveTransform = async (itemId: number, obj: THREE.Object3D) => {
-    try {
-        await arSceneService.updateItem(itemId, {
-            position: { x: obj.position.x, y: obj.position.y, z: obj.position.z },
-            rotation: { x: obj.rotation.x, y: obj.rotation.y, z: obj.rotation.z },
-            scale: { x: obj.scale.x, y: obj.scale.y, z: obj.scale.z }
-        });
-        console.log("Transform saved");
-    } catch (err) {
-        console.error("Save error", err);
-    }
+const saveTransform = async (itemId: number) => {
+    triggerAutoSave(itemId);
 };
 
 const deleteItem = async (itemId: number) => {

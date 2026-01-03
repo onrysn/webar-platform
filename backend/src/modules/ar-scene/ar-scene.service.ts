@@ -1,11 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ActivityLogService } from '../activity-log/activity-log.service';
-import { 
-  CreateSceneDto, 
-  UpdateSceneDto, 
-  AddSceneItemDto, 
-  UpdateSceneItemDto, 
+import {
+  CreateSceneDto,
+  UpdateSceneDto,
+  AddSceneItemDto,
+  UpdateSceneItemDto,
   CreateFloorTextureDto
 } from './dto/ar-scene.dto';
 
@@ -14,7 +14,7 @@ export class ARSceneService {
   constructor(
     private prisma: PrismaService,
     private activityLogger: ActivityLogService
-  ) {}
+  ) { }
 
   // --- SAHNE (SCENE) YÖNETİMİ ---
 
@@ -24,7 +24,7 @@ export class ARSceneService {
       data: {
         name: data.name,
         companyId: data.companyId,
-        settings: data.settings ? (data.settings as any) : {}, 
+        settings: data.settings ? (data.settings as any) : {},
       },
     });
 
@@ -96,8 +96,8 @@ export class ARSceneService {
       include: {
         items: {
           include: {
-            model: { 
-              select: { id: true, fileName: true, fileType: true, thumbnailPath: true } 
+            model: {
+              select: { id: true, fileName: true, fileType: true, thumbnailPath: true }
             }
           }
         }
@@ -146,7 +146,7 @@ export class ARSceneService {
     return item;
   }
 
-  // 7. Eşya Konumunu Güncelle
+  // 7. Eşya Konumunu ve Ayarlarını Güncelle
   async updateItemTransform(userId: number, itemId: number, data: UpdateSceneItemDto) {
     const item = await this.prisma.sceneItem.update({
       where: { id: itemId },
@@ -154,13 +154,15 @@ export class ARSceneService {
         position: data.position ? (data.position as any) : undefined,
         rotation: data.rotation ? (data.rotation as any) : undefined,
         scale: data.scale ? (data.scale as any) : undefined,
+
+        materialConfig: data.materialConfig ? (data.materialConfig as any) : undefined,
       }
     });
 
     await this.activityLogger.log(
       userId,
       'UPDATE_ITEM',
-      `"${item.name || 'Obje'}" konumu güncellendi.`,
+      `"${item.name || 'Obje'}" güncellendi.`,
       { itemId, sceneId: item.sceneId }
     );
 
