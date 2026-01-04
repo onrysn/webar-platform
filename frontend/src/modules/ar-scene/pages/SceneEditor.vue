@@ -747,6 +747,10 @@ const triggerDownload = (blob: Blob, filename: string) => {
 const togglePaintMode = () => {
     isPaintMode.value = !isPaintMode.value;
 
+    if (isPaintMode.value && window.innerWidth < 768) {
+        showSidebar.value = false;
+    }
+    
     // Mod değişince seçimleri sıfırla
     selectedItemId.value = null; // Ana grup seçimi
     selectedSubMesh.value = null; // Alt parça seçimi
