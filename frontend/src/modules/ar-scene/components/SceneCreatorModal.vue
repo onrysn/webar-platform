@@ -1,14 +1,15 @@
 <template>
     <div v-if="isOpen"
         class="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all"
+        @click.self="close" role="dialog" aria-modal="true" :aria-labelledby="'scene-modal-title'"
         @keydown.window.ctrl.z="removeLastPoint" @keydown.window.escape="cancelTool"
-        @keydown.window.delete="removeLayer">
+        @keydown.window.delete="removeLayer" tabindex="-1">
 
-        <div
-            class="bg-white rounded-3xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col h-[92vh] border border-slate-200/50">
+        <div ref="modalRoot"
+            :class="['bg-white rounded-3xl md:rounded-3xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col min-h-[60vh] max-h-[92vh] md:h-[92vh] border border-slate-200/50 transform transition-all duration-200', isShowing ? 'scale-100 opacity-100' : 'scale-95 opacity-90']">
 
             <div
-                class="px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-md">
+                class="px-4 md:px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-md">
                 <div class="flex items-center gap-4">
                     <div
                         class="w-12 h-12 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-indigo-100">
@@ -16,21 +17,46 @@
                         <span v-else class="text-2xl">🛠️</span>
                     </div>
                     <div>
-                        <h3 class="font-extrabold text-xl text-slate-800 tracking-tight leading-none">
+                        <h3 id="scene-modal-title"
+                            class="font-extrabold text-xl text-slate-800 tracking-tight leading-none">
                             {{ mode === 'create' ? 'Yeni Sahne Tasarla' : 'Sahneyi Düzenle' }}
                         </h3>
                         <p class="text-xs text-slate-500 mt-1.5 font-medium">AR deneyiminiz için sınırları belirleyin
                         </p>
                     </div>
                 </div>
-                <button @click="close"
-                    class="w-10 h-10 flex items-center justify-center rounded-full hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-all text-2xl">&times;</button>
+                <div class="flex items-center gap-2">
+                    <button @click="close" aria-label="Kapat"
+                        class="p-3 md:w-10 md:h-10 flex items-center justify-center rounded-full hover:bg-slate-50 text-slate-400 hover:text-slate-600 transition-all text-2xl">&times;</button>
+                </div>
             </div>
 
             <div class="flex flex-col md:flex-row flex-1 overflow-hidden">
 
-                <div
-                    class="p-6 space-y-8 w-full md:w-80 lg:w-[380px] overflow-y-auto border-r border-slate-100 bg-slate-50/40 custom-scrollbar">
+                <!-- Mobile overlay to close bottom-sheet -->
+                <div v-if="showSidebar" @click="toggleSidebar" class="fixed inset-0 z-40 bg-black/30 md:hidden"></div>
+
+                <div :class="['p-6 space-y-8 overflow-y-auto custom-scrollbar', showSidebar ? 'fixed inset-x-0 bottom-0 rounded-t-3xl w-full z-50 bg-white border-t border-slate-200 p-6 md:static md:w-80 md:h-auto md:rounded-none md:border-r md:border-t-0 md:block' : 'hidden md:block md:w-80 lg:w-[380px]']"
+                    :style="showSidebar ? { height: sheetHeight + 'px' } : {}" ref="sheetEl">
+
+                    <div v-if="showSidebar" class="md:hidden w-full flex justify-center mb-2 -mt-2">
+                        <div @mousedown.prevent.stop="startSheetDrag" @touchstart.prevent.stop="startSheetDrag"
+                            role="button" aria-label="Sürükle"
+                            style="touch-action: none; -webkit-user-select: none; user-select: none;"
+                            :class="['w-16 h-2 rounded-full bg-slate-200 pt-4 pb-2', isDraggingSheet ? 'cursor-grabbing' : 'cursor-grab']">
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between md:hidden mb-4">
+                        <h4 class="text-sm font-black">Ayarlar</h4>
+                        <div class="flex items-center gap-2">
+                            <button @click="toggleSidebar" aria-label="Kapat ayarlar"
+                                class="p-2 text-slate-600 text-xl">&times;</button>
+                            <button @click="toggleSidebar" aria-label="Tamam"
+                                class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold">Tamam</button>
+                        </div>
+                    </div>
+
+                    <!-- Drag handle for bottom-sheet (mobile) -->
 
                     <section class="space-y-4">
                         <div class="flex items-center justify-between">
@@ -163,102 +189,202 @@
                         </div>
                     </section>
 
-                    <section class="space-y-4 border-t border-slate-200 pt-4">
-                        <div class="flex justify-between items-center">
+                    <section class="space-y-4 border-t border-slate-200 pt-5">
+
+                        <div class="flex justify-between items-end">
                             <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Zemin
-                                İşaretleri
-                            </h4>
+                                İşaretleri</h4>
+                            <button @click="openToolLibrary"
+                                class="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-2 py-1 rounded-lg transition-colors flex items-center gap-1">
+                                Tümünü Gör <span>→</span>
+                            </button>
                         </div>
 
                         <div class="grid grid-cols-4 gap-2">
-                            <button v-for="tool in SHAPE_LIBRARY" :key="tool.id" @click="selectTool(tool.id)"
-                                class="aspect-square flex flex-col items-center justify-center rounded-xl border transition-all duration-200 relative group hover:-translate-y-0.5"
+                            <button v-for="tool in quickAccessTools" :key="tool.id" @click="selectTool(tool.id)"
+                                class="group relative aspect-square rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all duration-200"
                                 :class="activeTool === tool.id
-                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg ring-2 ring-indigo-200 ring-offset-1 z-10'
-                                    : 'bg-white border-slate-200 text-slate-500 hover:border-indigo-400 hover:text-indigo-600 hover:shadow-md'">
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200 scale-105 z-10'
+                                    : 'bg-white border-slate-100 text-slate-600 hover:border-indigo-200 hover:bg-slate-50'">
+                                <span class="text-xl group-hover:scale-110 transition-transform duration-300">{{
+                                    tool.icon }}</span>
+                            </button>
 
-                                <span class="text-xl mb-1 filter drop-shadow-sm">{{ tool.icon }}</span>
-
-                                <span
-                                    class="absolute -bottom-8 bg-slate-800 text-white text-[9px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-50">
-                                    {{ tool.label }}
-                                </span>
+                            <button @click="openToolLibrary"
+                                class="aspect-square rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all">
+                                <span class="text-xl">+</span>
                             </button>
                         </div>
 
                         <div v-if="activeTool"
-                            class="bg-indigo-50 border border-indigo-100 p-3 rounded-xl flex gap-3 items-center animate-pulse">
-                            <span class="text-xl">👆</span>
-                            <div>
-                                <p class="text-[10px] font-black text-indigo-700 uppercase">Çizim Modu Aktif</p>
-                                <p class="text-[10px] text-indigo-600 leading-tight">
-                                    Zemine tıklayıp sürükleyerek çizin. <br>
-                                    <span class="opacity-70">(Orantı için Shift'e basılı tutun)</span>
-                                </p>
+                            class="bg-slate-900 text-white p-3 rounded-xl flex gap-3 items-center shadow-lg animate-in fade-in slide-in-from-bottom-2">
+                            <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-lg">
+                                {{SHAPE_LIBRARY.find(t => t.id === activeTool)?.icon}}
                             </div>
+                            <div class="flex-1">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mod Aktif</p>
+                                <p class="text-xs font-bold">{{SHAPE_LIBRARY.find(t => t.id === activeTool)?.label}}
+                                    çiziliyor...</p>
+                            </div>
+                            <button @click="cancelTool" class="text-slate-400 hover:text-white px-2">✕</button>
                         </div>
 
                         <div v-if="selectedLayerId && !activeTool"
-                            class="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-4 animate-in fade-in slide-in-from-left-4">
+                            class="bg-white p-4 rounded-2xl border border-indigo-100 shadow-sm space-y-4 animate-in fade-in slide-in-from-bottom-4 relative overflow-hidden">
 
-                            <div class="flex justify-between items-center border-b border-slate-200 pb-2">
-                                <input type="text" v-model="layers.find(l => l.id === selectedLayerId)!.name"
-                                    class="bg-transparent text-xs font-black text-slate-700 outline-none w-32 focus:text-indigo-600" />
-                                <div class="flex gap-1">
+                            <div class="absolute top-0 right-0 w-16 h-16 bg-indigo-50 rounded-bl-full -z-0 opacity-50">
+                            </div>
+
+                            <div class="flex justify-between items-center border-b border-slate-100 pb-3 relative z-10">
+                                <div class="flex flex-col">
+                                    <label class="text-[9px] font-bold text-slate-400 uppercase">Obje Adı</label>
+                                    <input type="text" v-model="layers.find(l => l.id === selectedLayerId)!.name"
+                                        class="bg-transparent text-sm font-black text-slate-700 outline-none w-32 focus:text-indigo-600 border-b border-transparent focus:border-indigo-200 transition-colors" />
+                                </div>
+                                <div class="flex gap-1 bg-slate-50 p-1 rounded-lg border border-slate-100">
                                     <button @click="bringToFront" title="Öne Getir"
-                                        class="p-1.5 hover:bg-white rounded-lg text-slate-400 hover:text-indigo-600 transition-colors">▲</button>
+                                        class="w-7 h-7 flex items-center justify-center bg-white rounded shadow-sm text-slate-400 hover:text-indigo-600 hover:shadow transition-all">
+                                        ▲
+                                    </button>
                                     <button @click="removeLayer" title="Sil"
-                                        class="p-1.5 hover:bg-red-50 rounded-lg text-slate-400 hover:text-red-600 transition-colors">🗑</button>
+                                        class="w-7 h-7 flex items-center justify-center bg-white rounded shadow-sm text-slate-400 hover:text-red-500 hover:shadow transition-all">
+                                        🗑
+                                    </button>
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <label class="text-[9px] font-bold text-slate-400 uppercase">Genişlik (m)</label>
+                            <div class="grid grid-cols-2 gap-3 relative z-10">
+                                <div
+                                    class="bg-slate-50 p-2 rounded-xl border border-slate-100 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+                                    <label class="text-[8px] font-bold text-slate-400 uppercase block mb-1">Genişlik
+                                        (m)</label>
                                     <input type="number" step="0.1"
                                         v-model.number="layers.find(l => l.id === selectedLayerId)!.width"
-                                        class="w-full bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs font-bold text-center mt-1">
+                                        class="w-full bg-transparent text-sm font-black text-slate-700 outline-none">
                                 </div>
-                                <div>
-                                    <label class="text-[9px] font-bold text-slate-400 uppercase">Yükseklik (m)</label>
+                                <div
+                                    class="bg-slate-50 p-2 rounded-xl border border-slate-100 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
+                                    <label class="text-[8px] font-bold text-slate-400 uppercase block mb-1">Yükseklik
+                                        (m)</label>
                                     <input type="number" step="0.1"
                                         v-model.number="layers.find(l => l.id === selectedLayerId)!.height"
-                                        class="w-full bg-white border border-slate-200 rounded-lg py-1 px-2 text-xs font-bold text-center mt-1">
+                                        class="w-full bg-transparent text-sm font-black text-slate-700 outline-none">
                                 </div>
                             </div>
 
-                            <div class="flex items-center justify-between">
-                                <span class="text-[10px] font-bold text-slate-500">Renk</span>
-                                <div
-                                    class="flex items-center gap-2 bg-white px-2 py-1 rounded-lg border border-slate-200 relative">
-                                    <div class="w-4 h-4 rounded shadow-sm"
+                            <div
+                                class="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-100 relative z-10">
+                                <span class="text-[10px] font-bold text-slate-500 pl-1">Renk</span>
+                                <div class="flex items-center gap-2 relative">
+                                    <span class="text-[10px] font-mono text-slate-400 uppercase">{{layers.find(l =>
+                                        l.id === selectedLayerId)?.color }}</span>
+                                    <div class="w-8 h-6 rounded-lg shadow-sm border border-slate-200 cursor-pointer hover:scale-110 transition-transform"
                                         :style="{ backgroundColor: layers.find(l => l.id === selectedLayerId)?.color }">
                                     </div>
                                     <input type="color" v-model="layers.find(l => l.id === selectedLayerId)!.color"
-                                        class="opacity-0 w-4 h-4 absolute cursor-pointer">
+                                        class="opacity-0 w-full h-full absolute inset-0 cursor-pointer">
                                 </div>
                             </div>
 
-                            <div>
-                                <div class="flex justify-between mb-1">
-                                    <span class="text-[10px] font-bold text-slate-500">Döndür</span>
-                                    <span class="text-[10px] font-bold text-indigo-600">{{layers.find(l => l.id ===
-                                        selectedLayerId)?.rotation}}°</span>
+                            <div class="space-y-3 relative z-10 pt-1">
+                                <div>
+                                    <div class="flex justify-between mb-1.5">
+                                        <span class="text-[10px] font-bold text-slate-500 flex items-center gap-1">
+                                            <span>↻</span> Döndür
+                                        </span>
+                                        <span
+                                            class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-1.5 rounded">{{layers.find(l => l.id === selectedLayerId)?.rotation}}°</span>
+                                    </div>
+                                    <input type="range" min="0" max="360" step="5"
+                                        v-model.number="layers.find(l => l.id === selectedLayerId)!.rotation"
+                                        class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600 hover:accent-indigo-500">
                                 </div>
-                                <input type="range" min="0" max="360" step="5"
-                                    v-model.number="layers.find(l => l.id === selectedLayerId)!.rotation"
-                                    class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
-                            </div>
 
-                            <div>
-                                <div class="flex justify-between mb-1">
-                                    <span class="text-[10px] font-bold text-slate-500">Şeffaflık</span>
-                                    <span class="text-[10px] font-bold text-indigo-600">%{{Math.round((layers.find(l =>
-                                        l.id === selectedLayerId)?.opacity || 1) * 100)}}</span>
+                                <div>
+                                    <div class="flex justify-between mb-1.5">
+                                        <span class="text-[10px] font-bold text-slate-500 flex items-center gap-1">
+                                            <span>👁</span> Görünürlük
+                                        </span>
+                                        <span
+                                            class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-1.5 rounded">%{{Math.round((layers.find(l => l.id === selectedLayerId)?.opacity || 1) * 100)}}</span>
+                                    </div>
+                                    <input type="range" min="0.1" max="1" step="0.05"
+                                        v-model.number="layers.find(l => l.id === selectedLayerId)!.opacity"
+                                        class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600 hover:accent-indigo-500">
                                 </div>
-                                <input type="range" min="0.1" max="1" step="0.05"
-                                    v-model.number="layers.find(l => l.id === selectedLayerId)!.opacity"
-                                    class="w-full h-1.5 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                            </div>
+                        </div>
+
+                        <div v-if="showToolLibrary" @click.self="closeToolLibrary"
+                            class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+
+                            <div class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity"></div>
+
+                            <div role="dialog" aria-modal="true"
+                                class="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 duration-200">
+
+                                <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-4 bg-white z-10">
+                                    <div class="flex-1 relative">
+                                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+                                        <input v-model="toolSearch" placeholder="Şekil veya ikon ara..." autofocus
+                                            class="w-full bg-slate-100 border-none rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-700 placeholder:font-normal focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all" />
+                                    </div>
+                                    <button @click="closeToolLibrary"
+                                        class="w-10 h-10 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 flex items-center justify-center transition-colors text-lg">
+                                        &times;
+                                    </button>
+                                </div>
+
+                                <div class="flex flex-1 overflow-hidden">
+                                    <div
+                                        class="w-32 md:w-48 bg-slate-50 border-r border-slate-100 p-2 overflow-y-auto hidden md:flex flex-col gap-1">
+                                        <button v-for="cat in toolCategories" :key="cat.id"
+                                            @click="activeCategory = cat.id"
+                                            class="px-4 py-3 rounded-xl text-left text-xs font-bold transition-all flex justify-between items-center group"
+                                            :class="activeCategory === cat.id
+                                                ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200'
+                                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-700'">
+                                            {{ cat.label }}
+                                            <span v-if="activeCategory === cat.id"
+                                                class="w-1.5 h-1.5 rounded-full bg-indigo-600"></span>
+                                        </button>
+                                    </div>
+
+                                    <div
+                                        class="md:hidden flex overflow-x-auto p-2 border-b border-slate-100 gap-2 bg-white absolute top-20 w-full z-10 hide-scrollbar">
+                                        <button v-for="cat in toolCategories" :key="cat.id"
+                                            @click="activeCategory = cat.id"
+                                            class="whitespace-nowrap px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all"
+                                            :class="activeCategory === cat.id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white text-slate-500 border-slate-200'">
+                                            {{ cat.label }}
+                                        </button>
+                                    </div>
+
+                                    <div
+                                        class="flex-1 p-4 md:p-6 overflow-y-auto bg-white custom-scrollbar mt-12 md:mt-0">
+                                        <div v-if="libraryTools.length === 0"
+                                            class="h-full flex flex-col items-center justify-center text-slate-400">
+                                            <span class="text-4xl mb-2">🤔</span>
+                                            <p class="text-sm">Sonuç bulunamadı.</p>
+                                        </div>
+
+                                        <div
+                                            class="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-7 gap-3">
+                                            <button v-for="tool in libraryTools" :key="tool.id"
+                                                @click="selectToolFromLibrary(tool.id)"
+                                                class="aspect-square flex flex-col items-center justify-center p-2 rounded-xl border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all hover:shadow-md hover:-translate-y-1 group relative"
+                                                :class="activeTool === tool.id ? 'ring-2 ring-indigo-600 bg-indigo-50' : ''">
+
+                                                <span
+                                                    class="text-3xl mb-1 drop-shadow-sm group-hover:scale-110 transition-transform duration-200">{{
+                                                    tool.icon }}</span>
+                                                <span
+                                                    class="text-[9px] font-bold text-slate-500 text-center leading-tight line-clamp-2 group-hover:text-indigo-700">{{
+                                                    tool.label }}</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </section>
@@ -290,7 +416,7 @@
                                         <option value="grass">Çim</option>
                                     </select>
                                     <span class="text-[9px] text-slate-400 bg-slate-50 px-1.5 rounded">#{{ index + 1
-                                        }}</span>
+                                    }}</span>
                                 </div>
 
                                 <div class="grid grid-cols-2 gap-2">
@@ -387,7 +513,7 @@
                 </div>
 
                 <div class="flex-1 bg-slate-100/50 flex flex-col relative overflow-hidden"
-                    :style="{ backgroundColor: form.bgColor }">
+                    :class="showSidebar ? 'md:opacity-100 opacity-40' : ''" :style="{ backgroundColor: form.bgColor }">
 
                     <div
                         class="bg-white border-b border-slate-200 px-6 py-3 flex justify-between items-center z-20 shadow-sm/50">
@@ -531,15 +657,20 @@
                             </span>
                         </div>
                     </div>
+
+                    <!-- Mobile: floating settings button (moved to avoid overlap with footer save) -->
+                    <button v-if="!showSidebar" @click="openSidebar" aria-label="Ayarlar"
+                        class="md:hidden fixed bottom-20 right-4 z-50 bg-indigo-600 text-white px-4 py-3 rounded-2xl shadow-lg">Ayarlar</button>
                 </div>
             </div>
 
-            <div class="px-8 py-5 bg-white border-t border-slate-100 flex justify-end gap-4 items-center">
+            <div
+                class="px-4 md:px-8 py-4 bg-white border-t border-slate-100 flex flex-col md:flex-row justify-end gap-3 items-center">
                 <button @click="close"
-                    class="px-6 py-2.5 text-[10px] font-black text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-xl transition-all uppercase tracking-[0.2em]">Vazgeç</button>
+                    class="w-full md:w-auto px-6 py-3 text-[12px] font-black text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all uppercase tracking-[0.15em]">Vazgeç</button>
                 <button @click="handleSave"
                     :disabled="!form.name || (form.shapeType === 'custom' && customPoints.length < 3)"
-                    class="px-8 py-3 bg-slate-900 hover:bg-indigo-600 disabled:bg-slate-100 disabled:text-slate-300 text-white rounded-xl text-[10px] font-black uppercase tracking-[0.2em] shadow-lg hover:shadow-indigo-200 hover:-translate-y-0.5 transition-all flex items-center gap-3 group">
+                    class="w-full md:w-auto px-6 py-4 md:py-3 bg-slate-900 hover:bg-indigo-600 disabled:bg-slate-100 disabled:text-slate-300 text-white rounded-xl text-[12px] font-black uppercase tracking-[0.15em] shadow-lg hover:shadow-indigo-200 transition-all flex items-center justify-center gap-3 group">
                     <span>{{ mode === 'create' ? 'Sahneyi Yayınla' : 'Kaydet' }}</span>
                     <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
                 </button>
@@ -549,7 +680,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, watch, onMounted, onUnmounted } from 'vue';
+import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { arSceneService } from '../../../services/arSceneService';
 
 // --- TİP TANIMLARI ---
@@ -660,12 +791,135 @@ const shapes = [
     { id: 'custom', label: 'Serbest', icon: '✏️' }
 ];
 
-// --- SETUP ---
+const toolCategories = [
+    { id: 'all', label: 'Tümü' },
+    { id: 'basic', label: 'Temel', ids: ['rect', 'circle', 'triangle', 'right-triangle', 'diamond', 'trapezoid', 'parallelogram', 'pentagon', 'hexagon', 'octagon', 'star-5', 'star-4', 'donut', 'plus', 'cross'] },
+    { id: 'arch', label: 'Mimari', ids: ['l-shape', 't-shape', 'u-shape', 'stairs', 'door', 'arc-wall', 'pillar'] },
+    { id: 'arrow', label: 'Oklar', ids: ['arrow-up', 'arrow-down', 'arrow-left', 'arrow-right', 'arrow-double-v', 'arrow-double-h', 'chevron-up', 'u-turn-left', 'curve-arrow'] },
+    { id: 'icon', label: 'İkonlar', ids: ['check', 'info', 'warning', 'question', 'pause', 'play', 'stop', 'menu', 'user', 'heart', 'lightning', 'cloud', 'moon', 'sun', 'drop', 'fire', 'leaf', 'box', 'lock', 'key', 'tool', 'camera', 'mail', 'bubble'] },
+    { id: 'loc', label: 'Konum', ids: ['pin', 'home', 'flag', 'map'] }
+];
+
 const props = defineProps<{ isOpen: boolean; mode: 'create' | 'edit'; initialData?: any; }>();
 const emit = defineEmits(['close', 'save']);
 const svgEl = ref<SVGSVGElement | null>(null);
 const svgContainer = ref<HTMLDivElement | null>(null);
 const activeTextureLayerIndex = ref<number | null>(null);
+
+const showSidebar = ref(false);
+const modalRoot = ref<HTMLElement | null>(null);
+
+const toggleSidebar = () => { showSidebar.value = !showSidebar.value; };
+
+const sheetHeight = ref(Math.round(Math.min(window.innerHeight * 0.45, 520)));
+let sheetMaxHeight = Math.round(window.innerHeight - 96);
+const isDraggingSheet = ref(false);
+const sheetStartY = ref(0);
+const sheetStartHeight = ref(0);
+const activeCategory = ref('all');
+
+const libraryTools = computed(() => {
+    const q = toolSearch.value.trim().toLowerCase();
+
+    // Önce kategoriye göre filtrele
+    let list = SHAPE_LIBRARY;
+    if (activeCategory.value !== 'all') {
+        const cat = toolCategories.find(c => c.id === activeCategory.value);
+        if (cat) {
+            list = SHAPE_LIBRARY.filter(t => cat.ids?.includes(t.id));
+        }
+    }
+
+    // Sonra aramaya göre filtrele
+    if (!q) return list;
+    return list.filter(t => t.label.toLowerCase().includes(q));
+});
+
+const quickAccessTools = computed(() => SHAPE_LIBRARY.slice(0, 8));
+
+const updateSheetMax = () => { sheetMaxHeight = Math.round(window.innerHeight - 96); if (sheetHeight.value > sheetMaxHeight) sheetHeight.value = sheetMaxHeight; };
+
+const openSidebar = () => {
+    updateSheetMax();
+    showSidebar.value = true;
+    // open in medium state
+    sheetHeight.value = Math.round(Math.min(window.innerHeight * 0.45, sheetMaxHeight));
+};
+
+
+const startSheetDrag = (e: MouseEvent | TouchEvent) => {
+    // Sadece mobilde çalışsın (768px altı)
+    if (window.innerWidth >= 768) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    isDraggingSheet.value = true;
+    sheetStartHeight.value = sheetHeight.value;
+
+    // --- GÜVENLİ YÖNTEM ---
+    // Önce ilk parmağı almaya çalışıyoruz
+    const firstTouch = 'touches' in e ? e.touches[0] : null;
+
+    // Eğer parmak varsa onun Y'sini, yoksa Mouse Y'sini alıyoruz
+    const clientY = firstTouch ? firstTouch.clientY : (e as MouseEvent).clientY;
+
+    sheetStartY.value = clientY;
+
+    document.body.style.userSelect = 'none';
+
+    window.addEventListener('mousemove', sheetDragMove);
+    window.addEventListener('touchmove', sheetDragMove, { passive: false });
+    window.addEventListener('mouseup', sheetDragEnd);
+    window.addEventListener('touchend', sheetDragEnd);
+};
+
+const sheetDragMove = (e: MouseEvent | TouchEvent) => {
+    if (!isDraggingSheet.value) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
+    // --- GÜVENLİ YÖNTEM ---
+    const firstTouch = 'touches' in e ? e.touches[0] : null;
+    const clientY = firstTouch ? firstTouch.clientY : (e as MouseEvent).clientY;
+
+    const delta = sheetStartY.value - clientY;
+    let newHeight = sheetStartHeight.value + delta;
+
+    if (newHeight < 150) newHeight = 150;
+    if (newHeight > window.innerHeight - 96) newHeight = window.innerHeight - 96;
+
+    window.requestAnimationFrame(() => {
+        sheetHeight.value = Math.round(newHeight);
+    });
+};
+
+const sheetDragEnd = () => {
+    isDraggingSheet.value = false;
+
+    // Seçim engelini kaldır
+    document.body.style.userSelect = '';
+
+    window.removeEventListener('mousemove', sheetDragMove);
+    window.removeEventListener('touchmove', sheetDragMove); // Listener'ı temizle
+    window.removeEventListener('mouseup', sheetDragEnd);
+    window.removeEventListener('touchend', sheetDragEnd);
+};
+
+// Update max on resize
+window.addEventListener('resize', updateSheetMax);
+
+// Tool library (minimal UI + searchable modal)
+const showToolLibrary = ref(false);
+const toolSearch = ref('');
+const openToolLibrary = () => { showToolLibrary.value = true; };
+const closeToolLibrary = () => { showToolLibrary.value = false; };
+const selectToolFromLibrary = (id: string) => { selectTool(id); closeToolLibrary(); };
+
+// Modal open animation state (mobile center scale)
+const isShowing = ref(false);
+
 
 // --- STATE ---
 const form = reactive({
@@ -755,6 +1009,42 @@ const hoveredPointIndex = ref<number | null>(null);
 const containerSize = reactive({ width: 100, height: 100 });
 let resizeObserver: ResizeObserver | null = null;
 
+// Açılır kapanır durumunda odak ve body overflow yönetimi
+watch(() => props.isOpen, (open) => {
+    if (open) {
+        showSidebar.value = false; // mobilde sidebar otomatik kapalı başlasın
+        document.body.style.overflow = 'hidden';
+        isShowing.value = false;
+        updateSheetMax();
+        // set default sheet height when opening but only if it was previously closed
+        sheetHeight.value = Math.round(Math.min(window.innerHeight * 0.45, sheetMaxHeight));
+        nextTick(() => {
+            modalRoot.value?.focus();
+            // animate in
+            isShowing.value = true;
+        });
+    } else {
+        isShowing.value = false;
+        document.body.style.overflow = '';
+    }
+});
+
+// Tool library Escape handler (close with ESC)
+watch(showToolLibrary, (open) => {
+    const handler = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') closeToolLibrary();
+    };
+    if (open) {
+        window.addEventListener('keydown', handler);
+        nextTick(() => { /* focus search input if present */ });
+    } else {
+        window.removeEventListener('keydown', handler);
+    }
+});
+
+onUnmounted(() => { document.body.style.overflow = ''; window.removeEventListener('resize', updateSheetMax); });
+
+
 // --- COMPUTED ---
 const calculatedArea = computed(() => {
     if (form.shapeType === 'rectangle') return (form.width * form.depth).toFixed(2);
@@ -778,15 +1068,15 @@ const calculatedArea = computed(() => {
     return '0.00';
 });
 
-const getSignedArea = (points: {x: number, z: number}[]) => {
+const getSignedArea = (points: { x: number, z: number }[]) => {
     let area = 0;
     for (let i = 0; i < points.length; i++) {
         const j = (i + 1) % points.length;
-        
+
         const p1 = points[i];
         const p2 = points[j];
 
-        if (!p1 || !p2) continue; 
+        if (!p1 || !p2) continue;
 
         area += (p2.x - p1.x) * (p2.z + p1.z);
     }
@@ -1163,8 +1453,8 @@ const setShape = (id: string) => {
 const close = () => emit('close');
 
 const handleSave = () => {
-    let pts = form.shapeType === 'custom' 
-        ? [...customPoints.value] 
+    let pts = form.shapeType === 'custom'
+        ? [...customPoints.value]
         : calculatePresetPoints(form.shapeType, form.width, form.depth);
 
     if (form.shapeType === 'custom' && pts.length > 2) {
