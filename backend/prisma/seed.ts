@@ -1,5 +1,4 @@
-﻿console.log(" Seeding database...");
-import { PrismaClient } from '@prisma/client';
+﻿import { PrismaClient, Role } from '@prisma/client'; // Role Enum'ını import etmeyi unutma
 import * as argon2 from 'argon2';
 
 const prisma = new PrismaClient();
@@ -8,137 +7,124 @@ async function main() {
   console.log("🌱 Seeding started...");
 
   // ------------------------------
-  // 1) Admin kullanıcı
+  // 1. ADIM: Şirketleri Oluştur (Önce bunlar lazım ki ID'lerini alalım)
   // ------------------------------
-  const adminPassword = await argon2.hash("217070");
+  console.log("🏢 Şirketler hazırlanıyor...");
 
-  const admin = await prisma.user.upsert({
-    where: { email: "onur@gmail.com" },
-    update: {},
-    create: {
-      name: "System Admin",
-      email: "onur@gmail.com",
-      passwordHash: adminPassword,
-      role: "admin",
-    },
-  });
-
-  console.log("✓ Admin oluşturuldu:", admin.email);
-
-  // ------------------------------
-  // 2) Şirketler
-  // ------------------------------
   const companyA = await prisma.company.upsert({
-    where: { apiKey: "COMPANY_A_KEY" }, // artık unique alanı kullanıyoruz
+    where: { apiKey: "COMPANY_A_KEY" },
     update: {},
     create: {
-      name: "Company A",
-      domain: "companyA.com",
+      name: "Company A (Teknoloji A.Ş.)",
+      domain: "companya.com",
       apiKey: "COMPANY_A_KEY",
     },
   });
 
   const companyB = await prisma.company.upsert({
-    where: { apiKey: "COMPANY_B_KEY" }, // unique alan
+    where: { apiKey: "COMPANY_B_KEY" },
     update: {},
     create: {
-      name: "Company B",
-      domain: "companyB.com",
+      name: "Company B (Mimarlık Ofisi)",
+      domain: "companyb.com",
       apiKey: "COMPANY_B_KEY",
     },
   });
 
-
-  console.log("✓ Şirketler oluşturuldu");
+  console.log("✓ Şirketler hazır.");
 
   // ------------------------------
-  // 3) Normal kullanıcılar
+  // 2. ADIM: Kullanıcıları Oluştur
   // ------------------------------
-  const user1Password = await argon2.hash("Test123!");
-  const user2Password = await argon2.hash("Test123!");
+  console.log("👤 Kullanıcılar hazırlanıyor...");
 
-  const user1 = await prisma.user.upsert({
-    where: { email: "editor@companyA.com" },
-    update: {},
+  // Ortak şifre
+  const commonPassword = await argon2.hash("Test123!");
+  const adminPassword = await argon2.hash("217070");
+
+  // --- A) SUPER ADMIN (Sen) ---
+  // Super Admin'in şirketi olmaz (companyId: null)
+  const superAdmin = await prisma.user.upsert({
+    where: { email: "onur@gmail.com" },
+    update: {
+      role: Role.SUPER_ADMIN,
+      companyId: null, // Super admin bağımsızdır
+    },
     create: {
-      name: "Company A Editor",
-      email: "editor@companyA.com",
-      passwordHash: user1Password,
+      name: "Onur (Super Admin)",
+      email: "onur@gmail.com",
+      passwordHash: adminPassword,
+      role: Role.SUPER_ADMIN,
+      companyId: null,
     },
   });
+  console.log(`✓ Super Admin: ${superAdmin.email}`);
 
-  const user2 = await prisma.user.upsert({
-    where: { email: "member@companyB.com" },
-    update: {},
-    create: {
-      name: "Company B Member",
-      email: "member@companyB.com",
-      passwordHash: user2Password,
-    },
-  });
-
-  console.log("✓ Kullanıcılar oluşturuldu");
-
-  // ------------------------------
-  // 4) UserCompany ilişkileri
-  // ------------------------------
-
-  // Admin → Her iki şirkette admin
-  await prisma.userCompany.upsert({
-    where: { userId_companyId: { userId: admin.id, companyId: companyA.id } },
-    update: {},
-    create: {
-      userId: admin.id,
+  // --- B) COMPANY ADMIN (Company A Yöneticisi) ---
+  const companyAdminA = await prisma.user.upsert({
+    where: { email: "admin@companya.com" },
+    update: {
+      role: Role.COMPANY_ADMIN,
       companyId: companyA.id,
-      role: "admin"
     },
-  });
-
-  await prisma.userCompany.upsert({
-    where: { userId_companyId: { userId: admin.id, companyId: companyB.id } },
-    update: {},
     create: {
-      userId: admin.id,
-      companyId: companyB.id,
-      role: "admin"
-    },
-  });
-
-  // Editor → Company A
-  await prisma.userCompany.upsert({
-    where: { userId_companyId: { userId: user1.id, companyId: companyA.id } },
-    update: {},
-    create: {
-      userId: user1.id,
+      name: "Ahmet Yönetici",
+      email: "admin@companya.com",
+      passwordHash: commonPassword,
+      role: Role.COMPANY_ADMIN,
       companyId: companyA.id,
-      role: "editor"
     },
   });
+  console.log(`✓ Company Admin (A): ${companyAdminA.email}`);
 
-  // Member → Company B
-  await prisma.userCompany.upsert({
-    where: { userId_companyId: { userId: user2.id, companyId: companyB.id } },
-    update: {},
+  // --- C) EDITOR (Company A Çalışanı) ---
+  const editorA = await prisma.user.upsert({
+    where: { email: "editor@companya.com" },
+    update: {
+      role: Role.EDITOR,
+      companyId: companyA.id,
+    },
     create: {
-      userId: user2.id,
-      companyId: companyB.id,
-      role: "member"
+      name: "Ayşe Editör",
+      email: "editor@companya.com",
+      passwordHash: commonPassword,
+      role: Role.EDITOR,
+      companyId: companyA.id,
     },
   });
+  console.log(`✓ Editor (A): ${editorA.email}`);
 
-  console.log("✓ UserCompany ilişkileri oluşturuldu");
+  // --- D) MEMBER (Company B İzleyicisi) ---
+  const memberB = await prisma.user.upsert({
+    where: { email: "member@companyb.com" },
+    update: {
+      role: Role.MEMBER,
+      companyId: companyB.id,
+    },
+    create: {
+      name: "Mehmet İzleyici",
+      email: "member@companyb.com",
+      passwordHash: commonPassword,
+      role: Role.MEMBER,
+      companyId: companyB.id,
+    },
+  });
+  console.log(`✓ Member (B): ${memberB.email}`);
+
+  // ------------------------------
+  // 3. ADIM: Zemin Dokuları
+  // ------------------------------
+  console.log('🎨 Zemin dokuları yükleniyor...');
 
   const textures = [
     { name: 'Ahşap Parke', url: '/textures/wood.jpg' },
     { name: 'Seramik', url: '/textures/tiles.jpg' },
     { name: 'Çim', url: '/textures/grass.jpg' },
     { name: 'Kauçuk Zemin', url: '/textures/rubber.jpg' },
+    { name: 'Mermer', url: '/textures/marble.jpg' },
   ];
 
-  console.log('Zemin dokuları yükleniyor...');
-
   for (const tex of textures) {
-    // Aynı isimde varsa tekrar ekleme
     const exists = await prisma.floorTexture.findFirst({ where: { name: tex.name } });
     
     if (!exists) {
@@ -150,18 +136,18 @@ async function main() {
           isActive: true,
         },
       });
-      console.log(`+ Eklendi: ${tex.name}`);
+      console.log(`  + Doku eklendi: ${tex.name}`);
     } else {
-      console.log(`- Zaten var: ${tex.name}`);
+      // console.log(`  - Doku zaten var: ${tex.name}`);
     }
   }
 
-  console.log("🌱 Seed başarıyla tamamlandı!");
+  console.log("\n🌱 Seed işlemi başarıyla tamamlandı!");
 }
 
 main()
   .catch((e) => {
-    console.error(e);
+    console.error("❌ Seed hatası:", e);
     process.exit(1);
   })
   .finally(async () => {

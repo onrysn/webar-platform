@@ -1,56 +1,79 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
+import { Prisma, Role } from '@prisma/client';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
 
 @Injectable()
 export class ActivityLogService {
   constructor(private prisma: PrismaService) {}
 
-  async log(userId: number, action: string, description: string, metadata?: any) {
+  /**
+   * Log oluşturma (Değişiklik yok)
+   */
+  async log(userId: number | null, companyId: number | null, action: string, description: string, metadata?: any) {
     return this.prisma.activityLog.create({
       data: {
-        userId,
         action,
         description,
         metadata: metadata || {},
+        userId,
+        companyId,
       },
     });
   }
 
   /**
-   * Son aktiviteleri getirir.
-   * @param limit Kaç adet kayıt getirileceği
-   * @param excludeActions Listede görmek istemediğin aksiyon tipleri (örn: ['VIEW_SCENE'])
+   * GÜNCELLENDİ: Yeni Role Enum'ına göre yetki filtresi
    */
-  async getLatest(limit: number = 5, excludeActions: string[] = []) {
+  private getPermissionFilter(user: CurrentUser): Prisma.ActivityLogWhereInput {
+    if (user.role === Role.SUPER_ADMIN) {
+      return {}; 
+    }
+
+    if (user.role === Role.COMPANY_ADMIN) {
+      return { companyId: user.companyId };
+    }
+
+    return { userId: user.id };
+  }
+
+  /**
+   * Son aktiviteleri getirir
+   */
+  async getLatest(user: CurrentUser, limit: number = 5, excludeActions: string[] = []) {
+    const permissionFilter = this.getPermissionFilter(user);
+
     return this.prisma.activityLog.findMany({
       take: limit,
-      where: excludeActions.length > 0 
-        ? { action: { notIn: excludeActions } }
-        : undefined,
+      where: {
+        ...permissionFilter,
+        ...(excludeActions.length > 0 ? { action: { notIn: excludeActions } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       include: {
         user: {
-          select: { name: true, role: true }
+          select: { name: true, role: true, email: true }
         }
       }
     });
   }
 
   /**
-   * Grafik verisi için belirli bir tarih aralığındaki spesifik aksiyonları getirir.
-   * @param action Filtrelenecek aksiyon (örn: 'VIEW_SCENE')
-   * @param startDate Başlangıç tarihi
+   * İstatistik verisi için
    */
-  async getLogsByAction(action: string, startDate: Date) {
+  async getLogsByAction(user: CurrentUser, action: string, startDate: Date) {
+    const permissionFilter = this.getPermissionFilter(user);
+
     return this.prisma.activityLog.findMany({
       where: {
+        ...permissionFilter,
         action: action,
         createdAt: {
           gte: startDate,
         },
       },
       select: {
-        createdAt: true,
+        createdAt: true
       },
       orderBy: { createdAt: 'asc' }
     });

@@ -14,12 +14,17 @@
 
         <div class="h-1 w-full bg-gradient-to-r from-indigo-500 to-purple-500"></div>
 
-        <form @submit.prevent="updateCompany" class="p-8 space-y-6">
+        <form @submit.prevent="handleUpdate" class="p-8 space-y-6">
 
           <div>
             <h2 class="text-lg font-bold text-slate-900">Temel Bilgiler</h2>
-            <p class="text-sm text-slate-500 mb-6">Şirketinizin görünen adı ve domain ayarlarını buradan
-              güncelleyebilirsiniz.</p>
+            <div class="flex items-center gap-2 mb-6">
+              <p class="text-sm text-slate-500">Şirketinizin görünen adı ve domain ayarlarını buradan
+                güncelleyebilirsiniz.</p>
+              <span v-if="isSuperAdmin && targetCompanyId"
+                class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase">ADMIN
+                MODU</span>
+            </div>
           </div>
 
           <div>
@@ -46,10 +51,11 @@
                 class="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-slate-300 bg-slate-100 text-slate-500 text-sm font-mono">
                 https://
               </span>
-              <input v-model="form.domain" type="text"
+              <input v-model="form.domain" type="text" @blur="sanitizeDomain"
                 class="flex-1 min-w-0 block w-full px-4 py-3 rounded-none rounded-r-xl border border-slate-300 bg-slate-50 text-slate-800 font-medium focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder-slate-400"
-                placeholder="sirketiniz.com" required />
+                placeholder="sirketiniz.com" />
             </div>
+            <p class="text-xs text-slate-400 mt-2">CORS ve güvenlik ayarları için kullanılır (Opsiyonel).</p>
           </div>
 
           <div class="pt-4 flex items-center justify-end border-t border-slate-100 mt-6">
@@ -74,30 +80,45 @@
 </template>
 
 <script setup lang="ts">
-// ... Mevcut script kodunuz (loadCompany, updateCompany vs.) ...
-import { reactive, ref, onMounted } from 'vue';
+import { reactive, ref, onMounted, computed } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useRoute } from 'vue-router';
-import type { CompanyDto } from '../dto/company.dto';
+import { useAuthStore } from '../../../store/modules/auth';
 import { companyService } from '../../../services/companyService';
+import type { CompanyDto } from '../dto/company.dto';
 
 const toast = useToast();
 const route = useRoute();
-const companyId = Number(route.params.id);
+const authStore = useAuthStore();
 
+// STATE
 const loading = ref(true);
 const isSaving = ref(false);
-
-const company = reactive<CompanyDto>({ id: 0, name: '', domain: '', apiKey: '', users: [] });
+const company = ref<CompanyDto | null>(null);
 const form = reactive({ name: '', domain: '' });
 
+// COMPUTED: Hangi moddayız?
+const targetCompanyId = computed(() => route.params.id ? Number(route.params.id) : null);
+const isSuperAdmin = computed(() => authStore.user?.role === 'SUPER_ADMIN');
+
+// 1. ŞİRKET BİLGİLERİNİ YÜKLE
 async function loadCompany() {
   loading.value = true;
   try {
-    const data = await companyService.getCompanyById(companyId);
-    Object.assign(company, data);
+    let data;
+
+    if (isSuperAdmin.value && targetCompanyId.value) {
+      // Admin Modu -> Başka Şirketi Getir
+      data = await companyService.getCompanyById(targetCompanyId.value);
+    } else {
+      // Owner Modu -> Kendi Şirketini Getir
+      data = await companyService.getMyCompany();
+    }
+
+    company.value = data;
     form.name = data.name;
-    form.domain = data.domain;
+    form.domain = data.domain || '';
+
   } catch (error) {
     toast.error("Şirket bilgileri alınamadı.");
   } finally {
@@ -105,13 +126,26 @@ async function loadCompany() {
   }
 }
 
-async function updateCompany() {
+// 2. GÜNCELLEME İŞLEMİ
+async function handleUpdate() {
   if (isSaving.value) return;
+  sanitizeDomain();
 
   isSaving.value = true;
   try {
-    await companyService.updateCompany(companyId, form);
-    toast.success('Şirket bilgileri güncellendi!');
+
+    // YENİ MANTIK: İki farklı endpoint
+    if (isSuperAdmin.value && targetCompanyId.value) {
+      // 1. Super Admin Modu (ID ile güncelleme)
+      // NOT: companyService.updateCompany(id, dto) metodunu servise eklediğini varsayıyoruz.
+      await companyService.updateCompany(targetCompanyId.value, form);
+    } else {
+      // 2. Company Admin Modu (Kendi şirketini güncelleme)
+      await companyService.updateMyCompany(form);
+    }
+
+    toast.success('Şirket bilgileri başarıyla güncellendi!');
+
   } catch (error: any) {
     console.error(error);
     toast.error(error.response?.data?.message || 'Güncelleme sırasında hata oluştu.');
@@ -119,6 +153,11 @@ async function updateCompany() {
     isSaving.value = false;
   }
 }
+
+const sanitizeDomain = () => {
+  if (!form.domain) return;
+  form.domain = form.domain.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+};
 
 onMounted(loadCompany);
 </script>

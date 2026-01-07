@@ -50,6 +50,22 @@
           </div>
 
           <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">Şirket Adı</label>
+            <div class="relative">
+              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <svg class="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                  stroke-width="1.5" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round"
+                    d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" />
+                </svg>
+              </div>
+              <input v-model="companyName" type="text" placeholder="Şirketinizin Adı (Örn: Tech A.Ş.)"
+                class="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition duration-150 ease-in-out sm:text-sm"
+                required />
+            </div>
+          </div>
+
+          <div>
             <label class="block text-sm font-medium text-slate-700 mb-1.5">E-posta Adresi</label>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -129,26 +145,28 @@ const auth = useAuthStore();
 const router = useRouter();
 
 const name = ref('');
+const companyName = ref(''); // [YENİ]: Şirket Adı
 const email = ref('');
 const password = ref('');
+
 const error = ref('');
-const isLoading = ref(false); // UI Geri bildirimi için
+const isLoading = ref(false);
 
 const submitRegister = async () => {
   error.value = '';
   isLoading.value = true;
 
   try {
+    // Backend RegisterDto'ya uygun şekilde verileri gönderiyoruz
     await auth.register({
       name: name.value,
       email: email.value,
-      password: password.value
+      password: password.value,
+      companyName: companyName.value // [YENİ]
     });
 
-    // Kayıt başarılıysa Dashboard'a at
     router.push('/dashboard');
   } catch (err: any) {
-    // Hata mesajını yakala
     error.value = err.message || 'Kayıt işlemi sırasında bir hata oluştu.';
   } finally {
     isLoading.value = false;

@@ -1,12 +1,15 @@
-﻿import { createRouter, createWebHistory } from 'vue-router';
+﻿import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 import { useAuthStore } from '../store/modules/auth';
 
-// Dashboard sayfaları
-import MainLayout from '../layouts/MainLayout.vue';
+// --- LAYOUTS ---
+// [ÖNEMLİ] MainLayout yerine, oluşturduğumuz Akıllı Wrapper'ı import ediyoruz.
+import AppLayout from '../layouts/AppLayout.vue';
+
+// --- DASHBOARD PAGES ---
 import DashboardHome from '../modules/dashboard/pages/Dashboard.vue';
 import Settings from '../modules/dashboard/pages/settings.vue';
 
-// Companies sayfaları
+// --- COMPANIES PAGES ---
 import CompaniesList from '../modules/companies/pages/CompaniesList.vue';
 import CompanyCreate from '../modules/companies/pages/CompanyCreate.vue';
 import CompanyDetail from '../modules/companies/pages/CompanyDetail.vue';
@@ -14,61 +17,137 @@ import CompanyUpdate from '../modules/companies/pages/CompanyUpdate.vue';
 import CompanyManageUsers from '../modules/companies/pages/CompanyManageUsers.vue';
 import CompanyApiKey from '../modules/companies/pages/CompanyApiKey.vue';
 
-// Auth sayfaları
+// --- AUTH PAGES ---
 import Login from '../modules/auth/pages/Login.vue';
 import Register from '../modules/auth/pages/Register.vue';
 
-// AR Model sayfaları
+// --- AR MODEL PAGES ---
 import ModelList from '../modules/ar-model/pages/ModelList.vue';
 import UploadModel from '../modules/ar-model/pages/UploadModel.vue';
 import ModelDetail from '../modules/ar-model/pages/ModelDetail.vue';
 
-// AR Scene sayfaları
+// --- AR SCENE PAGES ---
 import SceneList from '../modules/ar-scene/pages/SceneList.vue';
-import SceneEditor from '../modules/ar-scene/pages/SceneEditor.vue'; // <--- Import Edildi
+import SceneEditor from '../modules/ar-scene/pages/SceneEditor.vue';
 
-const routes = [
+// --- ROL SABİTLERİ ---
+const ROLES = {
+  SUPER_ADMIN: 'SUPER_ADMIN',
+  COMPANY_ADMIN: 'COMPANY_ADMIN',
+  EDITOR: 'EDITOR',
+  MEMBER: 'MEMBER'
+};
+
+// Member HARİÇ herkes (Yönetim Paneli Görenler)
+const ADMINS_AND_EDITORS = [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.EDITOR];
+
+// Düzenleme yetkisi olanlar (Upload, Create, Edit)
+const EDITORS_AND_ABOVE = [ROLES.SUPER_ADMIN, ROLES.COMPANY_ADMIN, ROLES.EDITOR];
+
+const routes: RouteRecordRaw[] = [
+  // --- PUBLIC ROUTES ---
   { path: '/', redirect: '/login' },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
+
+  // --- EDITOR (Standalone / Layoutsız) ---
   {
     path: '/editor/scene/:id',
     name: 'SceneEditor',
     component: SceneEditor,
-    meta: { requiresAuth: true }
+    // Herkes girebilir (Member izler, diğerleri düzenler)
+    meta: { requiresAuth: true } 
   },
 
-  // --- 2. DASHBOARD ROTASI ---
+  // --- DASHBOARD (DYNAMIC LAYOUT) ---
   {
     path: '/dashboard',
-    component: MainLayout,
+    // [DEĞİŞİKLİK BURADA] MainLayout yerine AppLayout kullanıyoruz.
+    // AppLayout, kullanıcının rolüne göre MainLayout veya ViewerLayout'u render edecek.
+    component: AppLayout, 
     meta: { requiresAuth: true },
     children: [
-      { path: '', component: DashboardHome },
-      { path: 'settings', component: Settings },
+      
+      // 1. GENEL BAKIŞ (Sadece Yönetim Ekibi)
+      { 
+        path: '', 
+        name: 'DashboardHome',
+        component: DashboardHome,
+        // Member burayı göremez, Guard onu SceneList'e atacak.
+        meta: { roles: ADMINS_AND_EDITORS } 
+      },
+      { 
+        path: 'settings', 
+        name: 'Settings',
+        component: Settings,
+        meta: { roles: ADMINS_AND_EDITORS }
+      },
 
-      // Companies
-      { path: 'companies', component: CompaniesList, meta: { adminOnly: true } },
-      { path: 'companies/create', component: CompanyCreate, meta: { adminOnly: true } },
+      // 2. SUPER ADMIN: ŞİRKET YÖNETİMİ
+      { 
+        path: 'companies', 
+        name: 'CompaniesList',
+        component: CompaniesList, 
+        meta: { roles: [ROLES.SUPER_ADMIN] } 
+      },
+      { 
+        path: 'companies/create', 
+        name: 'CompanyCreate',
+        component: CompanyCreate, 
+        meta: { roles: [ROLES.SUPER_ADMIN] } 
+      },
       {
         path: 'companies/:id',
         component: CompanyDetail,
+        meta: { roles: [ROLES.SUPER_ADMIN] },
         children: [
-          { path: 'update', component: CompanyUpdate, meta: { adminOnly: true } },
-          { path: 'manage-users', component: CompanyManageUsers, meta: { adminOnly: true } },
-          { path: 'api-key', component: CompanyApiKey, meta: { adminOnly: true } },
+          { path: '', redirect: to => `/dashboard/companies/${to.params.id}/update` },
+          { path: 'update', component: CompanyUpdate },
+          { path: 'manage-users', component: CompanyManageUsers },
+          { path: 'api-key', component: CompanyApiKey },
         ],
       },
 
-      // AR Models
-      { path: 'ar-model', name: 'ModelList', component: ModelList },
-      { path: 'ar-model/upload', name: 'UploadModel', component: UploadModel, meta: { adminOnly: true }  },
-      { path: 'ar-model/:id', name: 'ModelDetail', component: ModelDetail },
+      // 3. COMPANY ADMIN: EKİP YÖNETİMİ
+      {
+        path: 'my-team',
+        name: 'MyTeam',
+        component: CompanyManageUsers, 
+        meta: { roles: [ROLES.COMPANY_ADMIN] }
+      },
 
-      // AR Scenes (LİSTE) -> Dashboard içinde kalıyor
-      { path: 'ar-scene', name: 'SceneList', component: SceneList },
+      // 4. AR MODELS (Ortak Alan)
+      { 
+        path: 'ar-model', 
+        name: 'ModelList', 
+        component: ModelList 
+        // Herkes görebilir
+      },
+      { 
+        path: 'ar-model/upload', 
+        name: 'UploadModel', 
+        component: UploadModel, 
+        // Sadece yetkililer yükleme yapabilir
+        meta: { roles: EDITORS_AND_ABOVE } 
+      },
+      { 
+        path: 'ar-model/:id', 
+        name: 'ModelDetail', 
+        component: ModelDetail 
+      },
+
+      // 5. AR SCENES (Ortak Alan)
+      { 
+        path: 'ar-scene', 
+        name: 'SceneList', 
+        component: SceneList 
+        // Herkes görebilir
+      },
     ],
   },
+  
+  // 404 Catch-all
+  { path: '/:pathMatch(.*)*', redirect: '/dashboard' }
 ];
 
 const router = createRouter({
@@ -76,31 +155,54 @@ const router = createRouter({
   routes,
 });
 
-// ... (Router Guard kısmı aynen kalacak) ...
-router.beforeEach(async (to) => {
+// --- NAVIGATION GUARD ---
+router.beforeEach(async (to, _from, next) => {
   const auth = useAuthStore();
-  auth.loadFromStorage();
-
+  
+  // 1. Token Kontrolü
+  if (!auth.token) auth.loadFromStorage();
   const isAuthenticated = !!auth.token;
 
+  // 2. Zaten giriş yapmışsa Login'e sokma
+  if ((to.path === '/login' || to.path === '/register') && isAuthenticated) {
+    return next('/dashboard');
+  }
+
+  // 3. Auth Gerektiren Sayfa Kontrolü
+  if (to.meta.requiresAuth && !isAuthenticated) {
+    return next('/login');
+  }
+
+  // 4. Kullanıcı Bilgisi Yoksa Çek (F5 durumları)
   if (isAuthenticated && !auth.user) {
-    await auth.fetchMe();
+    try {
+      await auth.fetchMe();
+    } catch (error) {
+      auth.logout();
+      return next('/login');
+    }
   }
 
-  if (to.meta.requiresAuth && !auth.token) {
-    return '/login';
+  if (isAuthenticated && auth.user?.role === ROLES.MEMBER && to.path === '/dashboard') {
+      return next('/dashboard/ar-scene');
   }
 
-  // Admin-only sayfa kontrolü
-  if (to.meta.adminOnly && auth.user?.role !== 'admin') {
-    return '/dashboard';
+  // 6. Rol Tabanlı Erişim Kontrolü
+  if (to.meta.roles) {
+    const allowedRoles = to.meta.roles as string[];
+    const userRole = auth.user?.role;
+
+    if (!userRole || !allowedRoles.includes(userRole)) {
+      // Yetkisiz erişim.
+      // Eğer Member ise Sahneler sayfasına at, diğerleri için Dashboard'a at.
+      if (userRole === ROLES.MEMBER) {
+          return next('/dashboard/ar-scene');
+      }
+      return next('/dashboard'); 
+    }
   }
 
-  if ((to.path === '/login' || to.path === '/register') && auth.token) {
-    return '/dashboard';
-  }
-
-  return true;
+  next();
 });
 
 export default router;

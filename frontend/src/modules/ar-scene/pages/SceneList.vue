@@ -4,19 +4,52 @@
 
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">AR Sahnelerim</h1>
+          <div class="flex items-center gap-3">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">AR Sahnelerim</h1>
+            <span v-if="routeCompanyId"
+              class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">
+              Şirket #{{ routeCompanyId }}
+            </span>
+          </div>
           <p class="mt-1 text-sm text-gray-500">Müşterilerinize sunacağınız 3D ortamları buradan tasarlayın.</p>
         </div>
 
-        <button @click="openCreateModal"
-          class="group w-full sm:w-auto flex items-center justify-center px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 hover:shadow-blue-300 transform hover:-translate-y-0.5 font-medium">
-          <svg xmlns="http://www.w3.org/2000/svg"
-            class="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" fill="none" viewBox="0 0 24 24"
-            stroke="currentColor">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        <div class="flex gap-3 w-full sm:w-auto">
+          <button v-if="routeCompanyId" @click="goBackToCompany"
+            class="flex items-center justify-center px-4 py-2.5 bg-white border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 transition-all font-medium text-sm w-full sm:w-auto">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1.5 text-gray-400" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Şirkete Dön
+          </button>
+
+          <button @click="openCreateModal"
+            class="group w-full sm:w-auto flex items-center justify-center px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 hover:shadow-blue-300 transform hover:-translate-y-0.5 font-medium">
+            <svg xmlns="http://www.w3.org/2000/svg"
+              class="h-5 w-5 mr-2 group-hover:rotate-90 transition-transform duration-300" fill="none"
+              viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            Yeni Sahne Oluştur
+          </button>
+        </div>
+      </div>
+
+      <div v-if="isSuperAdmin && !routeCompanyId"
+        class="mb-8 p-4 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col sm:flex-row items-center gap-4">
+        <div class="flex items-center gap-2 text-gray-500 min-w-max">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
           </svg>
-          Yeni Sahne Oluştur
-        </button>
+          <span class="text-sm font-bold">Şirket Filtrele:</span>
+        </div>
+        <select v-model="selectedFilterCompanyId" @change="fetchScenes"
+          class="flex-1 w-full sm:w-auto p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block">
+          <option :value="null">Tüm Şirketler</option>
+          <option v-for="c in companiesList" :key="c.id" :value="c.id">{{ c.name }}</option>
+        </select>
       </div>
 
       <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -37,8 +70,9 @@
           </svg>
         </div>
         <h3 class="mt-2 text-lg font-bold text-gray-900">Henüz hiç sahne yok</h3>
-        <p class="mt-1 text-sm text-gray-500 max-w-sm mx-auto">İlk AR sahnenizi oluşturarak ürünlerinizi sanal ortamda
-          sergilemeye başlayın.</p>
+        <p class="mt-1 text-sm text-gray-500 max-w-sm mx-auto">
+          {{ selectedFilterCompanyId ? 'Bu şirkete ait sahne bulunamadı.' : 'İlk AR sahnenizi oluşturarak başlayın.' }}
+        </p>
         <div class="mt-6">
           <button @click="openCreateModal"
             class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-blue-700 bg-blue-100 hover:bg-blue-200">
@@ -74,13 +108,10 @@
           </div>
 
           <div @click="goToEditor(scene.id)" class="cursor-pointer">
-
             <div class="h-48 w-full bg-gray-100 relative overflow-hidden border-b border-gray-100">
-
               <div v-if="scene.settings?.backgroundColor"
                 class="absolute inset-0 opacity-50 transition-colors duration-300"
                 :style="{ backgroundColor: scene.settings.backgroundColor }"></div>
-
               <div class="absolute inset-0 opacity-10 pointer-events-none"
                 style="background-image: radial-gradient(#000 1px, transparent 1px); background-size: 20px 20px;"></div>
 
@@ -88,11 +119,9 @@
                 <div v-if="scene.settings?.floorTextureUrl"
                   class="w-24 h-24 shadow-2xl transform rotate-45 border-4 border-white/30 bg-cover bg-center rounded-xl transition-transform group-hover:scale-110 duration-500"
                   :style="{ backgroundImage: `url(${scene.settings.floorTextureUrl})` }"></div>
-
                 <div v-else-if="scene.settings?.floorColor"
                   class="w-24 h-24 shadow-2xl transform rotate-45 border-4 border-white/30 rounded-xl transition-transform group-hover:scale-110 duration-500"
                   :style="{ backgroundColor: scene.settings.floorColor }"></div>
-
                 <div v-else class="w-20 h-20 bg-gray-200 rounded-full flex items-center justify-center text-gray-400">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24"
                     stroke="currentColor">
@@ -107,15 +136,11 @@
               <h3 class="font-bold text-gray-900 text-lg mb-1 truncate group-hover:text-blue-600 transition-colors">{{
                 scene.name }}</h3>
               <div class="flex items-center text-xs text-gray-500 gap-2">
-                <span class="flex items-center bg-gray-100 px-2 py-1 rounded">
-                  ID: #{{ scene.id }}
-                </span>
-                <span v-if="scene.createdAt" class="text-gray-400">
-                  {{ new Date(scene.createdAt).toLocaleDateString('tr-TR') }}
-                </span>
+                <span class="flex items-center bg-gray-100 px-2 py-1 rounded">ID: #{{ scene.id }}</span>
+                <span v-if="scene.createdAt" class="text-gray-400">{{ new
+                  Date(scene.createdAt).toLocaleDateString('tr-TR') }}</span>
               </div>
             </div>
-
           </div>
         </div>
       </div>
@@ -128,16 +153,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, reactive, onMounted, computed, watch } from 'vue';
+import { useRouter, useRoute } from 'vue-router';
 import { arSceneService } from '../../../services/arSceneService';
+import { companyService } from '../../../services/companyService';
+import { useAuthStore } from '../../../store/modules/auth';
+import type { CompanyDto } from '../../companies/dto/company.dto';
 import SceneCreatorModal from '../components/SceneCreatorModal.vue';
 import type { ARSceneDto } from '../dto/arScene.dto';
 
 const router = useRouter();
+const route = useRoute();
+const authStore = useAuthStore();
+
+// STATE
 const scenes = ref<ARSceneDto[]>([]);
 const loading = ref(true);
-const COMPANY_ID = 1;
+const companiesList = ref<CompanyDto[]>([]);
+const selectedFilterCompanyId = ref<number | null>(null);
 
 const modal = reactive({
   isOpen: false,
@@ -145,10 +178,16 @@ const modal = reactive({
   editingData: null as ARSceneDto | null
 });
 
+// COMPUTED
+const isSuperAdmin = computed(() => authStore.user?.role === 'SUPER_ADMIN');
+const routeCompanyId = computed(() => route.params.companyId ? Number(route.params.companyId) : undefined);
+
+// FETCH
 const fetchScenes = async () => {
   loading.value = true;
   try {
-    scenes.value = await arSceneService.listScenes(COMPANY_ID);
+    const targetId = routeCompanyId.value || selectedFilterCompanyId.value || undefined;
+    scenes.value = await arSceneService.listScenes(targetId);
   } catch (e) {
     console.error(e);
   } finally {
@@ -156,7 +195,23 @@ const fetchScenes = async () => {
   }
 };
 
+const fetchCompanies = async () => {
+  if (isSuperAdmin.value && !routeCompanyId.value) {
+    try {
+      companiesList.value = await companyService.getAllCompanies();
+    } catch (e) {
+      console.error(e);
+    }
+  }
+};
+
+// MODAL ACTIONS
 const openCreateModal = () => {
+  // Super Admin Validation: Şirket seçmediyse uyar
+  if (isSuperAdmin.value && !routeCompanyId.value && !selectedFilterCompanyId.value) {
+    alert("Lütfen önce yukarıdaki filtreden sahne oluşturulacak şirketi seçiniz.");
+    return;
+  }
   modal.mode = 'create';
   modal.editingData = null;
   modal.isOpen = true;
@@ -171,14 +226,20 @@ const openEditModal = (scene: ARSceneDto) => {
 const handleSaveFromModal = async (payload: any) => {
   loading.value = true;
   try {
+    const targetId = routeCompanyId.value || selectedFilterCompanyId.value;
+
     if (modal.mode === 'create') {
-      const createData = { ...payload, companyId: COMPANY_ID };
+      const createData = {...payload};
+      if (targetId) {
+        createData.companyId = targetId;
+      }
       await arSceneService.createScene(createData);
     } else if (modal.mode === 'edit' && modal.editingData) {
       const updateData = { ...payload };
-      if ('companyId' in updateData) delete updateData.companyId;
+      delete updateData.companyId; // Update'de companyId değişmez
       await arSceneService.updateScene(modal.editingData.id, updateData);
     }
+
     modal.isOpen = false;
     await fetchScenes();
   } catch (err: any) {
@@ -192,22 +253,33 @@ const handleSaveFromModal = async (payload: any) => {
 
 const deleteScene = async (id: number) => {
   if (!confirm('Bu sahneyi silmek istediğinize emin misiniz?')) return;
-
-  // Optimistik UI Update (Kullanıcıya hemen silindi hissi vermek için)
   const previousScenes = [...scenes.value];
   scenes.value = scenes.value.filter(s => s.id !== id);
-
   try {
     await arSceneService.deleteScene(id);
-  } catch (err: any) {
-    // Hata olursa geri al
+  } catch (err) {
     scenes.value = previousScenes;
-    console.error("Silme hatası:", err);
     alert("Silme işlemi başarısız oldu.");
   }
 };
 
-const goToEditor = (id: number) => router.push(`/editor/scene/${id}`);
+const goToEditor = (id: number) => {
+  // Editör yeni sekmede açılabilir (daha iyi UX)
+  // window.open(`/editor/scene/${id}`, '_blank');
+  router.push(`/editor/scene/${id}`);
+};
 
-onMounted(fetchScenes);
+const goBackToCompany = () => {
+  if (routeCompanyId.value) router.push(`/dashboard/companies/${routeCompanyId.value}`);
+};
+
+// LIFECYCLE
+onMounted(() => {
+  fetchCompanies();
+  fetchScenes();
+});
+
+watch(() => route.params.companyId, () => {
+  fetchScenes();
+});
 </script>

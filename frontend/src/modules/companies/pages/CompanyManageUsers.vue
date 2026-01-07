@@ -19,40 +19,46 @@
             </div>
           </div>
 
-          <div v-else-if="(company.users || []).length === 0"
+          <div v-else-if="(!company.users || company.users.length === 0)"
             class="bg-white rounded-3xl border border-dashed border-slate-300 p-12 text-center">
             <div
               class="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
               👥</div>
             <h3 class="text-lg font-bold text-slate-900">Henüz kullanıcı yok</h3>
-            <p class="text-sm text-slate-500 mt-1">Sağ taraftaki panelden ID girerek yeni ekip arkadaşları ekleyin.</p>
+            <p class="text-sm text-slate-500 mt-1">Sağ taraftaki formu kullanarak şirkete yeni bir ekip üyesi
+              tanımlayın.</p>
           </div>
 
           <div v-else class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
               <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wider">Ekip Listesi</h3>
-              <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded-md">{{ (company.users ||
-                []).length }} Kişi</span>
+              <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded-md">
+                {{ company.users.length }} Kişi
+              </span>
             </div>
 
             <ul class="divide-y divide-slate-100">
-              <li v-for="userItem in company.users" :key="userItem.user.id"
+              <li v-for="user in company.users" :key="user.id"
                 class="p-4 hover:bg-slate-50 transition-colors flex items-center justify-between group">
                 <div class="flex items-center gap-4">
                   <div
-                    class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
-                    {{ getInitials(userItem.user.name) }}
+                    class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md shrink-0">
+                    {{ getInitials(user.name) }}
                   </div>
+
                   <div>
-                    <p class="text-sm font-bold text-slate-900">{{ userItem.user.name }}</p>
-                    <span
-                      class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border"
-                      :class="getRoleBadgeClass(userItem.role)">
-                      {{ userItem.role }}
-                    </span>
+                    <p class="text-sm font-bold text-slate-900">{{ user.name }}</p>
+                    <p class="text-xs text-slate-500">{{ user.email }}</p>
                   </div>
+
+                  <span
+                    class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ml-2"
+                    :class="getRoleBadgeClass(user.role)">
+                    {{ getRoleLabel(user.role) }}
+                  </span>
                 </div>
-                <button @click="removeUser(userItem.user.id)"
+
+                <button @click="removeUser(user.id)"
                   class="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
                   title="Kullanıcıyı Çıkar">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -75,29 +81,38 @@
                     d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
                 </svg>
               </span>
-              Kullanıcı Ekle
+              Yeni Üye Oluştur
             </h3>
 
-            <div class="space-y-4">
+            <form @submit.prevent="addUser" class="space-y-4">
+
               <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Kullanıcı ID</label>
-                <div class="relative">
-                  <input v-model.number="newUserId" type="number" placeholder="Örn: 1042"
-                    class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-700 font-mono text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all placeholder:font-sans">
-                  <div class="absolute right-3 top-3 text-slate-400">#</div>
-                </div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Ad Soyad</label>
+                <input v-model="form.name" type="text" placeholder="Örn: Ahmet Yılmaz" required
+                  class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all">
               </div>
 
               <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Rol Ata</label>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">E-posta</label>
+                <input v-model="form.email" type="email" placeholder="ahmet@sirket.com" required
+                  class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Geçici Şifre</label>
+                <input v-model="form.password" type="text" placeholder="******" required minlength="6"
+                  class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Rol</label>
                 <div class="relative">
-                  <select v-model="newUserRole"
-                    class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-3 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none appearance-none transition-all cursor-pointer">
-                    <option value="member">Member (Üye)</option>
-                    <option value="editor">Editor (Düzenleyici)</option>
-                    <option value="admin">Admin (Yönetici)</option>
+                  <select v-model="form.role"
+                    class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none appearance-none transition-all cursor-pointer">
+                    <option value="MEMBER">Member (Üye)</option>
+                    <option value="EDITOR">Editor (Düzenleyici)</option>
                   </select>
-                  <div class="absolute right-3 top-3.5 pointer-events-none text-slate-500">
+                  <div class="absolute right-3 top-3 pointer-events-none text-slate-500">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
                       <path fill-rule="evenodd"
                         d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
@@ -107,8 +122,8 @@
                 </div>
               </div>
 
-              <button @click="addUser" :disabled="!newUserId || isAdding"
-                class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2">
+              <button type="submit" :disabled="isAdding"
+                class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none flex items-center justify-center gap-2 mt-2">
                 <svg v-if="isAdding" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg"
                   fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -116,9 +131,9 @@
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                   </path>
                 </svg>
-                {{ isAdding ? 'Ekleniyor...' : 'Ekibe Dahil Et' }}
+                {{ isAdding ? 'Oluşturuluyor...' : 'Kullanıcıyı Oluştur' }}
               </button>
-            </div>
+            </form>
           </div>
         </div>
 
@@ -128,8 +143,7 @@
 </template>
 
 <script setup lang="ts">
-// ... Mevcut script kodunuz ...
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import type { CompanyDto } from '../dto/company.dto';
@@ -143,11 +157,17 @@ const loading = ref(true);
 const isAdding = ref(false);
 const company = ref<CompanyDto>({ id: 0, name: '', domain: '', apiKey: '', users: [] });
 
-const newUserId = ref<number | null>(null);
-const newUserRole = ref('member');
+// Yeni kullanıcı formu
+const form = reactive({
+  name: '',
+  email: '',
+  password: '',
+  role: 'MEMBER' as 'MEMBER' | 'EDITOR'
+});
 
 async function loadCompany() {
   try {
+    // Şirket ve kullanıcılarını getir
     company.value = await companyService.getCompanyById(companyId);
   } catch (error) {
     toast.error("Şirket bilgileri yüklenemedi");
@@ -157,14 +177,25 @@ async function loadCompany() {
 }
 
 async function addUser() {
-  if (!newUserId.value) return;
   isAdding.value = true;
   try {
-    await companyService.addUserToCompany(companyId, { userId: newUserId.value, role: newUserRole.value });
-    await loadCompany();
-    newUserId.value = null;
-    newUserRole.value = 'member';
-    toast.success('Kullanıcı başarıyla eklendi');
+    // Backend'de "addUserToCompany" aslında "createUserForCompany" gibi çalışıyor
+    await companyService.addUserToCompany(companyId, {
+      name: form.name,
+      email: form.email,
+      password: form.password,
+      role: form.role
+    });
+
+    await loadCompany(); // Listeyi yenile
+
+    // Formu sıfırla
+    form.name = '';
+    form.email = '';
+    form.password = '';
+    form.role = 'MEMBER';
+
+    toast.success('Kullanıcı başarıyla oluşturuldu ve ekibe eklendi.');
   } catch (err: any) {
     console.error(err);
     toast.error(err.response?.data?.message || 'Kullanıcı eklenirken hata oluştu');
@@ -174,14 +205,17 @@ async function addUser() {
 }
 
 async function removeUser(userId: number) {
-  if (!confirm("Bu kullanıcıyı şirketten çıkarmak istediğinize emin misiniz?")) return;
+  if (!confirm("Bu kullanıcıyı şirketten ve sistemden tamamen silmek istediğinize emin misiniz?")) return;
   try {
     await companyService.removeUserFromCompany(companyId, userId);
-    await loadCompany();
-    toast.success('Kullanıcı çıkarıldı');
+    // Optimistic UI update (Listeden hemen sil)
+    if (company.value.users) {
+      company.value.users = company.value.users.filter(u => u.id !== userId);
+    }
+    toast.success('Kullanıcı silindi');
   } catch (err) {
     console.error(err);
-    toast.error('Kullanıcı çıkarılamadı');
+    toast.error('Kullanıcı silinemedi');
   }
 }
 
@@ -192,11 +226,21 @@ const getInitials = (name: string) => {
 
 const getRoleBadgeClass = (role: string) => {
   switch (role) {
-    case 'admin': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
-    case 'editor': return 'bg-amber-50 text-amber-700 border-amber-200';
+    case 'COMPANY_ADMIN': return 'bg-indigo-50 text-indigo-700 border-indigo-200';
+    case 'EDITOR': return 'bg-amber-50 text-amber-700 border-amber-200';
     default: return 'bg-slate-50 text-slate-600 border-slate-200';
   }
 };
+
+const getRoleLabel = (role: string) => {
+  switch (role) {
+    case 'COMPANY_ADMIN': return 'Yönetici';
+    case 'EDITOR': return 'Editör';
+    case 'MEMBER': return 'Üye';
+    case 'SUPER_ADMIN': return 'Sistem Yöneticisi';
+    default: return role;
+  }
+}
 
 onMounted(loadCompany);
 </script>

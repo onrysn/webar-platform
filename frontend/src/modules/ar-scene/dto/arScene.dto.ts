@@ -1,4 +1,7 @@
+// src/modules/ar-scene/dto/arScene.dto.ts
 import type { ARModelDto } from "../../ar-model/dto/arModel.dto";
+
+// --- YARDIMCI TİPLER (Settings İçin) ---
 
 export interface PerimeterLayer {
   id: string;
@@ -23,21 +26,6 @@ export interface FloorLayer {
   color: string;
   opacity: number;
   zIndex: number;
-}
-
-export interface FloorTextureDto {
-  id: number;
-  name: string;
-  thumbnailUrl: string;
-  textureUrl: string;
-  isActive: boolean;
-}
-
-export interface CreateFloorTextureDto {
-  name: string;
-  thumbnailUrl?: string;
-  textureUrl: string;
-  isActive?: boolean;
 }
 
 export interface Vector3 {
@@ -66,6 +54,23 @@ export interface SceneSettings {
   perimeterLayers?: PerimeterLayer[];
 }
 
+// --- DOKU (TEXTURE) TİPLERİ ---
+
+export interface FloorTextureDto {
+  id: number;
+  name: string;
+  thumbnailUrl: string;
+  textureUrl: string;
+  isActive: boolean;
+}
+
+export interface CreateFloorTextureDto {
+  name: string;
+  thumbnailUrl?: string;
+  textureUrl: string;
+  isActive?: boolean;
+}
+
 // --- ANA VERİ MODELLERİ (Response Types) ---
 
 export interface SceneItemDto {
@@ -77,6 +82,7 @@ export interface SceneItemDto {
   rotation: Vector3;
   scale: Vector3;
   model: ARModelDto; 
+  // Backend'den gelen materyal konfigürasyonu
   materialConfig?: Record<string, {
     color: string;
     metalness: number;
@@ -91,7 +97,7 @@ export interface ARSceneDto {
   createdAt: string;
   updatedAt?: string;
   items: SceneItemDto[];
-  settings: SceneSettings; // <--- YENİ: Backend'den gelen JSON ayarları
+  settings: SceneSettings; 
 }
 
 // --- PAYLOADS (Request Types) ---
@@ -99,11 +105,13 @@ export interface ARSceneDto {
 // 1. Yeni Sahne Oluşturma
 export interface CreateSceneDto {
   name: string;
-  companyId: number;
-  settings?: SceneSettings; // <--- YENİ: Oluştururken ayar gönderebiliriz
+  // [DEĞİŞİKLİK]: Artık opsiyonel. Normal kullanıcılar için backend token'dan alır.
+  // Sadece Super Admin başkası adına oluştururken kullanır.
+  companyId?: number; 
+  settings?: SceneSettings;
 }
 
-// 2. Sahne Güncelleme (YENİ)
+// 2. Sahne Güncelleme
 export interface UpdateSceneDto {
   name?: string;
   settings?: SceneSettings;
@@ -124,4 +132,5 @@ export interface UpdateSceneItemDto {
   position?: Vector3;
   rotation?: Vector3;
   scale?: Vector3;
+  materialConfig?: Record<string, any>;
 }

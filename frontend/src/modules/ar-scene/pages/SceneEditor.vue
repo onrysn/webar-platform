@@ -391,7 +391,8 @@ onMounted(async () => {
 
     try {
         await loadSceneData();
-        availableModels.value = await arModelService.listModels();
+        const ownerCompanyId = sceneData.value?.companyId;
+        availableModels.value = await arModelService.listModels(ownerCompanyId);
 
         await nextTick();
         initThreeJS();

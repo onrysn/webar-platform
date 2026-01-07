@@ -2,6 +2,7 @@
   <div
     class="group relative bg-white border border-slate-200 rounded-2xl p-4 hover:border-indigo-300 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer flex items-center gap-4"
     @click="$emit('click')">
+
     <div
       class="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0 group-hover:bg-indigo-600 transition-colors duration-300">
       <span class="font-black text-indigo-600 text-lg group-hover:text-white transition-colors">
@@ -10,22 +11,46 @@
     </div>
 
     <div class="flex-1 min-w-0">
-      <div class="flex items-center gap-2 mb-0.5">
+      <div class="flex items-center gap-2 mb-1">
         <h2 class="text-base font-bold text-slate-800 truncate group-hover:text-indigo-700 transition-colors">
           {{ props.company.name }}
         </h2>
         <span class="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">
           #{{ props.company.id }}
         </span>
+        <span v-if="props.company.createdAt" class="text-[10px] text-slate-400 ml-auto hidden sm:inline-block">
+          {{ new Date(props.company.createdAt).toLocaleDateString('tr-TR') }}
+        </span>
       </div>
 
-      <div class="flex items-center text-slate-500 text-xs font-medium">
-        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1 text-slate-400" fill="none" viewBox="0 0 24 24"
-          stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-            d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-        </svg>
-        <span class="truncate">{{ props.company.domain }}</span>
+      <div class="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500">
+        <div class="flex items-center" v-if="props.company.domain">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1 text-slate-400" fill="none"
+            viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+          </svg>
+          <span class="truncate max-w-[150px]">{{ props.company.domain }}</span>
+        </div>
+
+        <div v-if="props.company._count" class="flex items-center gap-2 pl-3 border-l border-slate-200">
+          <span class="flex items-center text-slate-600" title="Kullanıcı Sayısı">
+            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
+              </path>
+            </svg>
+            {{ props.company._count.users || 0 }}
+          </span>
+          <span class="flex items-center text-slate-600" title="Sahne Sayısı">
+            <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+              </path>
+            </svg>
+            {{ props.company._count.scenes || 0 }}
+          </span>
+        </div>
       </div>
     </div>
 
@@ -41,15 +66,10 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-
-export interface Company {
-  id: number;
-  name: string;
-  domain: string;
-}
+import type { CompanyDto } from '../../../store/modules/company';
 
 const props = defineProps<{
-  company: Company;
+  company: CompanyDto; // Interface'i güncelledik
 }>();
 
 const companyInitials = computed(() => {

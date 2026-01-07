@@ -16,72 +16,72 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id            Int           @id @default(autoincrement())
-  name          String
-  email         String        @unique
-  passwordHash  String
-  role          String        @default("member")
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  isDeleted Boolean @default(false)
+enum Role {
+  SUPER_ADMIN    // Sen
+  COMPANY_ADMIN  // Şirket Yetkilisi
+  EDITOR         // İçerik Giren Personel
+  MEMBER         // Sadece İzleyici
+}
 
-  userCompanies UserCompany[]
-  models        ARModel[]    
-  activities    ActivityLog[]
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  passwordHash String
+  
+  role         Role     @default(MEMBER) 
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  isDeleted    Boolean  @default(false)
+
+  companyId    Int?     
+  company      Company? @relation(fields: [companyId], references: [id])
+
+  models       ARModel[]    
+  activities   ActivityLog[]
+  
+  @@index([companyId])
 }
 
 model Company {
-  id        Int       @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   name      String
   domain    String
-  apiKey    String    @unique
-  createdAt DateTime  @default(now())
-  isDeleted Boolean @default(false)
-
-  users       UserCompany[]
-  arModels    ARModel[]   
-  scenes      ARScene[] 
-  activities  ActivityLog[]  
-}
-
-model UserCompany {
-  userId    Int
-  companyId Int
-  role      String   @default("member")
+  apiKey    String   @unique
   createdAt DateTime @default(now())
-  isDeleted Boolean @default(false)
+  isDeleted Boolean  @default(false)
 
-  user      User     @relation(fields: [userId], references: [id])
-  company   Company  @relation(fields: [companyId], references: [id])
-
-  @@id([userId, companyId])
+  users     User[]  
+  arModels  ARModel[]    
+  scenes    ARScene[] 
+  activities ActivityLog[]  
 }
 
 model ARModel {
-  id          Int        @id @default(autoincrement())
-  fileName    String
-  fileType    String
-  filePath    String
-  fileSize    Int?
-  fileHash    String?
-  companyId   Int
-  uploadedBy  Int
-  createdAt   DateTime   @default(now())
-  isDeleted Boolean @default(false)
+  id            Int      @id @default(autoincrement())
+  fileName      String
+  fileType      String
+  filePath      String
+  fileSize      Int?
+  fileHash      String?
+  companyId     Int
+  uploadedBy    Int
+  createdAt     DateTime @default(now())
+  isDeleted     Boolean  @default(false)
 
-  iv          String     // 16 byte hex
-  authTag     String     // 16 byte hex
-  thumbnailPath String?   // thumbnail için
+  iv            String      
+  authTag       String      
+  thumbnailPath String?    
   
-  usdzFilePath String?   // encrypted path for usdz
-  usdzIv       String?
-  usdzAuthTag  String?
-  usdzFileSize Int?
+  usdzFilePath  String?    
+  usdzIv        String?
+  usdzAuthTag   String?
+  usdzFileSize  Int?
 
-  company     Company    @relation(fields: [companyId], references: [id])
-  user        User       @relation(fields: [uploadedBy], references: [id])
-  sceneItems  SceneItem[]
+  company       Company  @relation(fields: [companyId], references: [id])
+  user          User     @relation(fields: [uploadedBy], references: [id])
+  sceneItems    SceneItem[]
 }
 
 model ARScene {
@@ -96,37 +96,33 @@ model ARScene {
   isDeleted Boolean  @default(false)
 
   company   Company  @relation(fields: [companyId], references: [id])
-  
-  // Bir sahnenin içinde birden fazla eşya (SceneItem) olabilir
   items     SceneItem[]
 }
 
-// Ara Tablo
 model SceneItem {
-  id        Int      @id @default(autoincrement())
-  sceneId   Int
-  modelId   Int
+  id             Int      @id @default(autoincrement())
+  sceneId        Int
+  modelId        Int
   
-  name      String?  
-  position  Json     @default("{\"x\": 0, \"y\": 0, \"z\": 0}")
-  rotation  Json     @default("{\"x\": 0, \"y\": 0, \"z\": 0}")
-  scale     Json     @default("{\"x\": 1, \"y\": 1, \"z\": 1}")
-  materialConfig Json? @default("{}")
+  name           String?  
+  position       Json     @default("{\"x\": 0, \"y\": 0, \"z\": 0}")
+  rotation       Json     @default("{\"x\": 0, \"y\": 0, \"z\": 0}")
+  scale          Json     @default("{\"x\": 1, \"y\": 1, \"z\": 1}")
+  materialConfig Json?    @default("{}")
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  // İlişkiler
-  scene     ARScene  @relation(fields: [sceneId], references: [id], onDelete: Cascade)
-  model     ARModel  @relation(fields: [modelId], references: [id])
+  scene          ARScene  @relation(fields: [sceneId], references: [id], onDelete: Cascade)
+  model          ARModel  @relation(fields: [modelId], references: [id])
 }
 
 model FloorTexture {
   id           Int      @id @default(autoincrement())
-  name         String   // Örn: "Ahşap Parke"
-  thumbnailUrl String   // Listede görünecek küçük resim (opsiyonel, aynısı da olabilir)
-  textureUrl   String   // Zemine döşenecek asıl resim yolu
-  isActive     Boolean  @default(true) // Listede gösterilip gösterilmeyeceği
+  name         String   
+  thumbnailUrl String   
+  textureUrl   String   
+  isActive     Boolean  @default(true) 
   
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -134,19 +130,17 @@ model FloorTexture {
 
 model ActivityLog {
   id          Int      @id @default(autoincrement())
-  action      String   // Örn: "CREATE_SCENE", "DELETE_USER", "LOGIN"
-  description String   // Frontend'de gösterilecek okunabilir metin
-  metadata    Json?    // İşlemle ilgili detay veriler (IP, Browser, Eski Değer/Yeni Değer vb.)
+  action      String   
+  description String   
+  metadata    Json?    
   createdAt   DateTime @default(now())
 
-  // İlişkiler (Opsiyonel olabilir, çünkü sistem tarafından yapılan otomatik işlemler de olabilir)
   userId      Int?
   user        User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
 
   companyId   Int?
   company     Company? @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  // Performans için Indexler
   @@index([userId])
   @@index([companyId])
   @@index([createdAt])

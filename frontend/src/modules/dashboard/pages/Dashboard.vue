@@ -8,6 +8,11 @@
       </div>
 
       <div class="flex items-center gap-4">
+        <div v-if="auth.user?.company"
+          class="hidden md:flex px-3 py-1 bg-indigo-50 border border-indigo-100 rounded-lg">
+          <span class="text-xs font-bold text-indigo-700 uppercase tracking-wider">{{ auth.user.company.name }}</span>
+        </div>
+
         <div class="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200 shadow-sm">
           <div
             class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs border border-indigo-200">
@@ -23,7 +28,8 @@
     <div class="flex-1 overflow-y-auto p-6 md:p-8 custom-scrollbar">
 
       <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <router-link to="/dashboard/companies"
+
+        <router-link v-if="isSuperAdmin" to="/dashboard/companies"
           class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col transition-all hover:shadow-md hover:border-indigo-200 group cursor-pointer">
           <div class="flex justify-between items-start mb-4">
             <span class="text-slate-400 text-xs font-bold uppercase tracking-wider">Toplam Şirket</span>
@@ -91,10 +97,12 @@
           </div>
         </router-link>
 
-        <div
-          class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col transition-all hover:shadow-md hover:border-indigo-200 group">
+        <router-link :to="isSuperAdmin ? '/dashboard/users' : '/dashboard/my-team'"
+          class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 flex flex-col transition-all hover:shadow-md hover:border-indigo-200 group cursor-pointer">
           <div class="flex justify-between items-start mb-4">
-            <span class="text-slate-400 text-xs font-bold uppercase tracking-wider">Toplam Kullanıcı</span>
+            <span class="text-slate-400 text-xs font-bold uppercase tracking-wider">
+              {{ isSuperAdmin ? 'Toplam Kullanıcı' : 'Ekibim' }}
+            </span>
             <div
               class="p-2 bg-purple-50 text-purple-600 rounded-lg group-hover:bg-purple-600 group-hover:text-white transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
@@ -114,7 +122,7 @@
               <div class="w-6 h-6 rounded-full bg-slate-400 border-2 border-white"></div>
             </div>
           </div>
-        </div>
+        </router-link>
       </div>
 
       <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
@@ -123,33 +131,24 @@
 
           <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <h3 class="font-bold text-slate-800 mb-6 text-sm uppercase tracking-wide">Son 7 Günlük Görüntülenme</h3>
-
             <div class="flex justify-between h-32 gap-2">
-
               <div v-if="loading" class="w-full h-full flex items-center justify-center text-xs text-slate-400">
                 Veri yükleniyor...
               </div>
-
               <div v-else v-for="day in chartData" :key="day.date"
                 class="flex flex-col items-center gap-2 flex-1 h-full group cursor-pointer">
-
                 <div
                   class="w-full bg-slate-50 rounded-t-lg relative flex-1 flex items-end hover:bg-slate-100 transition-colors">
-
                   <div
                     class="w-full bg-indigo-500 hover:bg-indigo-600 transition-all duration-500 rounded-t-sm min-h-[1px] relative"
                     :style="{ height: `${(day.count / maxChartValue) * 100}%` }">
-
                     <div
                       class="opacity-0 group-hover:opacity-100 absolute -top-10 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] font-bold py-1.5 px-2.5 rounded shadow-xl transition-all duration-200 whitespace-nowrap z-50 pointer-events-none transform group-hover:-translate-y-1">
                       {{ day.count }}
-
                       <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-slate-800 rotate-45"></div>
                     </div>
-
                   </div>
                 </div>
-
                 <span class="text-[10px] font-bold text-slate-400 group-hover:text-indigo-600 transition-colors">
                   {{ new Date(day.date).getDate() }}
                 </span>
@@ -181,21 +180,36 @@
           <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
             <h3 class="font-bold text-slate-800 mb-4 text-sm uppercase tracking-wide">Hızlı Erişim</h3>
             <div class="space-y-3">
-              <router-link to="/dashboard/companies/create"
+
+              <router-link v-if="isSuperAdmin" to="/dashboard/companies/create"
                 class="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-slate-100 hover:border-slate-200 group transition-all">
                 <div class="flex items-center gap-3">
                   <span
                     class="w-10 h-10 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">🏢</span>
                   <div class="text-left">
                     <span class="block text-sm font-bold text-slate-700 group-hover:text-slate-900">Şirket Ekle</span>
-                    <span class="block text-xs text-slate-400">Yeni bir organizasyon oluştur</span>
+                    <span class="block text-xs text-slate-400">Yeni bir organizasyon</span>
                   </div>
                 </div>
                 <span
                   class="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-1 transition-all">→</span>
               </router-link>
 
-              <router-link to="/dashboard/ar-model/upload"
+              <router-link v-if="isCompanyAdmin" to="/dashboard/my-team"
+                class="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-slate-100 hover:border-slate-200 group transition-all">
+                <div class="flex items-center gap-3">
+                  <span
+                    class="w-10 h-10 rounded-lg bg-green-50 text-green-600 flex items-center justify-center text-lg group-hover:scale-110 transition-transform">👥</span>
+                  <div class="text-left">
+                    <span class="block text-sm font-bold text-slate-700 group-hover:text-slate-900">Ekibi Yönet</span>
+                    <span class="block text-xs text-slate-400">Yeni kullanıcı davet et</span>
+                  </div>
+                </div>
+                <span
+                  class="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-1 transition-all">→</span>
+              </router-link>
+
+              <router-link v-if="canEdit" to="/dashboard/ar-model/upload"
                 class="w-full flex items-center justify-between p-3 rounded-xl hover:bg-slate-50 border border-slate-100 hover:border-slate-200 group transition-all">
                 <div class="flex items-center gap-3">
                   <span
@@ -208,6 +222,7 @@
                 <span
                   class="text-slate-300 group-hover:text-slate-500 group-hover:translate-x-1 transition-all">→</span>
               </router-link>
+
             </div>
           </div>
         </div>
@@ -216,7 +231,7 @@
           class="xl:col-span-2 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-fit">
           <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wide">Son Aktiviteler</h3>
-            <button class="text-xs text-indigo-600 font-bold hover:text-indigo-800 hover:underline">Tümünü Gör</button>
+            <button class="text-xs text-indigo-600 font-bold hover:text-indigo-800 hover:underline">Yenile</button>
           </div>
 
           <div class="overflow-x-auto">
@@ -289,6 +304,7 @@ import type { DashboardStats, ActivityLog, ChartData } from '../dto/dashboard.dt
 
 const auth = useAuthStore();
 
+// --- STATE ---
 const loading = ref(true);
 const stats = ref<DashboardStats>({
   totalCompanies: 0,
@@ -299,17 +315,25 @@ const stats = ref<DashboardStats>({
 const activities = ref<ActivityLog[]>([]);
 const chartData = ref<ChartData[]>([]);
 
+// --- COMPUTED HELPERS ---
 const userInitials = computed(() => {
   const name = auth.user?.name || 'User';
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 });
 
+// Rol Kontrolleri
+const isSuperAdmin = computed(() => auth.user?.role === 'SUPER_ADMIN');
+const isCompanyAdmin = computed(() => auth.user?.role === 'COMPANY_ADMIN');
+const canEdit = computed(() => ['SUPER_ADMIN', 'COMPANY_ADMIN', 'EDITOR'].includes(auth.user?.role || ''));
+
+// Chart Ölçekleme
 const maxChartValue = computed(() => {
   if (chartData.value.length === 0) return 1;
   const max = Math.max(...chartData.value.map(d => d.count));
   return max === 0 ? 1 : max;
 });
 
+// --- METHODS ---
 const fetchDashboardData = async () => {
   loading.value = true;
   try {

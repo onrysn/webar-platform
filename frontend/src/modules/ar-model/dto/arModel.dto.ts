@@ -1,4 +1,3 @@
-// arModel.dto.ts
 
 // Veritabanındaki kalıcı kayıt modeli
 export interface ARModelDto {
@@ -16,24 +15,26 @@ export interface TempModelResponse {
   tempId: string;
   kind?: 'glb' | 'usdz';
   filename?: string;
-  previewUrl?: string; // Tek dosya yüklendiyse (glb/usdz)
+  previewUrl?: string; // Backend'den gelen relative path (örn: /temp/123/model.glb)
   
-  // FBX dönüşümü sonrası dönen yapı:
+  // FBX/STEP dönüşümü sonrası dönen yapı:
   glb?: {
     filename: string;
     url: string;
+    path: string;
     size: number;
   };
   usdz?: {
     filename: string;
     url: string;
+    path: string;
     size: number;
   };
 }
 
 export interface FinalizeModelDto {
   tempId: string;
-  companyId: number;
+  companyId?: number; // <-- ARTIK OPSİYONEL (Sadece Super Admin kullanır)
   modelName?: string;
   thumbnail?: File | Blob;
 }
@@ -41,7 +42,7 @@ export interface FinalizeModelDto {
 export interface ModelDetailDto {
   id: number;
   fileName: string;
-  description: string; // Backend'den "Şirket Adı tarafından yüklendi" gibi geliyor
+  description: string;
   uploadedBy: string;
   createdAt: string;
   thumbnailUrl: string | null;

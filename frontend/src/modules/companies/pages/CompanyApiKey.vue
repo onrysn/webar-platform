@@ -2,16 +2,28 @@
   <div class="py-6 px-4 sm:px-0">
     <div class="max-w-4xl mx-auto">
 
-      <div class="space-y-6">
+      <div v-if="loading" class="animate-pulse space-y-6">
+        <div class="h-32 bg-slate-200 rounded-2xl"></div>
+        <div class="h-24 bg-slate-200 rounded-2xl"></div>
+      </div>
+
+      <div v-else class="space-y-6">
 
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div class="p-6">
-            <h3 class="text-base font-bold text-slate-800 mb-1">Gizli API Anahtarı</h3>
-            <p class="text-sm text-slate-500 mb-4">Bu anahtarı backend servislerinizde WebAR API'ye erişmek için
-              kullanın. Lütfen bu anahtarı frontend kodunuzda açıkça paylaşmayın.</p>
+            <div class="flex items-center gap-2 mb-1">
+              <h3 class="text-base font-bold text-slate-800">Gizli API Anahtarı</h3>
+              <span v-if="isSuperAdmin && targetCompanyId"
+                class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700">ADMIN MODU</span>
+            </div>
+
+            <p class="text-sm text-slate-500 mb-4">
+              Bu anahtarı backend servislerinizde WebAR API'ye erişmek için kullanın.
+              <span class="font-bold text-red-500">Bu anahtarı frontend (istemci) tarafında asla paylaşmayın.</span>
+            </p>
 
             <div class="relative group">
-              <input :type="showKey ? 'text' : 'password'" :value="company.apiKey" readonly
+              <input :type="showKey ? 'text' : 'password'" :value="apiKey" readonly
                 class="w-full bg-slate-50 border border-slate-300 text-slate-600 text-sm font-mono rounded-xl p-4 pr-32 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 transition-all cursor-text" />
 
               <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -52,9 +64,10 @@
 
           <div class="bg-slate-50 border-t border-slate-200 p-4 px-6">
             <p class="text-xs font-bold text-slate-500 uppercase mb-2">Örnek Kullanım (Header)</p>
-            <div class="bg-slate-800 rounded-lg p-3 overflow-x-auto">
-              <code
-                class="text-xs font-mono text-green-400">Authorization: Bearer <span class="text-white">{{ company.apiKey ? company.apiKey.substring(0, 10) + '...' : '••••••••' }}</span></code>
+            <div class="bg-slate-800 rounded-lg p-3 overflow-x-auto group relative">
+              <code class="text-xs font-mono text-green-400">
+                Authorization: Bearer <span class="text-white">{{ apiKey ? apiKey.substring(0, 10) + '...' : '••••••••' }}</span>
+              </code>
             </div>
           </div>
         </div>
@@ -64,11 +77,17 @@
             <div>
               <h3 class="text-base font-bold text-red-700">Anahtarı Yenile</h3>
               <p class="text-sm text-red-600/80 mt-1 max-w-xl">
-                API anahtarını yenilediğinizde, eski anahtarı kullanan tüm uygulamaların erişimi anında kesilecektir.
+                API anahtarını yenilediğinizde, eski anahtarı kullanan tüm uygulamaların (mobil app, web sitesi vb.)
+                erişimi anında kesilecektir.
               </p>
             </div>
             <button @click="confirmRegenerate"
-              class="shrink-0 px-4 py-2 bg-white border border-red-200 text-red-600 text-sm font-bold rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm">
+              class="shrink-0 px-4 py-2 bg-white border border-red-200 text-red-600 text-sm font-bold rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
               Anahtarı Yenile
             </button>
           </div>
@@ -80,37 +99,56 @@
 </template>
 
 <script setup lang="ts">
-// ... Mevcut script kodunuz ...
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from 'vue-toastification';
-import type { CompanyDto } from '../dto/company.dto';
+import { useAuthStore } from '../../../store/modules/auth';
 import { companyService } from '../../../services/companyService';
 
 const route = useRoute();
 const toast = useToast();
-const companyId = Number(route.params.id);
+const authStore = useAuthStore();
 
-const company = ref<CompanyDto>({ id: 0, name: '', domain: '', apiKey: '', users: [] });
+// STATE
+const loading = ref(true);
+const apiKey = ref('');
 const showKey = ref(false);
 const copied = ref(false);
-const loading = ref(true);
 
-async function loadCompany() {
+// Eğer route'da ID varsa, Super Admin bir şirketi görüntülüyordur.
+// Yoksa, kullanıcı kendi şirketini görüntülüyordur.
+const targetCompanyId = computed(() => route.params.id ? Number(route.params.id) : null);
+const isSuperAdmin = computed(() => authStore.user?.role === 'SUPER_ADMIN');
+
+// 1. VERİ YÜKLEME
+async function loadApiKey() {
+  loading.value = true;
   try {
-    loading.value = true;
-    company.value = await companyService.getCompanyById(companyId);
+    let companyData;
+
+    if (isSuperAdmin.value && targetCompanyId.value) {
+      // SENARYO 1: Super Admin -> Belirli Bir Şirket
+      companyData = await companyService.getCompanyById(targetCompanyId.value);
+    } else {
+      // SENARYO 2: Company Admin -> Kendi Şirketi
+      companyData = await companyService.getMyCompany();
+    }
+
+    apiKey.value = companyData.apiKey || '';
+
   } catch (error) {
-    toast.error("Şirket bilgileri yüklenemedi.");
+    console.error(error);
+    toast.error("API bilgileri yüklenemedi.");
   } finally {
     loading.value = false;
   }
 }
 
+// 2. KOPYALAMA
 async function copyToClipboard() {
-  if (!company.value.apiKey) return;
+  if (!apiKey.value) return;
   try {
-    await navigator.clipboard.writeText(company.value.apiKey);
+    await navigator.clipboard.writeText(apiKey.value);
     copied.value = true;
     toast.info("API Anahtarı kopyalandı");
     setTimeout(() => { copied.value = false; }, 2000);
@@ -119,17 +157,30 @@ async function copyToClipboard() {
   }
 }
 
+// 3. YENİLEME (REGENERATE)
 async function confirmRegenerate() {
   if (!confirm("DİKKAT: API anahtarını yenilemek mevcut tüm entegrasyonları bozacaktır. Devam etmek istiyor musunuz?")) return;
+
   try {
-    const res = await companyService.regenerateApiKey(companyId);
-    company.value.apiKey = res.apiKey;
+    let res;
+
+    if (isSuperAdmin.value && targetCompanyId.value) {
+      // Admin, başkasının anahtarını yeniliyor
+      res = await companyService.regenerateCompanyApiKey(targetCompanyId.value);
+    } else {
+      // Kullanıcı kendi anahtarını yeniliyor
+      res = await companyService.regenerateApiKey();
+    }
+
+    apiKey.value = res.apiKey;
+    showKey.value = true; // Yenilenen anahtarı göster
     toast.success('API Key başarıyla yenilendi.');
-    showKey.value = true;
+
   } catch (error) {
+    console.error(error);
     toast.error("Yenileme işlemi başarısız oldu.");
   }
 }
 
-onMounted(loadCompany);
+onMounted(loadApiKey);
 </script>

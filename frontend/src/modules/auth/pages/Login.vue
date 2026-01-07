@@ -5,7 +5,6 @@
       <div class="absolute inset-0 opacity-20"
         style="background-image: radial-gradient(#4f46e5 1px, transparent 1px); background-size: 30px 30px;">
       </div>
-
       <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-indigo-600/30 rounded-full blur-3xl"></div>
       <div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl"></div>
 
@@ -31,7 +30,7 @@
           <p class="text-slate-500 text-sm mt-2">Devam etmek için hesabınıza giriş yapın.</p>
         </div>
 
-        <form @submit.prevent="submit" class="space-y-6">
+        <form @submit.prevent="handleLogin" class="space-y-6">
 
           <div>
             <label class="block text-sm font-medium text-slate-700 mb-1.5">E-posta Adresi</label>
@@ -97,10 +96,18 @@
             </svg>
             {{ isLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap' }}
           </button>
-
         </form>
 
-        <div class="mt-8 text-center">
+        <div class="mt-8 text-center border-t border-slate-100 pt-6">
+          <p class="text-sm text-slate-500">
+            Hesabınız yok mu?
+            <router-link to="/register" class="font-bold text-indigo-600 hover:text-indigo-500 transition-colors">
+              Hemen Kayıt Olun
+            </router-link>
+          </p>
+        </div>
+
+        <div class="mt-4 text-center">
           <p class="text-xs text-slate-400">
             &copy; 2025 WebAR Admin Panel. Tüm hakları saklıdır.
           </p>
@@ -111,48 +118,36 @@
   </div>
 </template>
 
-<script lang="ts">
-import { defineComponent, ref } from 'vue';
+<script setup lang="ts">
+import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../../store/modules/auth';
 
-export default defineComponent({
-  setup() {
-    const auth = useAuthStore();
-    const router = useRouter(); // [REVİZE]
+const auth = useAuthStore();
+const router = useRouter();
 
-    const email = ref('onur@gmail.com');
-    const password = ref('217070');
+const email = ref('onur@gmail.com');
+const password = ref('217070');
 
-    const error = ref('');
-    const isLoading = ref(false); // [YENİ] Loading state
+const error = ref('');
+const isLoading = ref(false);
 
-    const submit = async () => {
-      error.value = '';
-      isLoading.value = true;
+const handleLogin = async () => {
+  error.value = '';
+  isLoading.value = true;
 
-      try {
+  try {
+    await auth.login({
+      email: email.value,
+      password: password.value
+    });
 
-        await auth.login({
-          email: email.value,
-          password: password.value
-        });
-
-        router.push('/dashboard');
-      } catch (err: any) {
-        error.value = err.message || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.';
-      } finally {
-        isLoading.value = false;
-      }
-    };
-
-    return {
-      email,
-      password,
-      submit,
-      error,
-      isLoading
-    };
+    // Başarılı giriş sonrası yönlendirme
+    router.push('/dashboard');
+  } catch (err: any) {
+    error.value = err.message || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.';
+  } finally {
+    isLoading.value = false;
   }
-});
+};
 </script>

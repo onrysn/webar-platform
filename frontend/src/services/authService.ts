@@ -1,9 +1,16 @@
-import type { LoginDto } from '../modules/auth/dto/login.dto';
-import type { RegisterDto } from '../modules/auth/dto/register.dto';
+import type { LoginDto, RegisterDto, AuthResponse, UserDto } from '../modules/auth/dto/auth.dto';
 import { apiService } from './httpService/apiService';
 
 export const authService = {
-  register: (data: RegisterDto) => apiService.post('/auth/register', data),
-  login: (data: LoginDto) => apiService.post('/auth/login', data),
-  fetchMe: () => apiService.get('/auth/me'),
+  register: (data: RegisterDto) => {
+    return apiService.post<AuthResponse>('/auth/register', data);
+  },
+
+  login: (data: LoginDto) => {
+    return apiService.post<AuthResponse>('/auth/login', data);
+  },
+
+  fetchMe: () => {
+    return apiService.get<UserDto>('/auth/me');
+  },
 };

@@ -1,9 +1,11 @@
-﻿import { Controller, Post, Body, Get, Req, UseGuards } from '@nestjs/common';
+﻿import { Controller, Post, Body, Get, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { User } from 'src/common/decorators/current-user.decorator';
+import type { CurrentUser } from 'src/common/decorators/current-user.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -11,9 +13,10 @@ export class AuthController {
   constructor(private authService: AuthService) { }
 
   @Post('register')
-  @ApiOperation({ summary: 'Yeni kullanıcı kaydı' })
-  @ApiResponse({ status: 201, description: 'Kullanıcı başarıyla oluşturuldu' })
+  @ApiOperation({ summary: 'Yeni kullanıcı ve şirket kaydı' })
+  @ApiResponse({ status: 201, description: 'Kullanıcı ve Şirket oluşturuldu' })
   async register(@Body() registerDto: RegisterDto) {
+    // Register mantığı yeni şemaya göre AuthService içinde güncellenmelidir.
     return this.authService.register(registerDto);
   }
 
@@ -27,9 +30,10 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('access-token')
   @Get('me')
-  @ApiOperation({ summary: 'Token ile kullanıcı bilgisi' })
+  @ApiOperation({ summary: 'Token ile mevcut kullanıcı bilgisini getirir' })
   @ApiResponse({ status: 200, description: 'Kullanıcı bilgisi döner' })
-  async me(@Req() req: any) {
-    return this.authService.me(req.user.userId);
+  async me(@User() user: CurrentUser) { // <-- Revize edilen kısım
+    // Artık req.user.userId yerine tip güvenli user.id kullanıyoruz
+    return this.authService.me(user.id);
   }
 }

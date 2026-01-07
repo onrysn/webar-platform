@@ -1,7 +1,13 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { v4 as uuidv4 } from 'uuid';
+import * as argon2 from 'argon2'; // Şifreleme için
 import { ActivityLogService } from '../activity-log/activity-log.service';
+import { CurrentUser } from '../../common/decorators/current-user.decorator';
+import { CreateCompanyDto } from './dto/createCompany.dto';
+import { UpdateCompanyDto } from './dto/updateCompany.dto';
+import { AddUserToCompanyDto } from './dto/add-user.dto';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class CompanyService {
@@ -10,59 +16,38 @@ export class CompanyService {
     private activityLogger: ActivityLogService
   ) { }
 
-  /** Şirket oluşturma */
-  async createCompany(userId: number, name: string, domain: string) {
+  // 1. Şirket Oluşturma (Sadece Super Admin)
+  async createCompany(user: CurrentUser, data: CreateCompanyDto) {
     const apiKey = uuidv4();
     const company = await this.prisma.company.create({
-      data: { name, domain, apiKey },
-    });
-
-    // Oluşturan kullanıcıyı admin olarak ekle
-    await this.prisma.userCompany.create({
-      data: { userId, companyId: company.id, role: 'admin' },
+      data: {
+        name: data.name,
+        domain: data.domain,
+        apiKey
+      },
     });
 
     await this.activityLogger.log(
-      userId,
+      user.id,
+      company.id, // Yeni şirketin ID'si
       'CREATE_COMPANY',
-      `"${company.name}" şirketi oluşturuldu.`,
+      `"${company.name}" şirketi oluşturuldu (Super Admin).`,
       { companyId: company.id, domain: company.domain }
     );
 
     return company;
   }
 
-  /** Yetki Kontrolü (Helper) */
-  private async checkUserRole(userId: number, companyId: number, allowedRoles: string[]) {
-    // 1. Sistem admini ise her yere erişebilir
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (user?.role === 'admin') return 'admin';
-
-    // 2. Şirket üyesi mi kontrol et
-    const userCompany = await this.prisma.userCompany.findUnique({
-      where: { userId_companyId: { userId, companyId } },
-    });
-
-    if (!userCompany)
-      throw new ForbiddenException('Bu şirkete erişim yetkiniz yok.');
-
-    if (!allowedRoles.includes(userCompany.role))
-      throw new ForbiddenException(`Bu işlem için yetkiniz yetersiz. Gereken: ${allowedRoles.join(', ')}`);
-
-    return userCompany.role;
-  }
-
-  /** Şirketi güncelleme */
-  async updateCompany(userId: number, companyId: number, data: { name?: string; domain?: string }) {
-    await this.checkUserRole(userId, companyId, ['admin']);
-
+  // 2. Şirket Güncelleme
+  async updateCompany(user: CurrentUser, companyId: number, data: UpdateCompanyDto) {
     const company = await this.prisma.company.update({
       where: { id: companyId },
       data,
     });
 
     await this.activityLogger.log(
-      userId,
+      user.id,
+      company.id,
       'UPDATE_COMPANY',
       `"${company.name}" bilgileri güncellendi.`,
       { companyId: company.id, changes: data }
@@ -71,108 +56,124 @@ export class CompanyService {
     return company;
   }
 
-  /** Şirket silme */
-  async deleteCompany(userId: number, companyId: number) {
-    await this.checkUserRole(userId, companyId, ['admin']);
-
+  // 3. Şirket Silme
+  async deleteCompany(user: CurrentUser, companyId: number) {
     const company = await this.prisma.company.delete({
       where: { id: companyId },
     });
 
     await this.activityLogger.log(
-      userId,
+      user.id,
+      company.id,
       'DELETE_COMPANY',
       `"${company.name}" şirketi silindi.`,
-      { companyId: company.id, domain: company.domain }
+      { companyId: company.id }
     );
 
     return company;
   }
 
-  /** Kullanıcıyı şirkete ekleme */
-  async addUserToCompany(userId: number, targetUserId: number, companyId: number, role = 'member') {
-    await this.checkUserRole(userId, companyId, ['admin']);
+  // 4. Şirkete Yeni Kullanıcı Ekleme (Alt Kullanıcı Oluşturma)
+  // Eski "addUserToCompany" yerine, sıfırdan kullanıcı oluşturma
+  async createSubUser(adminUser: CurrentUser, dto: AddUserToCompanyDto, forcedCompanyId?: number) {
 
-    // Kullanıcı zaten ekli mi kontrol et
-    const existing = await this.prisma.userCompany.findUnique({
-      where: { userId_companyId: { userId: targetUserId, companyId } }
-    });
-    if (existing) throw new BadRequestException('Kullanıcı zaten bu şirkete üye.');
-
-    const result = await this.prisma.userCompany.create({
-      data: { userId: targetUserId, companyId, role },
-      include: { user: { select: { name: true, email: true } } } // Log için isim lazım
-    });
-
-    // [LOG EKLENDİ]
-    await this.activityLogger.log(
-      userId,
-      'ADD_USER',
-      `"${result.user.name}" şirkete eklendi (${role}).`,
-      { companyId, targetUserId, role }
-    );
-
-    return result;
-  }
-
-  /** Kullanıcıyı şirketten çıkarma */
-  async removeUserFromCompany(userId: number, targetUserId: number, companyId: number) {
-    await this.checkUserRole(userId, companyId, ['admin']);
-
-    // Kendini silememeli (Opsiyonel ama güvenli)
-    if (userId === targetUserId) {
-      throw new BadRequestException('Kendinizi şirketten çıkaramazsınız.');
+    // Email kontrolü
+    const existingUser = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    if (existingUser) {
+      throw new BadRequestException('Bu e-posta adresi zaten kullanımda.');
     }
 
-    const removed = await this.prisma.userCompany.delete({
-      where: { userId_companyId: { userId: targetUserId, companyId } },
-      include: { user: { select: { name: true } } }
+    // HEDEF ŞİRKET BELİRLEME
+    // Eğer forcedCompanyId varsa (Super Admin) onu kullan, yoksa adminUser.companyId'yi kullan.
+    const targetCompanyId = forcedCompanyId || adminUser.companyId;
+
+    if (!targetCompanyId) {
+      throw new BadRequestException('Hedef şirket belirlenemedi.');
+    }
+
+    // Yetki Kontrolü: Super Admin değilse ve kendi şirketi değilse hata ver (gerçi companyId kendi id'si ama yine de güvenlik)
+    if (adminUser.role !== Role.SUPER_ADMIN && targetCompanyId !== adminUser.companyId) {
+      throw new ForbiddenException('Bu işlem için yetkiniz yok.');
+    }
+
+    // Rol Kontrolü
+    if (dto.role === Role.SUPER_ADMIN || dto.role === Role.COMPANY_ADMIN) {
+      throw new ForbiddenException('Alt kullanıcılara yönetici yetkisi verilemez.');
+    }
+
+    const passwordHash = await argon2.hash(dto.password);
+
+    const newUser = await this.prisma.user.create({
+      data: {
+        name: dto.name,
+        email: dto.email,
+        passwordHash,
+        role: dto.role,
+        companyId: targetCompanyId, // Belirlenen ID'yi kullan
+      },
+      select: { id: true, name: true, email: true, role: true }
     });
 
-    // [LOG EKLENDİ]
     await this.activityLogger.log(
-      userId,
-      'REMOVE_USER',
-      `"${removed.user.name}" şirketten çıkarıldı.`,
-      { companyId, targetUserId }
+      adminUser.id,
+      targetCompanyId,
+      'ADD_USER',
+      `"${newUser.name}" şirkete eklendi (${dto.role}).`,
+      { targetUserId: newUser.id, role: dto.role }
     );
 
-    return removed;
+    return newUser;
   }
 
-  /** Kullanıcının dahil olduğu şirketleri listeleme */
-  async getUserCompanies(userId: number) {
-    return this.prisma.userCompany.findMany({
-      where: { userId },
-      include: { company: true },
+  // 5. Kullanıcıyı Şirketten Çıkarma (Silme veya Pasife Alma)
+  async removeUserFromCompany(adminUser: CurrentUser, targetUserId: number, forcedCompanyId?: number) {
+
+    const targetUser = await this.prisma.user.findUnique({ where: { id: targetUserId } });
+    if (!targetUser) throw new NotFoundException('Kullanıcı bulunamadı.');
+
+    const targetCompanyId = forcedCompanyId || adminUser.companyId;
+
+    // GÜVENLİK: 
+    // Super Admin ise her şeyi silebilir.
+    // Değilse, silinmek istenen kullanıcı adminin şirketinde mi?
+    if (adminUser.role !== Role.SUPER_ADMIN) {
+      if (targetUser.companyId !== adminUser.companyId) {
+        throw new ForbiddenException('Bu kullanıcı sizin şirketinize ait değil.');
+      }
+    } else {
+      // Super Admin ise, belirtilen şirketten mi siliyor kontrolü (Opsiyonel ama iyi olur)
+      if (forcedCompanyId && targetUser.companyId !== forcedCompanyId) {
+        throw new BadRequestException('Kullanıcı belirtilen şirkete ait değil.');
+      }
+    }
+
+    if (adminUser.id === targetUserId) {
+      throw new BadRequestException('Kendinizi silemezsiniz.');
+    }
+
+    const deletedUser = await this.prisma.user.update({
+      where: { id: targetUserId },
+      data: { isDeleted: true }
     });
+
+    await this.activityLogger.log(
+      adminUser.id,
+      targetCompanyId || 0,
+      'REMOVE_USER',
+      `"${deletedUser.name}" kullanıcısı silindi.`,
+      { targetUserId }
+    );
+
+    return { message: 'Kullanıcı başarıyla silindi.' };
   }
 
-  /** (SÜPER ADMIN) Tüm şirketleri listeleme (Dashboard için) */
-  async getAllCompanies() {
-    return this.prisma.company.findMany({
-      orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { users: true, scenes: true } } } // İstatistik için count
-    });
-  }
-
-  /** Şirket detaylarını alma */
-  async getCompanyById(userId: number, companyId: number) {
-    await this.checkUserRole(userId, companyId, ['admin', 'editor', 'member']);
-
+  // 6. Şirket Detayını Getir
+  async getCompanyById(companyId: number) {
     const company = await this.prisma.company.findUnique({
       where: { id: companyId },
       include: {
-        users: {
-          include: {
-            // [GÜVENLİK DÜZELTMESİ] PasswordHash'i gizlemek için select kullandık
-            user: {
-              select: { id: true, name: true, email: true, role: true, createdAt: true }
-            }
-          }
-        },
-        // Şirketin aktivitelerini de getirebiliriz (Opsiyonel)
-        // activities: { take: 10, orderBy: { createdAt: 'desc' } }
+        // İstatistikler
+        _count: { select: { users: true, scenes: true, arModels: true } }
       },
     });
 
@@ -180,33 +181,41 @@ export class CompanyService {
     return company;
   }
 
-  /** API key yenileme */
-  async regenerateApiKey(userId: number, companyId: number) {
-    await this.checkUserRole(userId, companyId, ['admin']);
+  // 7. Şirket Çalışanlarını Listele
+  async getCompanyUsers(companyId: number) {
+    return this.prisma.user.findMany({
+      where: { companyId, isDeleted: false },
+      select: { id: true, name: true, email: true, role: true, createdAt: true },
+      orderBy: { createdAt: 'desc' }
+    });
+  }
 
+  // 8. Tüm Şirketleri Listele (Super Admin)
+  async getAllCompanies() {
+    return this.prisma.company.findMany({
+      orderBy: { createdAt: 'desc' },
+      include: {
+        _count: { select: { users: true, scenes: true } }
+      }
+    });
+  }
+
+  // 9. API Key Yenileme
+  async regenerateApiKey(user: CurrentUser, companyId: number) {
     const newApiKey = uuidv4();
     const company = await this.prisma.company.update({
       where: { id: companyId },
       data: { apiKey: newApiKey },
     });
 
-    // [LOG EKLENDİ] - Bu işlem entegrasyonları bozar, kesinlikle loglanmalı
     await this.activityLogger.log(
-      userId,
+      user.id,
+      company.id,
       'REGENERATE_KEY',
       `API Anahtarı yenilendi.`,
       { companyId }
     );
 
-    return company;
-  }
-
-  /** Public API veya middleware için doğrulama */
-  async getCompanyByApiKey(apiKey: string) {
-    const company = await this.prisma.company.findUnique({
-      where: { apiKey },
-    });
-    if (!company) throw new NotFoundException('Geçersiz API Anahtarı');
     return company;
   }
 }

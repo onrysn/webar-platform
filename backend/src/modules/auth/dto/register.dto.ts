@@ -1,17 +1,25 @@
-// src/modules/auth/dto/register.dto.ts
+// src/auth/dto/register.dto.ts
+import { IsEmail, IsNotEmpty, IsString, MinLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { IsEmail, IsNotEmpty, MinLength } from 'class-validator';
 
 export class RegisterDto {
-  @ApiProperty({ example: 'Onur Yasin' })
+  @ApiProperty({ example: 'Ahmet Yılmaz' })
+  @IsString()
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ example: 'onur@example.com' })
+  @ApiProperty({ example: 'ahmet@sirket.com' })
   @IsEmail()
   email: string;
 
-  @ApiProperty({ example: '12345678' })
+  @ApiProperty({ example: 'GucluSifre123!' })
+  @IsString()
   @MinLength(6)
   password: string;
+
+  // --- YENİ EKLENEN ---
+  @ApiProperty({ example: 'Teknoloji A.Ş.', description: 'Kullanıcının oluşturacağı şirket adı' })
+  @IsString()
+  @IsNotEmpty()
+  companyName: string;
 }

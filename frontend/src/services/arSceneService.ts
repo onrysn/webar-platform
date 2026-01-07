@@ -1,8 +1,9 @@
+// src/services/arSceneService.ts
 import { apiService } from "./httpService/apiService";
 import type {
   ARSceneDto,
   CreateSceneDto,
-  UpdateSceneDto, // <--- YENİ: Import eklendi
+  UpdateSceneDto,
   AddSceneItemDto,
   UpdateSceneItemDto,
   SceneItemDto,
@@ -17,20 +18,22 @@ export const arSceneService = {
     return res.data;
   },
 
-  // 2. Sahne Güncelle (YENİ - Ad veya Ayarlar için)
-  // Backend: PATCH /ar-scene/:id
+  // 2. Sahne Güncelle
   async updateScene(id: number, data: UpdateSceneDto): Promise<ARSceneDto> {
     const res = await apiService.patch<ARSceneDto>(`/ar-scene/${id}`, data);
     return res.data;
   },
 
   // 3. Listele
-  async listScenes(companyId: number): Promise<ARSceneDto[]> {
-    const res = await apiService.get<ARSceneDto[]>('/ar-scene/list', { params: { companyId } });
+  // [DEĞİŞİKLİK]: companyId opsiyonel yapıldı.
+  // Eğer parametre verilmezse backend, token'daki kullanıcının şirketini baz alır.
+  async listScenes(companyId?: number): Promise<ARSceneDto[]> {
+    const params = companyId ? { companyId } : {};
+    const res = await apiService.get<ARSceneDto[]>('/ar-scene/list', { params });
     return res.data;
   },
 
-  // 4. Detay (Editör için full data - Items ve Settings dahil)
+  // 4. Detay (Editör)
   async getScene(id: number): Promise<ARSceneDto> {
     const res = await apiService.get<ARSceneDto>(`/ar-scene/${id}`);
     return res.data;
@@ -44,7 +47,7 @@ export const arSceneService = {
     return res.data;
   },
 
-  // 6. Eşya Güncelle (Pozisyon/Rotasyon/Ölçek)
+  // 6. Eşya Güncelle
   async updateItem(itemId: number, data: UpdateSceneItemDto): Promise<SceneItemDto> {
     const res = await apiService.patch<SceneItemDto>(`/ar-scene/item/${itemId}`, data);
     return res.data;
@@ -55,18 +58,19 @@ export const arSceneService = {
     await apiService.delete(`/ar-scene/item/${itemId}`);
   },
 
+  // --- DOKU (TEXTURE) İŞLEMLERİ ---
+
   async listFloorTextures(): Promise<FloorTextureDto[]> {
     const res = await apiService.get<FloorTextureDto[]>('/ar-scene/textures');
     return res.data;
   },
 
-  // Backend: POST /ar-scene/textures (İleride admin paneli yaparsan lazım olur)
   async createFloorTexture(data: CreateFloorTextureDto): Promise<FloorTextureDto> {
     const res = await apiService.post<FloorTextureDto>('/ar-scene/textures', data);
     return res.data;
   },
 
-  // 8. Sahne Sil (Soft Delete) Backend: DELETE /ar-scene/:id
+  // 8. Sahne Sil (Soft Delete)
   async deleteScene(id: number): Promise<void> {
     await apiService.delete(`/ar-scene/${id}`);
   },

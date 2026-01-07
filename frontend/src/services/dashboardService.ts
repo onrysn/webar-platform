@@ -1,3 +1,4 @@
+// src/services/dashboardService.ts
 import { apiService } from './httpService/apiService';
 import type { DashboardStats, ActivityLog, ChartData } from '../modules/dashboard/dto/dashboard.dto';
 

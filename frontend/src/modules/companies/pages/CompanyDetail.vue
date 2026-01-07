@@ -19,8 +19,9 @@
       <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-3xl mb-4">🔍</div>
       <h2 class="text-lg font-bold text-slate-900">Şirket Bulunamadı</h2>
       <p class="text-slate-500 text-sm mt-1">Aradığınız şirket silinmiş veya erişim izniniz yok.</p>
-      <router-link to="/dashboard/companies" class="mt-4 text-indigo-600 font-bold text-sm hover:underline">Listeye
-        Dön</router-link>
+      <router-link to="/dashboard/companies" class="mt-4 text-indigo-600 font-bold text-sm hover:underline">
+        Listeye Dön
+      </router-link>
     </div>
 
     <div v-else>
@@ -46,19 +47,22 @@
                 class="w-14 h-14 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl font-bold shadow-md shrink-0">
                 {{ getInitials(company.name) }}
               </div>
+
               <div class="min-w-0 flex-1">
                 <h1 class="text-2xl font-bold text-slate-900 leading-tight truncate">{{ company.name }}</h1>
                 <div class="flex flex-wrap items-center gap-2 mt-1">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-slate-400 shrink-0" fill="none"
-                    viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
-                  </svg>
-                  <span class="text-sm font-medium text-slate-500 truncate max-w-[150px] sm:max-w-xs">{{ company.domain
-                    }}</span>
+                  <div v-if="company.domain" class="flex items-center text-slate-500 text-sm">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 mr-1 text-slate-400 shrink-0" fill="none"
+                      viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                    </svg>
+                    <span class="font-medium truncate max-w-[150px] sm:max-w-xs">{{ company.domain }}</span>
+                  </div>
                   <span
-                    class="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 rounded border border-slate-200 shrink-0">ID:
-                    {{ company.id }}</span>
+                    class="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 rounded border border-slate-200 shrink-0">
+                    ID: {{ company.id }}
+                  </span>
                 </div>
               </div>
             </div>
@@ -89,10 +93,10 @@
                   d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
               Kullanıcılar
-              <span v-if="company.users"
+              <span
                 :class="$route.path.includes('manage-users') ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-100 text-slate-600'"
                 class="px-1.5 py-0.5 rounded-full text-[10px] font-mono ml-1 transition-colors">
-                {{ company.users?.length || 0 }}
+                {{ company._count?.users || company.users?.length || 0 }}
               </span>
             </router-link>
 
@@ -125,23 +129,30 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch, nextTick } from 'vue'; // nextTick eklendi
+import { onMounted, ref, watch, nextTick } from 'vue';
 import { useRoute } from 'vue-router';
 import { useCompanyStore } from '../../../store/modules/company';
+import type { CompanyDto } from '../dto/company.dto';
 
 const route = useRoute();
 const companyStore = useCompanyStore();
+
 const loading = ref(true);
-const company = ref<any>(null);
-const tabsContainer = ref<HTMLElement | null>(null); // Scroll için ref
+// Tip Güvenliği: CompanyDto kullanıyoruz
+const company = ref<CompanyDto | null>(null);
+const tabsContainer = ref<HTMLElement | null>(null);
 
 const fetchCompany = async () => {
   try {
     loading.value = true;
     const id = Number(route.params.id);
     if (!id) return;
+
+    // Store'dan veriyi alıyoruz. 
+    // Not: Store'daki method'un CompanyDto döndüğünden emin oluyoruz.
     company.value = await companyStore.fetchCompanyById(id);
-    scrollToActiveTab(); // Veri geldikten sonra scroll et
+
+    scrollToActiveTab();
   } catch (err) {
     console.error('Şirket yüklenemedi:', err);
     company.value = null;
@@ -155,33 +166,17 @@ const getInitials = (name: string) => {
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 };
 
-// [YENİ] Aktif tab'ı bulup scroll eden fonksiyon
 const scrollToActiveTab = async () => {
-  await nextTick(); // DOM güncellemelerini bekle
-
+  await nextTick();
   if (!tabsContainer.value) return;
-
-  // Aktif class'a sahip linki bul (!bg-indigo-50'yi escape etmemiz gerek)
-  // Tailwind class'ında ! işareti olduğu için querySelector'da \\! şeklinde escape edilir.
   const activeTab = tabsContainer.value.querySelector('.\\!bg-indigo-50');
-
   if (activeTab) {
-    activeTab.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest',
-      inline: 'center' // Elementi yatayda merkeze getirir
-    });
+    activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   }
 };
 
-// Route değiştiğinde (Tab değiştiğinde) scroll et
-watch(() => route.path, () => {
-  scrollToActiveTab();
-});
-
-watch(() => route.params.id, () => {
-  fetchCompany();
-});
+watch(() => route.path, () => scrollToActiveTab());
+watch(() => route.params.id, () => fetchCompany());
 
 onMounted(() => {
   fetchCompany();

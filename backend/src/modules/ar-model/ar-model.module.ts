@@ -6,7 +6,7 @@ import { ActivityLogModule } from '../activity-log/activity-log.module';
 @Module({
     imports: [
         ActivityLogModule
-    ], 
+    ],
     controllers: [ARModelController],
     providers: [ARModelService],
 })

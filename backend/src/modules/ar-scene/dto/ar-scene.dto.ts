@@ -195,9 +195,10 @@ export class CreateSceneDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty()
+  @ApiProperty({ required: false })
+  @IsOptional()
   @IsNumber()
-  companyId: number;
+  companyId?: number;
 
   @ApiPropertyOptional({ type: SceneSettingsDto })
   @IsOptional()

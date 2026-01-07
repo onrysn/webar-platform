@@ -21,7 +21,6 @@
       </div>
 
       <nav class="flex-1 flex flex-col space-y-6 px-3 py-6 overflow-y-auto custom-scrollbar">
-
         <div v-for="(group, index) in navigation" :key="index">
           <p v-if="group.items.some(item => item.visible)"
             class="px-3 mb-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
@@ -45,17 +44,24 @@
             </template>
           </div>
         </div>
-
       </nav>
 
       <div class="border-t border-slate-800 p-4 shrink-0 bg-slate-900">
         <div class="flex items-center gap-3 mb-4 px-2">
-          <div class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold">
+          <div
+            class="w-10 h-10 rounded-full bg-indigo-500 flex items-center justify-center text-white font-bold shrink-0">
             {{ userInitials }}
           </div>
           <div class="flex-1 min-w-0">
             <p class="text-sm font-bold text-white truncate">{{ auth.user?.name || 'Kullanıcı' }}</p>
-            <p class="text-xs text-slate-500 truncate capitalize">{{ auth.user?.role || 'Üye' }}</p>
+
+            <p class="text-xs text-indigo-400 truncate font-medium">
+              {{ auth.user?.company?.name || 'Bağımsız Hesap' }}
+            </p>
+
+            <p class="text-[10px] text-slate-500 truncate mt-0.5">
+              {{ formatRole(auth.user?.role) }}
+            </p>
           </div>
         </div>
 
@@ -83,7 +89,7 @@
         </button>
       </header>
 
-      <main class="flex-1 overflow-y-auto relative w-full custom-scrollbar-light">
+      <main class="flex-1 overflow-y-auto relative w-full custom-scrollbar-light bg-slate-50">
         <router-view />
       </main>
     </div>
@@ -100,23 +106,48 @@ const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 
+// Sidebar Logic
 const isSidebarOpen = ref(false);
 const toggleSidebar = () => { isSidebarOpen.value = !isSidebarOpen.value; };
 const closeSidebar = () => { isSidebarOpen.value = false; };
 
 watch(() => route.path, () => closeSidebar());
 
-const isAdmin = computed(() => auth.user?.role === 'admin');
+// --- ROL KONTROLLERİ (Backend Enumlarına Göre) ---
+const role = computed(() => auth.user?.role);
+
+// 1. Super Admin: Sistemin sahibi
+const isSuperAdmin = computed(() => role.value === 'SUPER_ADMIN');
+
+// 2. Company Admin: Şirket yöneticisi
+const isCompanyAdmin = computed(() => role.value === 'COMPANY_ADMIN');
+
+// 3. İçerik Düzenleyiciler (Editör ve üstü)
+const canEdit = computed(() => ['SUPER_ADMIN', 'COMPANY_ADMIN', 'EDITOR'].includes(role.value || ''));
+
+// Kullanıcı Baş harfleri
 const userInitials = computed(() => {
   const name = auth.user?.name || 'U';
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();
 });
+
+// Rolü okunabilir string'e çevir
+const formatRole = (role?: string) => {
+  switch (role) {
+    case 'SUPER_ADMIN': return 'Süper Yönetici';
+    case 'COMPANY_ADMIN': return 'Şirket Yöneticisi';
+    case 'EDITOR': return 'Editör';
+    case 'MEMBER': return 'İzleyici (Üye)';
+    default: return 'Misafir';
+  }
+};
 
 const logout = () => {
   auth.logout();
   router.push('/login');
 };
 
+// --- DİNAMİK NAVİGASYON ---
 const navigation = computed(() => [
   {
     title: 'Genel Bakış',
@@ -125,7 +156,7 @@ const navigation = computed(() => [
         name: 'Dashboard',
         to: '/dashboard',
         icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z',
-        visible: true
+        visible: true // Herkes görür
       }
     ]
   },
@@ -136,19 +167,19 @@ const navigation = computed(() => [
         name: 'Sahnelerim',
         to: '/dashboard/ar-scene',
         icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10',
-        visible: true
+        visible: true // Herkes görür
       },
       {
         name: '3D Modeller',
         to: '/dashboard/ar-model',
         icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
-        visible: true
+        visible: true // Herkes görür
       },
       {
         name: 'Model Yükle',
         to: '/dashboard/ar-model/upload',
         icon: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12',
-        visible: isAdmin.value
+        visible: canEdit.value // Member göremez
       }
     ]
   },
@@ -156,10 +187,16 @@ const navigation = computed(() => [
     title: 'Yönetim',
     items: [
       {
-        name: 'Şirketler',
+        name: 'Ekibim', // Şirket Yöneticisi için
+        to: '/dashboard/my-team',
+        icon: 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z',
+        visible: isCompanyAdmin.value
+      },
+      {
+        name: 'Şirketler', // Sadece Super Admin için
         to: '/dashboard/companies',
         icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
-        visible: isAdmin.value
+        visible: isSuperAdmin.value
       }
     ]
   }
