@@ -143,21 +143,25 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, reactive } from 'vue';
+import { ref, onMounted, reactive, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from 'vue-toastification';
-import type { CompanyDto } from '../dto/company.dto';
+import { useAuthStore } from '../../../store/modules/auth'; // Auth Store
 import { companyService } from '../../../services/companyService';
+import { useCompanyStore } from '../../../store/modules/company';
+import type { CompanyDto } from '../dto/company.dto';
 
 const route = useRoute();
 const toast = useToast();
-const companyId = Number(route.params.id);
+const authStore = useAuthStore();
+const companyStore = useCompanyStore();
 
+// STATE
 const loading = ref(true);
 const isAdding = ref(false);
 const company = ref<CompanyDto>({ id: 0, name: '', domain: '', apiKey: '', users: [] });
 
-// Yeni kullanıcı formu
+// FORM
 const form = reactive({
   name: '',
   email: '',
@@ -165,27 +169,68 @@ const form = reactive({
   role: 'MEMBER' as 'MEMBER' | 'EDITOR'
 });
 
+// COMPUTED
+const isSuperAdmin = computed(() => authStore.user?.role === 'SUPER_ADMIN');
+
+// HEDEF ŞİRKET ID'Sİ (Sadece Super Admin için gerekli)
+const targetCompanyId = computed(() => {
+  if (isSuperAdmin.value && route.params.id) {
+    return Number(route.params.id);
+  }
+  // Company Admin için ID gerekmez, servisler token'dan alır.
+  return null;
+});
+
+// 1. ŞİRKETİ VE KULLANICILARI YÜKLE
 async function loadCompany() {
+  loading.value = true;
   try {
-    // Şirket ve kullanıcılarını getir
-    company.value = await companyService.getCompanyById(companyId);
+
+    if (isSuperAdmin.value) {
+      // Super Admin: ID ile veri çek
+      const id = targetCompanyId.value;
+      if (!id) throw new Error("Şirket ID bulunamadı.");
+      // Store veya Service kullanılabilir
+      company.value = await companyStore.fetchCompanyById(id);
+    } else {
+      // Company Admin: Kendi şirketini çek
+      company.value = await companyStore.fetchMyCompany();
+
+      // NOT: Eğer fetchMyCompany() userları getirmiyorsa ayrıca çek:
+      // company.value.users = await companyService.getMyCompanyUsers();
+    }
+
   } catch (error) {
+    console.error(error);
     toast.error("Şirket bilgileri yüklenemedi");
   } finally {
     loading.value = false;
   }
 }
 
+// 2. KULLANICI EKLE
 async function addUser() {
   isAdding.value = true;
   try {
-    // Backend'de "addUserToCompany" aslında "createUserForCompany" gibi çalışıyor
-    await companyService.addUserToCompany(companyId, {
-      name: form.name,
-      email: form.email,
-      password: form.password,
-      role: form.role
-    });
+
+    if (isSuperAdmin.value) {
+      // Super Admin: ID bazlı endpoint
+      if (!targetCompanyId.value) throw new Error("ID eksik");
+      await companyService.addUserToCompany(targetCompanyId.value, {
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        role: form.role
+      });
+    } else {
+      // Company Admin: "Kendi Şirketine Ekle" endpointi
+      await companyService.addUserToMyCompany({
+        name: form.name,
+        email: form.email,
+        password: form.password,
+        role: form.role
+      });
+    }
 
     await loadCompany(); // Listeyi yenile
 
@@ -204,10 +249,20 @@ async function addUser() {
   }
 }
 
+// 3. KULLANICI SİL
 async function removeUser(userId: number) {
   if (!confirm("Bu kullanıcıyı şirketten ve sistemden tamamen silmek istediğinize emin misiniz?")) return;
+
   try {
-    await companyService.removeUserFromCompany(companyId, userId);
+    if (isSuperAdmin.value) {
+      // Super Admin: ID bazlı endpoint
+      if (!targetCompanyId.value) return;
+      await companyService.removeUserFromCompany(targetCompanyId.value, userId);
+    } else {
+      // Company Admin: "Kendi Şirketinden Sil" endpointi
+      await companyService.removeUserFromMyCompany(userId);
+    }
+
     // Optimistic UI update (Listeden hemen sil)
     if (company.value.users) {
       company.value.users = company.value.users.filter(u => u.id !== userId);
@@ -219,6 +274,7 @@ async function removeUser(userId: number) {
   }
 }
 
+// YARDIMCILAR
 const getInitials = (name: string) => {
   if (!name) return '??';
   return name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase();

@@ -150,4 +150,14 @@ export class CompanyController {
   ) {
     return this.companyService.removeUserFromCompany(user, targetUserId, companyId);
   }
+
+  @Post(':id/regenerate-api-key')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Belirli bir şirketin API anahtarını yeniler (Super Admin)' })
+  async regenerateCompanyApiKey(
+    @User() user: CurrentUser,
+    @Param('id', ParseIntPipe) companyId: number
+  ) {
+    return this.companyService.regenerateApiKey(user, companyId);
+  }
 }

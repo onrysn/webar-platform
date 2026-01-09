@@ -19,7 +19,9 @@
       <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-3xl mb-4">🔍</div>
       <h2 class="text-lg font-bold text-slate-900">Şirket Bulunamadı</h2>
       <p class="text-slate-500 text-sm mt-1">Aradığınız şirket silinmiş veya erişim izniniz yok.</p>
-      <router-link to="/dashboard/companies" class="mt-4 text-indigo-600 font-bold text-sm hover:underline">
+
+      <router-link v-if="isSuperAdmin" to="/dashboard/companies"
+        class="mt-4 text-indigo-600 font-bold text-sm hover:underline">
         Listeye Dön
       </router-link>
     </div>
@@ -29,7 +31,7 @@
       <header class="bg-white border-b border-slate-200 shadow-sm sticky top-0 z-30 transition-all duration-300">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-4">
 
-          <nav class="flex mb-4">
+          <nav v-if="isSuperAdmin" class="flex mb-4">
             <router-link to="/dashboard/companies"
               class="group flex items-center text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg"
@@ -71,7 +73,7 @@
           <div ref="tabsContainer"
             class="flex space-x-2 overflow-x-auto custom-scrollbar pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
 
-            <router-link :to="`/dashboard/companies/${company.id}/update`"
+            <router-link :to="getTabRoute('update')"
               active-class="!bg-indigo-50 !text-indigo-700 !border-indigo-200 shadow-sm"
               class="whitespace-nowrap px-4 py-2 rounded-lg font-bold text-sm text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-700 transition-all flex items-center gap-2 shrink-0">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -84,7 +86,7 @@
               Genel Ayarlar
             </router-link>
 
-            <router-link :to="`/dashboard/companies/${company.id}/manage-users`"
+            <router-link :to="getTabRoute('manage-users')"
               active-class="!bg-indigo-50 !text-indigo-700 !border-indigo-200 shadow-sm"
               class="whitespace-nowrap px-4 py-2 rounded-lg font-bold text-sm text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-700 transition-all flex items-center gap-2 shrink-0">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -100,7 +102,7 @@
               </span>
             </router-link>
 
-            <router-link :to="`/dashboard/companies/${company.id}/api-key`"
+            <router-link :to="getTabRoute('api-key')"
               active-class="!bg-indigo-50 !text-indigo-700 !border-indigo-200 shadow-sm"
               class="whitespace-nowrap px-4 py-2 rounded-lg font-bold text-sm text-slate-500 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-700 transition-all flex items-center gap-2 shrink-0">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -129,28 +131,48 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted, ref, watch, nextTick } from 'vue';
+import { onMounted, ref, watch, nextTick, computed } from 'vue';
 import { useRoute } from 'vue-router';
+import { useAuthStore } from '../../../store/modules/auth';
 import { useCompanyStore } from '../../../store/modules/company';
 import type { CompanyDto } from '../dto/company.dto';
 
 const route = useRoute();
 const companyStore = useCompanyStore();
+const authStore = useAuthStore();
 
 const loading = ref(true);
-// Tip Güvenliği: CompanyDto kullanıyoruz
 const company = ref<CompanyDto | null>(null);
 const tabsContainer = ref<HTMLElement | null>(null);
+
+const isSuperAdmin = computed(() => authStore.user?.role === 'SUPER_ADMIN');
+
+const targetCompanyId = computed(() => {
+  if (route.params.id) return Number(route.params.id);
+
+  if (authStore.user?.companyId) return authStore.user.companyId;
+
+  return null;
+});
+
+const getTabRoute = (subPath: string) => {
+  if (isSuperAdmin.value && route.params.id) {
+    return `/dashboard/companies/${route.params.id}/${subPath}`;
+  }
+  return `/dashboard/my-company/${subPath}`;
+};
 
 const fetchCompany = async () => {
   try {
     loading.value = true;
-    const id = Number(route.params.id);
-    if (!id) return;
-
-    // Store'dan veriyi alıyoruz. 
-    // Not: Store'daki method'un CompanyDto döndüğünden emin oluyoruz.
-    company.value = await companyStore.fetchCompanyById(id);
+    
+    if (isSuperAdmin.value) {
+      const id = targetCompanyId.value;
+      if (!id) throw new Error("Şirket ID bulunamadı (URL parametresi eksik).");
+      company.value = await companyStore.fetchCompanyById(id);
+    } else {
+      company.value = await companyStore.fetchMyCompany();
+    }
 
     scrollToActiveTab();
   } catch (err) {
@@ -175,8 +197,11 @@ const scrollToActiveTab = async () => {
   }
 };
 
+watch(() => route.params.id, (newId, oldId) => {
+  if (newId !== oldId) fetchCompany();
+});
+
 watch(() => route.path, () => scrollToActiveTab());
-watch(() => route.params.id, () => fetchCompany());
 
 onMounted(() => {
   fetchCompany();

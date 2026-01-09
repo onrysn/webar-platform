@@ -40,7 +40,7 @@ export class UserController {
 
   // 3. KULLANICI GÜNCELLEME
   @Patch(':id')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN) // Sadece yöneticiler düzenleyebilir
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
   @ApiOperation({ summary: 'Kullanıcı bilgilerini günceller' })
   update(
     @User() user: CurrentUser,

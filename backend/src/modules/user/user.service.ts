@@ -69,39 +69,47 @@ export class UserService {
     const userToUpdate = await this.prisma.user.findUnique({ where: { id } });
     if (!userToUpdate || userToUpdate.isDeleted) throw new NotFoundException('Kullanıcı bulunamadı');
 
-    // GÜVENLİK 1: Şirket Kontrolü
+    // 1. Şirket Erişimi Kontrolü (Super Admin değilse sadece kendi şirketini/kendini güncelleyebilir)
     if (currentUser.role !== Role.SUPER_ADMIN && userToUpdate.companyId !== currentUser.companyId) {
       throw new ForbiddenException('Bu işlem için yetkiniz yok.');
     }
 
-    // GÜVENLİK 2: Rol Yükseltme Kontrolü
-    // Company Admin, birini Super Admin yapamaz.
-    if (dto.role === Role.SUPER_ADMIN && currentUser.role !== Role.SUPER_ADMIN) {
-      throw new ForbiddenException('Super Admin rolü atayamazsınız.');
+    // 2. Rol Değiştirme Kontrolü (KRİTİK)
+    if (dto.role) {
+      if (currentUser.role !== Role.SUPER_ADMIN && currentUser.role !== Role.COMPANY_ADMIN) {
+        throw new ForbiddenException('Rol değiştirme yetkiniz yok.');
+      }
+
+      if (dto.role === Role.SUPER_ADMIN && currentUser.role !== Role.SUPER_ADMIN) {
+        throw new ForbiddenException('Super Admin rolü atayamazsınız.');
+      }
     }
 
-    // GÜVENLİK 3: Şirket Değiştirme Kontrolü
-    // Sadece Super Admin bir kullanıcının şirketini değiştirebilir.
     if (dto.companyId && currentUser.role !== Role.SUPER_ADMIN) {
       throw new ForbiddenException('Şirket değiştirme yetkiniz yok.');
     }
 
-    // Şifre güncellenecekse hashle
-    let newPasswordHash: string | undefined;
+    const passwordHash = dto.password ? await argon2.hash(dto.password) : undefined;
 
-    if (dto.password) {
-      newPasswordHash = await argon2.hash(dto.password);
+    const updateData: any = {
+      name: dto.name,
+      email: dto.email,
+      passwordHash: passwordHash,
+    };
+
+    // Rolü sadece yetkili kişiler değiştirebiliyorsa ekle
+    if (dto.role && (currentUser.role === Role.SUPER_ADMIN || currentUser.role === Role.COMPANY_ADMIN)) {
+      updateData.role = dto.role;
+    }
+
+    // Şirketi sadece Super Admin değiştirebiliyorsa ekle
+    if (dto.companyId && currentUser.role === Role.SUPER_ADMIN) {
+      updateData.companyId = dto.companyId;
     }
 
     const updatedUser = await this.prisma.user.update({
       where: { id },
-      data: {
-        name: dto.name,
-        email: dto.email,
-        role: dto.role,
-        companyId: currentUser.role === Role.SUPER_ADMIN ? dto.companyId : undefined, // Sadece super admin değiştirebilir
-        passwordHash: newPasswordHash,
-      },
+      data: updateData,
     });
 
     await this.activityLogger.log(
@@ -112,7 +120,7 @@ export class UserService {
       { targetUserId: id, changes: Object.keys(dto) }
     );
 
-    const { passwordHash, ...result } = updatedUser;
+    const { passwordHash: ph, ...result } = updatedUser;
     return result;
   }
 

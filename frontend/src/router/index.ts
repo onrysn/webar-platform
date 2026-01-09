@@ -110,10 +110,18 @@ const routes: RouteRecordRaw[] = [
 
       // 3. COMPANY ADMIN: EKİP YÖNETİMİ
       {
-        path: 'my-team',
-        name: 'MyTeam',
-        component: CompanyManageUsers, 
-        meta: { roles: [ROLES.COMPANY_ADMIN] }
+        path: 'my-company',
+        component: CompanyDetail, // AYNI Component'i kullanıyoruz (Code Reuse)
+        meta: { roles: [ROLES.COMPANY_ADMIN] },
+        children: [
+            // Company Admin "Şirketim"e bastığında varsayılan olarak Update (Genel Bilgi) görsün
+            { path: '', redirect: '/dashboard/my-company/update' },
+            
+            // URL'de ID yok! Bu çok güvenli.
+            { path: 'update', component: CompanyUpdate },
+            { path: 'manage-users', component: CompanyManageUsers },
+            { path: 'api-key', component: CompanyApiKey },
+        ]
       },
 
       // 4. AR MODELS (Ortak Alan)
