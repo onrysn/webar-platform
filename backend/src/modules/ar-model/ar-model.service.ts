@@ -381,7 +381,7 @@ export class ARModelService {
             const timeout = setTimeout(() => {
                 pythonProcess.kill('SIGKILL');
                 reject(new InternalServerErrorException('Conversion timed out'));
-            }, 3 * 60 * 1000);
+            }, 10 * 60 * 1000);
 
             pythonProcess.on('close', (code) => {
                 clearTimeout(timeout);
