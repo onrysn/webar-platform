@@ -52,6 +52,9 @@ model Company {
   createdAt DateTime @default(now())
   isDeleted Boolean  @default(false)
 
+  isActive           Boolean   @default(true)
+  subscriptionEndsAt DateTime?
+
   users     User[]  
   arModels  ARModel[]    
   scenes    ARScene[] 
@@ -79,9 +82,14 @@ model ARModel {
   usdzAuthTag   String?
   usdzFileSize  Int?
 
+  isPrivate     Boolean  @default(false)
+  shareToken    String?  @unique
+
   company       Company  @relation(fields: [companyId], references: [id])
   user          User     @relation(fields: [uploadedBy], references: [id])
   sceneItems    SceneItem[]
+
+  @@index([shareToken])
 }
 
 model ARScene {
@@ -95,8 +103,14 @@ model ARScene {
   updatedAt DateTime @updatedAt
   isDeleted Boolean  @default(false)
 
+  isPrivate     Boolean  @default(false)
+  memberCanEdit Boolean  @default(true)
+  shareToken    String?  @unique
+
   company   Company  @relation(fields: [companyId], references: [id])
   items     SceneItem[]
+
+  @@index([shareToken])
 }
 
 model SceneItem {
