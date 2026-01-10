@@ -16,8 +16,9 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { User } from 'src/common/decorators/current-user.decorator';
 import type { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
+import { CompanyActiveGuard } from 'src/common/guards/company-active.guard';
 
-@UseGuards(JwtAuthGuard, RolesGuard) // 1. Rol korumasını ekledik
+@UseGuards(JwtAuthGuard, RolesGuard, CompanyActiveGuard) // 1. Rol korumasını ekledik
 @ApiBearerAuth('access-token')
 @ApiTags('ar-model')
 @Controller('ar-model')

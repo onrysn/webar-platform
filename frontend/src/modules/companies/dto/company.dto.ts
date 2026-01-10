@@ -16,6 +16,9 @@ export interface CompanyDto {
   domain?: string;
   apiKey?: string;
   createdAt?: string;
+  isActive?: boolean;
+  subscriptionEndsAt?: string | null;
+
   _count?: {
     users: number;
     scenes: number;

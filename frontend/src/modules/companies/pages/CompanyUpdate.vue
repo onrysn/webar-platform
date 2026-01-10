@@ -7,7 +7,6 @@
         <div class="h-12 bg-slate-200 rounded-xl w-full"></div>
         <div class="h-4 bg-slate-200 rounded w-1/4"></div>
         <div class="h-12 bg-slate-200 rounded-xl w-full"></div>
-        <div class="h-12 bg-slate-200 rounded-xl w-32 mt-4"></div>
       </div>
 
       <div v-else class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -21,25 +20,19 @@
             <div class="flex items-center gap-2 mb-6">
               <p class="text-sm text-slate-500">Şirketinizin görünen adı ve domain ayarlarını buradan
                 güncelleyebilirsiniz.</p>
+
               <span v-if="isSuperAdmin && targetCompanyId"
-                class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase">ADMIN
-                MODU</span>
+                class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase">
+                ADMIN MODU
+              </span>
             </div>
           </div>
 
           <div>
             <label class="block text-sm font-bold text-slate-700 mb-2">Şirket Adı</label>
             <div class="relative">
-              <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <svg class="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
-                  fill="currentColor">
-                  <path fill-rule="evenodd"
-                    d="M4 4a2 2 0 012-2h8a2 2 0 012 2v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4zm3 1h6v4H7V5zm13 10a1 1 0 01-1 1h-2a1 1 0 01-1-1v-2a1 1 0 011-1h2a1 1 0 011 1v2zm-1-4a1 1 0 01-1 1h-2a1 1 0 01-1-1v-2a1 1 0 011-1h2a1 1 0 011 1v2z"
-                    clip-rule="evenodd" />
-                </svg>
-              </div>
               <input v-model="form.name" type="text"
-                class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder-slate-400"
+                class="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder-slate-400"
                 placeholder="Şirket ismini giriniz" required />
             </div>
           </div>
@@ -56,6 +49,46 @@
                 placeholder="sirketiniz.com" />
             </div>
             <p class="text-xs text-slate-400 mt-2">CORS ve güvenlik ayarları için kullanılır (Opsiyonel).</p>
+          </div>
+
+          <div v-if="isSuperAdmin" class="mt-8 pt-8 border-t border-slate-200 bg-slate-50/50 -mx-8 px-8 pb-4">
+            <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" viewBox="0 0 20 20"
+                fill="currentColor">
+                <path fill-rule="evenodd"
+                  d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                  clip-rule="evenodd" />
+              </svg>
+              Abonelik ve Erişim Yönetimi
+            </h3>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+              <div class="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                <div>
+                  <label class="text-sm font-bold text-slate-700 block">Şirket Durumu</label>
+                  <span class="text-xs" :class="form.isActive ? 'text-green-600' : 'text-red-500'">
+                    {{ form.isActive ? 'Aktif (Erişilebilir)' : 'Pasif (Erişim Kısıtlı)' }}
+                  </span>
+                </div>
+
+                <button type="button" @click="form.isActive = !form.isActive"
+                  :class="form.isActive ? 'bg-indigo-600' : 'bg-slate-200'"
+                  class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                  <span aria-hidden="true" :class="form.isActive ? 'translate-x-5' : 'translate-x-0'"
+                    class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out">
+                  </span>
+                </button>
+              </div>
+
+              <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Abonelik Bitiş Tarihi</label>
+                <input type="date" v-model="form.subscriptionEndsAt"
+                  class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer" />
+                <p class="text-xs text-slate-400 mt-1">Bu tarihten sonra erişim kısıtlanır.</p>
+              </div>
+
+            </div>
           </div>
 
           <div class="pt-4 flex items-center justify-end border-t border-slate-100 mt-6">
@@ -95,9 +128,16 @@ const authStore = useAuthStore();
 const loading = ref(true);
 const isSaving = ref(false);
 const company = ref<CompanyDto | null>(null);
-const form = reactive({ name: '', domain: '' });
 
-// COMPUTED: Hangi moddayız?
+// Form başlangıç değerleri
+const form = reactive({
+  name: '',
+  domain: '',
+  isActive: true,
+  subscriptionEndsAt: ''
+});
+
+// COMPUTED
 const targetCompanyId = computed(() => route.params.id ? Number(route.params.id) : null);
 const isSuperAdmin = computed(() => authStore.user?.role === 'SUPER_ADMIN');
 
@@ -108,18 +148,32 @@ async function loadCompany() {
     let data;
 
     if (isSuperAdmin.value && targetCompanyId.value) {
-      // Admin Modu -> Başka Şirketi Getir
+      // Super Admin: ID ile getir
       data = await companyService.getCompanyById(targetCompanyId.value);
     } else {
-      // Owner Modu -> Kendi Şirketini Getir
+      // Company Admin: Token ile getir
       data = await companyService.getMyCompany();
     }
 
     company.value = data;
+
+    // Herkesin gördüğü alanlar
     form.name = data.name;
     form.domain = data.domain || '';
 
+    if (isSuperAdmin.value) {
+      form.isActive = data.isActive ?? true;
+      if (data.subscriptionEndsAt) {
+        form.subscriptionEndsAt = new Date(data.subscriptionEndsAt as string)
+          .toISOString()
+          .slice(0, 10);
+      } else {
+        form.subscriptionEndsAt = '';
+      }
+    }
+
   } catch (error) {
+    console.error(error);
     toast.error("Şirket bilgileri alınamadı.");
   } finally {
     loading.value = false;
@@ -134,14 +188,28 @@ async function handleUpdate() {
   isSaving.value = true;
   try {
 
-    // YENİ MANTIK: İki farklı endpoint
     if (isSuperAdmin.value && targetCompanyId.value) {
-      // 1. Super Admin Modu (ID ile güncelleme)
-      // NOT: companyService.updateCompany(id, dto) metodunu servise eklediğini varsayıyoruz.
-      await companyService.updateCompany(targetCompanyId.value, form);
+      // --- SUPER ADMIN GÜNCELLEMESİ (TÜM ALANLAR) ---
+      const payload = {
+        name: form.name,
+        domain: form.domain,
+        isActive: form.isActive,
+        subscriptionEndsAt: form.subscriptionEndsAt
+          ? new Date(form.subscriptionEndsAt).toISOString()
+          : null
+      };
+
+      await companyService.updateCompany(targetCompanyId.value, payload);
     } else {
-      // 2. Company Admin Modu (Kendi şirketini güncelleme)
-      await companyService.updateMyCompany(form);
+      // --- COMPANY ADMIN GÜNCELLEMESİ (KISITLI ALANLAR) ---
+      // isActive ve subscriptionEndsAt BURADA YOK. 
+      // Sadece isim ve domain gönderiliyor.
+      const payload = {
+        name: form.name,
+        domain: form.domain
+      };
+
+      await companyService.updateMyCompany(payload);
     }
 
     toast.success('Şirket bilgileri başarıyla güncellendi!');

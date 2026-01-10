@@ -8,10 +8,11 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { User } from 'src/common/decorators/current-user.decorator';
 import type { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
+import { CompanyActiveGuard } from 'src/common/guards/company-active.guard';
 
 @ApiTags('Dashboard')
 @ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard, RolesGuard) // Hem Token hem Rol kontrolü
+@UseGuards(JwtAuthGuard, RolesGuard, CompanyActiveGuard) // Hem Token hem Rol kontrolü
 @Controller('dashboard')
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}

@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, IsDateString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateCompanyDto {
@@ -12,4 +12,14 @@ export class UpdateCompanyDto {
   @IsOptional()
   @IsString()
   domain?: string;
+
+  @ApiProperty({ required: false, description: 'Şirket aktif mi?' })
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
+
+  @ApiProperty({ required: false, description: 'Abonelik bitiş tarihi (ISO String)' })
+  @IsOptional()
+  @IsDateString()
+  subscriptionEndsAt?: Date;
 }

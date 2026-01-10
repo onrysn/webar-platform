@@ -20,6 +20,7 @@ import CompanyApiKey from '../modules/companies/pages/CompanyApiKey.vue';
 // --- AUTH PAGES ---
 import Login from '../modules/auth/pages/Login.vue';
 import Register from '../modules/auth/pages/Register.vue';
+import SubscriptionLocked from '../modules/auth/pages/SubscriptionLocked.vue';
 
 // --- AR MODEL PAGES ---
 import ModelList from '../modules/ar-model/pages/ModelList.vue';
@@ -49,6 +50,12 @@ const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/login' },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
+
+  { 
+    path: '/access-denied', 
+    name: 'SubscriptionLocked', 
+    component: SubscriptionLocked 
+  },
 
   // --- EDITOR (Standalone / Layoutsız) ---
   {

@@ -16,10 +16,11 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { User } from 'src/common/decorators/current-user.decorator';
 import type { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
+import { CompanyActiveGuard } from 'src/common/guards/company-active.guard';
 
 @ApiTags('ar-scene')
 @ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard, RolesGuard) // Guardlar aktif
+@UseGuards(JwtAuthGuard, RolesGuard, CompanyActiveGuard) // Guardlar aktif
 @Controller('ar-scene')
 export class ARSceneController {
   constructor(private readonly arSceneService: ARSceneService) { }

@@ -11,8 +11,9 @@ import { Roles } from 'src/common/decorators/roles.decorator';
 import { User } from 'src/common/decorators/current-user.decorator';
 import type { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
+import { CompanyActiveGuard } from 'src/common/guards/company-active.guard';
 
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, CompanyActiveGuard)
 @ApiBearerAuth('access-token')
 @ApiTags('companies')
 @Controller('companies')
@@ -57,7 +58,8 @@ export class CompanyController {
   @ApiOperation({ summary: 'Kullanıcının kendi şirket bilgilerini günceller' })
   async updateMyCompany(@User() user: CurrentUser, @Body() updateDto: UpdateCompanyDto) {
     if (!user.companyId) throw new BadRequestException('Şirket bulunamadı');
-    return this.companyService.updateCompany(user, user.companyId, updateDto);
+    const { isActive, subscriptionEndsAt, ...safeDto } = updateDto;
+    return this.companyService.updateCompany(user, user.companyId, safeDto);
   }
 
   @Post('my-company/regenerate-api-key')

@@ -8,10 +8,11 @@ import { User } from 'src/common/decorators/current-user.decorator';
 import type { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { CompanyActiveGuard } from 'src/common/guards/company-active.guard';
 
 @ApiTags('users')
 @ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, CompanyActiveGuard)
 @Controller('users') // Endpoint adı genelde çoğul olur
 export class UserController {
   constructor(private readonly userService: UserService) {}
