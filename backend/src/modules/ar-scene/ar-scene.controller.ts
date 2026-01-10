@@ -110,7 +110,7 @@ export class ARSceneController {
   }
 
   @Post()
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR, Role.MEMBER)
   @ApiOperation({ summary: 'Yeni bir sahne oluşturur' })
   createScene(@User() user: CurrentUser, @Body() dto: CreateSceneDto) {
     // Eğer Super Admin ise ve DTO'da companyId yoksa hata verebilir veya kendi null companyId'si ile oluşturur.
