@@ -1,26 +1,52 @@
 <template>
   <div
-    class="group relative bg-white border border-slate-200 rounded-2xl p-4 hover:border-indigo-300 hover:shadow-lg hover:-translate-y-0.5 transition-all duration-300 cursor-pointer flex items-center gap-4"
-    @click="$emit('click')">
+    class="group relative bg-white border rounded-2xl p-4 transition-all duration-300 flex items-center gap-4 overflow-hidden"
+    :class="[
+      isDisabled 
+        ? 'border-slate-100 bg-slate-50 opacity-60 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer' 
+        : 'border-slate-200 hover:border-indigo-300 hover:shadow-lg hover:-translate-y-0.5 cursor-pointer'
+    ]"
+    @click="handleClick"
+  >
+    <div v-if="statusBadge" 
+      class="absolute top-0 right-0 px-2 py-1 rounded-bl-xl text-[9px] font-bold uppercase tracking-wider border-b border-l z-10"
+      :class="statusBadge.classes">
+      {{ statusBadge.text }}
+    </div>
 
     <div
-      class="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center shrink-0 group-hover:bg-indigo-600 transition-colors duration-300">
-      <span class="font-black text-indigo-600 text-lg group-hover:text-white transition-colors">
+      class="w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 transition-colors duration-300"
+      :class="[
+        isDisabled 
+          ? 'bg-slate-200 border-slate-300 grayscale' 
+          : 'bg-indigo-50 border-indigo-100 group-hover:bg-indigo-600'
+      ]"
+    >
+      <span 
+        class="font-black text-lg transition-colors"
+        :class="isDisabled ? 'text-slate-400' : 'text-indigo-600 group-hover:text-white'"
+      >
         {{ companyInitials }}
       </span>
     </div>
 
     <div class="flex-1 min-w-0">
       <div class="flex items-center gap-2 mb-1">
-        <h2 class="text-base font-bold text-slate-800 truncate group-hover:text-indigo-700 transition-colors">
+        <h2 
+          class="text-base font-bold truncate transition-colors"
+          :class="isDisabled ? 'text-slate-500' : 'text-slate-800 group-hover:text-indigo-700'"
+        >
           {{ props.company.name }}
         </h2>
         <span class="text-[10px] font-mono bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">
           #{{ props.company.id }}
         </span>
-        <span v-if="props.company.createdAt" class="text-[10px] text-slate-400 ml-auto hidden sm:inline-block">
-          {{ new Date(props.company.createdAt).toLocaleDateString('tr-TR') }}
-        </span>
+      </div>
+
+      <div v-if="props.company.subscriptionEndsAt" class="flex items-center gap-1 mb-1.5 text-[10px]">
+         <span :class="isExpired ? 'text-red-500 font-bold' : 'text-slate-400'">
+            {{ isExpired ? '⚠️ Süresi Doldu:' : '📅 Bitiş:' }} {{ formatDate(props.company.subscriptionEndsAt) }}
+         </span>
       </div>
 
       <div class="flex flex-wrap items-center gap-3 text-xs font-medium text-slate-500">
@@ -55,6 +81,7 @@
     </div>
 
     <div
+      v-if="!isDisabled"
       class="text-slate-300 group-hover:text-indigo-500 transform group-hover:translate-x-1 transition-all duration-300">
       <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
@@ -66,11 +93,39 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
-import type { CompanyDto } from '../../../store/modules/company';
+// Yolunuz değiştiyse burayı güncelleyin:
+import type { CompanyDto } from '../modules/companies/dto/company.dto';
 
 const props = defineProps<{
-  company: CompanyDto; // Interface'i güncelledik
+  company: CompanyDto;
+  disabledClick?: boolean; // Tıklamayı engellemek istersek dışarıdan prop alabiliriz
 }>();
+
+const emit = defineEmits(['click']);
+
+// --- COMPUTED ---
+
+// Tarih geçmiş mi?
+const isExpired = computed(() => {
+  if (!props.company.subscriptionEndsAt) return false;
+  return new Date(props.company.subscriptionEndsAt) < new Date();
+});
+
+// Kart Pasif mi? (isActive false YA DA Süresi Dolmuş)
+const isDisabled = computed(() => {
+  return props.company.isActive === false || isExpired.value;
+});
+
+// Köşedeki Etiket
+const statusBadge = computed(() => {
+  if (props.company.isActive === false) {
+    return { text: 'PASİF', classes: 'bg-slate-100 text-slate-500 border-slate-200' };
+  }
+  if (isExpired.value) {
+    return { text: 'SÜRESİ DOLDU', classes: 'bg-red-50 text-red-600 border-red-100' };
+  }
+  return null;
+});
 
 const companyInitials = computed(() => {
   if (!props.company.name) return 'Co';
@@ -81,4 +136,22 @@ const companyInitials = computed(() => {
     .join('')
     .toUpperCase();
 });
+
+// --- METHODS ---
+
+const handleClick = () => {
+  // Pasif olsa bile Super Admin detayına gidip düzenleyebilmeli.
+  // Bu yüzden tıklamayı tamamen engellemiyoruz, sadece görsel olarak soluklaştırıyoruz.
+  // Eğer engellemek isteseydik: if (isDisabled.value) return; 
+  
+  emit('click');
+};
+
+const formatDate = (dateString: string) => {
+  return new Date(dateString).toLocaleDateString('tr-TR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  });
+};
 </script>
