@@ -14,7 +14,6 @@
       </div>
       <h1 class="text-2xl font-bold text-gray-900 mb-2">Erişim Sağlanamadı</h1>
       <p class="text-gray-600 max-w-md">{{ error }}</p>
-      <p class="text-xs text-gray-400 mt-8">Linkin süresi dolmuş veya iptal edilmiş olabilir.</p>
     </div>
 
     <div v-else class="relative w-full h-full">
@@ -30,7 +29,6 @@
               {{ modelData.companyName }}
             </p>
           </div>
-          
           <div class="hidden md:block text-right">
              <span class="text-[10px] text-white/40 uppercase tracking-widest border border-white/20 px-2 py-1 rounded">
                WebAR Viewer
@@ -43,17 +41,24 @@
         <ArPreview 
           v-if="previewBlobUrl" 
           :src="previewBlobUrl" 
-          :poster="null"
           class="w-full h-full"
           format="glb"
         />
       </div>
 
-      <div class="absolute bottom-6 left-0 right-0 z-20 flex justify-center pointer-events-none">
-          <div class="bg-black/50 backdrop-blur-md text-white/80 text-xs px-4 py-2 rounded-full border border-white/10 shadow-lg">
-             AR Modu için sağ alttaki butona tıklayın
+      <div class="absolute bottom-8 left-0 right-0 z-30 flex justify-center px-4">
+        <button 
+          @click="activateAR"
+          class="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-full shadow-lg shadow-indigo-900/50 transition-all transform hover:scale-105 active:scale-95 group"
+        >
+          <div class="relative w-5 h-5">
+             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+             </svg>
           </div>
-       </div>
+          <span class="font-bold tracking-wide text-sm sm:text-base">AR'da Görüntüle</span>
+        </button>
+      </div>
 
     </div>
   </div>
@@ -62,9 +67,9 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
-import { arModelService } from '../../../services/arModelService';
-import ArPreview from '../components/ArPreview.vue';
-
+// Servis ve Component yollarını kendi projene göre ayarla
+import { arModelService } from '../../../services/arModelService'; 
+import ArPreview from '../components/ArPreview.vue'; // Three.js olan eski component
 
 const route = useRoute();
 const token = route.params.token as string;
@@ -72,8 +77,16 @@ const token = route.params.token as string;
 // State
 const isLoading = ref(true);
 const error = ref<string | null>(null);
-const modelData = ref<any>(null); // Tip: SharedModelDto
+const modelData = ref<any>(null);
 const previewBlobUrl = ref<string | null>(null);
+const iosBlobUrl = ref<string | null>(null);
+
+// Link oluşturucu (Backend URL'i)
+const getDirectUrl = (format: 'glb' | 'usdz') => {
+  // Backend'e giden gerçek public linki oluşturuyoruz
+  // window.location.origin kullanımı Nginx arkasında doğru çalışır
+  return `${window.location.origin}/api/shared/ar-model/${token}/file?format=${format}`;
+};
 
 onMounted(async () => {
   if (!token) {
@@ -83,39 +96,84 @@ onMounted(async () => {
   }
 
   try {
-    // 1. Model Metadata'sını çek
-    // (Auth gerektirmez, public endpoint)
     modelData.value = await arModelService.getSharedModel(token);
 
-    // 2. GLB Dosyasını indir
-    // (Auth gerektirmez, public endpoint)
-    const blob = await arModelService.getSharedFileBlob(token, 'glb');
-    previewBlobUrl.value = URL.createObjectURL(blob);
+    // 1. Ekranda göstermek için GLB indir (Blob)
+    const glbBlob = await arModelService.getSharedFileBlob(token, 'glb');
+    previewBlobUrl.value = URL.createObjectURL(glbBlob);
+
+    // 2. iOS için USDZ varsa onu da indir (Blob) - Opsiyonel, doğrudan link de verilebilir
+    // iOS Blob URL ile daha hızlı çalışır
+    if (modelData.value.files?.usdz?.url) {
+        try {
+            const usdzBlob = await arModelService.getSharedFileBlob(token, 'usdz');
+            iosBlobUrl.value = URL.createObjectURL(usdzBlob);
+        } catch (e) {
+            console.warn("USDZ indirilemedi, doğrudan link kullanılacak.");
+        }
+    }
 
   } catch (err: any) {
-    console.error("Public View Error:", err);
-    // Backend'den gelen 404 mesajını göster
-    if (err.response && err.response.status === 404) {
-        error.value = "Bu model bulunamadı veya erişime kapatıldı.";
-    } else {
-        error.value = "Model yüklenirken bir bağlantı hatası oluştu.";
-    }
+    console.error("View Error:", err);
+    error.value = err.response?.status === 404 
+        ? "Bu model bulunamadı veya erişime kapatıldı." 
+        : "Model yüklenirken hata oluştu.";
   } finally {
     isLoading.value = false;
   }
 });
 
 onBeforeUnmount(() => {
-  if (previewBlobUrl.value) {
-    URL.revokeObjectURL(previewBlobUrl.value);
-  }
+  if (previewBlobUrl.value) URL.revokeObjectURL(previewBlobUrl.value);
+  if (iosBlobUrl.value) URL.revokeObjectURL(iosBlobUrl.value);
 });
+
+// --- MANUEL AR TETİKLEME (model-viewer olmadan) ---
+const activateAR = () => {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    const isAndroid = /Android/.test(navigator.userAgent);
+
+    if (isIOS) {
+        // --- iOS (AR Quick Look) ---
+        // USDZ dosyasına işaret eden bir anchor oluşturup tıklıyoruz
+        const anchor = document.createElement('a');
+        anchor.setAttribute('rel', 'ar');
+        anchor.appendChild(document.createElement('img'));
+        
+        // Varsa indirdiğimiz blob'u, yoksa direkt backend linkini kullan
+        const url = iosBlobUrl.value || getDirectUrl('usdz');
+        anchor.setAttribute('href', url);
+        
+        anchor.click(); // iOS'te bu işlem AR Quick Look'u açar
+    } 
+    else if (isAndroid) {
+        // --- Android (Scene Viewer) ---
+        // Intent protokolü ile Google Scene Viewer'ı açıyoruz
+        // Android Blob URL'i açamaz, bu yüzden mutlaka PUBLIC HTTP linki vermemiz lazım!
+        const modelUrl = getDirectUrl('glb');
+        const title = modelData.value?.description || '3D Model';
+        
+        const intentParams = [
+            `file=${encodeURIComponent(modelUrl)}`,
+            `mode=ar_only`,
+            `title=${encodeURIComponent(title)}`,
+            `resizable=false`
+        ].join('&');
+
+        const intentUrl = `intent://arvr.google.com/scene-viewer/1.0?${intentParams}#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=${encodeURIComponent(modelUrl)};end;`;
+
+        window.location.href = intentUrl;
+    } 
+    else {
+        // Masaüstü veya desteklenmeyen cihaz
+        alert("AR özelliği sadece mobil cihazlarda (iOS ve Android) çalışır.");
+    }
+};
 </script>
 
 <style scoped>
-/* Tam ekran deneyim için scroll'u kapat */
 :global(body) {
   overflow: hidden; 
-  background-color: #111827; /* gray-900 */
+  background-color: #111827;
 }
 </style>
