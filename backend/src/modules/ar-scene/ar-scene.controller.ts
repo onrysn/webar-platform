@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query, ParseIntPipe, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards, Query, ParseIntPipe, BadRequestException, Req } from '@nestjs/common';
 import { ARSceneService } from './ar-scene.service';
 import {
   CreateSceneDto,
@@ -9,8 +9,9 @@ import {
 } from './dto/ar-scene.dto';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import type { Request } from 'express';
 
-// --- YENİ GÜVENLİK IMPORTLARI ---
+// --- GÜVENLİK IMPORTLARI ---
 import { RolesGuard } from 'src/common/guards/roles.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { User } from 'src/common/decorators/current-user.decorator';
@@ -20,7 +21,7 @@ import { CompanyActiveGuard } from 'src/common/guards/company-active.guard';
 
 @ApiTags('ar-scene')
 @ApiBearerAuth('access-token')
-@UseGuards(JwtAuthGuard, RolesGuard, CompanyActiveGuard) // Guardlar aktif
+@UseGuards(JwtAuthGuard, RolesGuard, CompanyActiveGuard)
 @Controller('ar-scene')
 export class ARSceneController {
   constructor(private readonly arSceneService: ARSceneService) { }
@@ -31,16 +32,14 @@ export class ARSceneController {
 
   @Get('textures')
   @ApiOperation({ summary: 'Kullanılabilir zemin dokularını listeler' })
-  // Rol kısıtlaması yok, login olan herkes görebilir.
   listTextures() {
     return this.arSceneService.listFloorTextures();
   }
 
   @Post('textures')
-  @Roles(Role.SUPER_ADMIN) // Sadece SEN (Super Admin) doku ekleyebilirsin
+  @Roles(Role.SUPER_ADMIN)
   @ApiOperation({ summary: 'Yeni zemin dokusu tanımlar (Sadece Super Admin)' })
   createTexture(@User() user: CurrentUser, @Body() dto: CreateFloorTextureDto) {
-    // Servis, loglama için user ID'ye ihtiyaç duyabilir
     return this.arSceneService.createFloorTexture(user.id, dto);
   }
 
@@ -51,21 +50,19 @@ export class ARSceneController {
     @User() user: CurrentUser,
     @Query('companyId') queryCompanyId?: string
   ) {
-    // 1. Senaryo: Super Admin
-    if (user.role === Role.SUPER_ADMIN) {
-      // Eğer query varsa o şirketi, yoksa (undefined) TÜMÜNÜ listele
-      const targetId = queryCompanyId ? Number(queryCompanyId) : undefined;
-      return this.arSceneService.listScenes(targetId);
+    let targetCompanyId: number | undefined = user.companyId || undefined;
+
+    if (user.role === Role.SUPER_ADMIN && queryCompanyId) {
+      targetCompanyId = Number(queryCompanyId);
     }
 
-    // 2. Senaryo: Normal Kullanıcı
-    // Kendi şirketi yoksa hata ver veya boş dön
-    if (!user.companyId) {
-      return []; // veya throw new ForbiddenException("Bir şirkete bağlı değilsiniz");
+    if (!targetCompanyId && user.role !== Role.SUPER_ADMIN) {
+      return [];
     }
 
-    // Sadece kendi şirketini görebilir
-    return this.arSceneService.listScenes(user.companyId);
+    const onlyPublic = user.role === Role.MEMBER;
+
+    return this.arSceneService.listScenes(targetCompanyId, onlyPublic);
   }
 
   // =================================================================
@@ -73,16 +70,14 @@ export class ARSceneController {
   // =================================================================
 
   @Post('item')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR) // MEMBER ekleyemez
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR, Role.MEMBER)
   @ApiOperation({ summary: 'Mevcut bir sahneye model ekler' })
   addItem(@User() user: CurrentUser, @Body() dto: AddSceneItemDto) {
-    // Servise tüm user objesini göndermek en güvenlisidir (yetki kontrolü serviste de yapılabilir)
-    // Ama şimdilik mevcut yapını koruyarak ID gönderiyoruz, serviste şirket kontrolü yapılmalı.
     return this.arSceneService.addItemToScene(user, dto);
   }
 
   @Patch('item/:itemId')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR, Role.MEMBER)
   @ApiOperation({ summary: 'Sahnedeki bir objenin konumunu günceller' })
   updateItem(
     @User() user: CurrentUser,
@@ -93,7 +88,7 @@ export class ARSceneController {
   }
 
   @Delete('item/:itemId')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR, Role.MEMBER)
   @ApiOperation({ summary: 'Sahneden bir objeyi siler' })
   removeItem(@User() user: CurrentUser, @Param('itemId', ParseIntPipe) itemId: number) {
     return this.arSceneService.removeItem(user, itemId);
@@ -103,29 +98,22 @@ export class ARSceneController {
   // 3. GENEL SAHNE ENDPOINTLERİ
   // =================================================================
 
-  @Delete(':id')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN) // Sahne silmek kritik iştir, Editör silemesin (Opsiyonel)
-  @ApiOperation({ summary: 'Sahneyi siler (Soft Delete)' })
-  deleteScene(@User() user: CurrentUser, @Param('id', ParseIntPipe) id: number) {
-    return this.arSceneService.deleteScene(user, id);
-  }
-
   @Post()
   @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR, Role.MEMBER)
   @ApiOperation({ summary: 'Yeni bir sahne oluşturur' })
   createScene(@User() user: CurrentUser, @Body() dto: CreateSceneDto) {
-    // Eğer Super Admin ise ve DTO'da companyId yoksa hata verebilir veya kendi null companyId'si ile oluşturur.
-    // Güvenli yöntem: Eğer companyId yoksa hata fırlat (Super Admin için).
-    if (user.role === Role.SUPER_ADMIN && !dto.companyId) {
-      // Super admin hangi şirkete oluşturacağını belirtmeli (DTO'ya eklenebilir)
-      // Şimdilik varsayılan akışta kullanıcının kendi şirketi kullanılır.
-    }
     return this.arSceneService.createScene(user, dto);
   }
 
+  @Get(':id')
+  @ApiOperation({ summary: 'Sahne detayını getirir' })
+  getScene(@User() user: CurrentUser, @Param('id', ParseIntPipe) id: number) {
+    return this.arSceneService.getScene(user, id);
+  }
+
   @Patch(':id')
-  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
-  @ApiOperation({ summary: 'Sahne bilgilerini günceller' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR, Role.MEMBER)
+  @ApiOperation({ summary: 'Sahne bilgilerini (ad, ayarlar, gizlilik) günceller' })
   updateScene(
     @User() user: CurrentUser,
     @Param('id', ParseIntPipe) id: number,
@@ -134,10 +122,41 @@ export class ARSceneController {
     return this.arSceneService.updateScene(user, id, dto);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Sahne detayını getirir' })
-  // Herkes görebilir (Kendi şirketi olmak şartıyla)
-  getScene(@User() user: CurrentUser, @Param('id', ParseIntPipe) id: number) {
-    return this.arSceneService.getScene(user, id);
+  @Delete(':id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Sahneyi siler (Soft Delete)' })
+  deleteScene(@User() user: CurrentUser, @Param('id', ParseIntPipe) id: number) {
+    return this.arSceneService.deleteScene(user, id);
+  }
+
+  // =================================================================
+  // 4. PAYLAŞIM VE TOKEN (YENİ)
+  // =================================================================
+
+  @Post(':id/share-token')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
+  @ApiOperation({ summary: 'Sahne için paylaşılabilir public link oluşturur' })
+  async generateShareToken(
+    @Param('id', ParseIntPipe) id: number,
+    @User() user: CurrentUser,
+    @Req() req: Request
+  ) {
+    const result = await this.arSceneService.generateShareToken(id, user);
+
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.headers.host;
+    const fullUrl = `${protocol}://${host}/view/scene/${result.shareToken}`; // URL yapısı: /view/scene/:token
+
+    return {
+      shareToken: result.shareToken,
+      url: fullUrl
+    };
+  }
+
+  @Post(':id/revoke-token')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
+  @ApiOperation({ summary: 'Paylaşım linkini iptal eder' })
+  async revokeShareToken(@Param('id', ParseIntPipe) id: number, @User() user: CurrentUser) {
+    return this.arSceneService.revokeShareToken(id, user);
   }
 }

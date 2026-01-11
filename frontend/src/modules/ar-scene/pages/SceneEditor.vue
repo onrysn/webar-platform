@@ -74,7 +74,15 @@
                             d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
-
+                <button @click="openShareModal"
+                    class="flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                    </svg>
+                    Paylaş
+                </button>
                 <div class="relative">
                     <button @click="showDownloadMenu = !showDownloadMenu" :disabled="isExporting"
                         class="flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
@@ -254,6 +262,87 @@
             </div>
         </div>
     </div>
+    <div v-if="showShareModal"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+        @click.self="showShareModal = false">
+        <div
+            class="bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+
+            <div class="p-5 border-b border-gray-800 flex justify-between items-center bg-gray-800/50">
+                <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                    🌍 Sahne Ayarları & Paylaşım
+                </h3>
+                <button @click="showShareModal = false"
+                    class="text-gray-400 hover:text-white transition-colors">✕</button>
+            </div>
+
+            <div class="p-6 space-y-6">
+
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-bold text-white">🔒 Gizli Sahne</p>
+                            <p class="text-xs text-gray-400">Liste ekranında sadece yöneticiler görebilir.</p>
+                        </div>
+                        <button @click="togglePrivacy"
+                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                            :class="sceneData?.isPrivate ? 'bg-blue-600' : 'bg-gray-700'">
+                            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                                :class="sceneData?.isPrivate ? 'translate-x-6' : 'translate-x-1'" />
+                        </button>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-bold text-white">👥 Ekip Düzenleyebilir</p>
+                            <p class="text-xs text-gray-400">Member rolündekiler değişiklik yapabilir.</p>
+                        </div>
+                        <button @click="toggleMemberEdit"
+                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
+                            :class="sceneData?.memberCanEdit ? 'bg-blue-600' : 'bg-gray-700'">
+                            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform"
+                                :class="sceneData?.memberCanEdit ? 'translate-x-6' : 'translate-x-1'" />
+                        </button>
+                    </div>
+                </div>
+
+                <div class="h-px bg-gray-800 w-full"></div>
+
+                <div class="space-y-3">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Public Erişim Linki</p>
+
+                    <div v-if="publicShareUrl" class="bg-black/40 p-3 rounded-xl border border-gray-700 space-y-3">
+                        <div class="flex items-center gap-2 bg-gray-800 p-2 rounded-lg border border-gray-700">
+                            <input readonly :value="publicShareUrl"
+                                class="bg-transparent text-xs text-gray-300 w-full outline-none font-mono" />
+                            <button @click="copyLink"
+                                class="text-blue-400 hover:text-blue-300 text-xs font-bold px-2">Kopyala</button>
+                        </div>
+
+                        <div class="flex gap-2">
+                            <a :href="publicShareUrl" target="_blank"
+                                class="flex-1 py-2 text-center text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors">
+                                Test Et ↗
+                            </a>
+                            <button @click="revokeLink"
+                                class="px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/10 border border-red-500/30 rounded-lg transition-colors">
+                                Linki İptal Et
+                            </button>
+                        </div>
+                    </div>
+
+                    <div v-else class="text-center py-4 bg-gray-800/30 rounded-xl border border-gray-800 border-dashed">
+                        <p class="text-sm text-gray-400 mb-3">Bu sahne henüz paylaşıma açılmadı.</p>
+                        <button @click="generateLink"
+                            class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold rounded-lg transition-colors">
+                            🔗 Paylaşım Linki Oluştur
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
     <MaterialEditor v-if="isPaintMode && selectedSubMesh" :selectedMesh="selectedSubMesh"
         @close="selectedSubMesh = null" @update="handleMaterialUpdate" />
 </template>
@@ -363,6 +452,8 @@ const selectedItemId = ref<number | null>(null);
 const isPaintMode = ref(false);
 const selectedSubMesh = shallowRef<THREE.Mesh | null>(null);
 const saveStatus = ref<'idle' | 'saved' | 'saving' | 'error'>('idle');
+const showShareModal = ref(false);
+const publicShareUrl = ref<string | null>(null);
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // Mouse
@@ -419,6 +510,12 @@ onBeforeUnmount(() => {
 const loadSceneData = async () => {
     sceneData.value = await arSceneService.getScene(sceneId);
     sceneItems.value = sceneData.value.items;
+    if (sceneData.value.shareToken) {
+        // window.location.origin kullanımı frontend'in çalıştığı domaini alır
+        publicShareUrl.value = `${window.location.origin}/view/scene/${sceneData.value.shareToken}`;
+    } else {
+        publicShareUrl.value = null;
+    }
 };
 
 // [EKLE] DEBOUNCED AUTO-SAVE TETİKLEYİCİSİ
@@ -751,7 +848,7 @@ const togglePaintMode = () => {
     if (isPaintMode.value && window.innerWidth < 768) {
         showSidebar.value = false;
     }
-    
+
     // Mod değişince seçimleri sıfırla
     selectedItemId.value = null; // Ana grup seçimi
     selectedSubMesh.value = null; // Alt parça seçimi
@@ -1065,25 +1162,25 @@ const loadSceneObjects = async () => {
                 model.traverse((child) => {
                     if ((child as THREE.Mesh).isMesh) {
                         const mesh = child as THREE.Mesh;
-                        
+
                         const config = (item.materialConfig as any)?.[mesh.name];
 
                         if (config) {
                             let material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
-                            
+
                             if (material) {
                                 material = material.clone();
 
                                 if ((material as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
                                     const stdMat = material as THREE.MeshStandardMaterial;
-                                    
+
                                     if (config.color) stdMat.color.set(config.color);
                                     if (config.metalness !== undefined) stdMat.metalness = config.metalness;
                                     if (config.roughness !== undefined) stdMat.roughness = config.roughness;
                                 }
 
                                 mesh.material = material;
-                                
+
                                 mesh.userData.hasCustomMaterial = true;
                             }
                         }
@@ -1292,6 +1389,75 @@ const deleteItem = async (itemId: number) => {
     } catch (err) {
         console.error(err);
         alert("Silinemedi");
+    }
+};
+
+
+// --- PAYLAŞIM YÖNETİMİ ---
+const openShareModal = () => {
+    showShareModal.value = true;
+};
+
+const togglePrivacy = async () => {
+    if (!sceneData.value) return;
+    const newState = !sceneData.value.isPrivate;
+
+    // Optimistik güncelleme (Hemen UI'da değişsin)
+    sceneData.value.isPrivate = newState;
+
+    try {
+        await arSceneService.updateScene(sceneId, { isPrivate: newState });
+    } catch (e) {
+        console.error("Gizlilik güncellenemedi", e);
+        sceneData.value.isPrivate = !newState; // Geri al
+    }
+};
+
+const toggleMemberEdit = async () => {
+    if (!sceneData.value) return;
+    const newState = !sceneData.value.memberCanEdit;
+
+    sceneData.value.memberCanEdit = newState;
+
+    try {
+        await arSceneService.updateScene(sceneId, { memberCanEdit: newState });
+    } catch (e) {
+        console.error("Yetki güncellenemedi", e);
+        sceneData.value.memberCanEdit = !newState;
+    }
+};
+
+const generateLink = async () => {
+    try {
+        const res = await arSceneService.generateShareToken(sceneId);
+        // Backend tam URL dönüyorsa onu kullan, yoksa token'dan türet
+        publicShareUrl.value = res.url || `${window.location.origin}/view/scene/${res.shareToken}`;
+
+        // Local datayı da güncelle ki modal kapatılıp açılınca gitmesin
+        if (sceneData.value) sceneData.value.shareToken = res.shareToken;
+    } catch (e) {
+        console.error("Link oluşturulamadı", e);
+        alert("Link oluşturulurken hata oluştu.");
+    }
+};
+
+const revokeLink = async () => {
+    if (!confirm("Bu linki iptal ederseniz, daha önce paylaştığınız kişiler sahneye erişemeyecek. Devam edilsin mi?")) return;
+
+    try {
+        await arSceneService.revokeShareToken(sceneId);
+        publicShareUrl.value = null;
+        if (sceneData.value) sceneData.value.shareToken = null;
+    } catch (e) {
+        console.error("Link iptal edilemedi", e);
+    }
+};
+
+const copyLink = () => {
+    if (publicShareUrl.value) {
+        navigator.clipboard.writeText(publicShareUrl.value);
+        // İsterseniz ufak bir toast mesajı eklenebilir
+        // alert("Kopyalandı!"); 
     }
 };
 </script>

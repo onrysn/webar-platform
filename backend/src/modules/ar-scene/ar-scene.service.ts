@@ -1,292 +1,338 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ActivityLogService } from '../activity-log/activity-log.service';
-import { CurrentUser } from '../../common/decorators/current-user.decorator'; // Type import
 import { Role } from '@prisma/client';
+import { v4 as uuidv4 } from 'uuid';
 import {
-  CreateSceneDto,
-  UpdateSceneDto,
-  AddSceneItemDto,
-  UpdateSceneItemDto,
-  CreateFloorTextureDto
+    CreateSceneDto,
+    UpdateSceneDto,
+    AddSceneItemDto,
+    UpdateSceneItemDto,
+    CreateFloorTextureDto
 } from './dto/ar-scene.dto';
 
 @Injectable()
 export class ARSceneService {
-  constructor(
-    private prisma: PrismaService,
-    private activityLogger: ActivityLogService
-  ) { }
+    constructor(
+        private prisma: PrismaService,
+        private activityLogger: ActivityLogService
+    ) { }
 
-  // --- SAHNE (SCENE) YÖNETİMİ ---
-
-  // 1. Yeni Sahne Yarat
-  async createScene(user: CurrentUser, data: CreateSceneDto) {
-    // Eğer Super Admin ise DTO'dan gelen companyId'yi, değilse kendi companyId'sini kullanır.
-    const targetCompanyId = user.role === Role.SUPER_ADMIN && data.companyId
-      ? data.companyId
-      : user.companyId;
-
-    if (!targetCompanyId) throw new NotFoundException('Şirket bilgisi bulunamadı.');
-
-    const scene = await this.prisma.aRScene.create({
-      data: {
-        name: data.name,
-        companyId: targetCompanyId,
-        settings: data.settings ? (data.settings as any) : {},
-      },
-    });
-
-    await this.activityLogger.log(
-      user.id,
-      targetCompanyId,
-      'CREATE_SCENE',
-      `"${scene.name}" adlı yeni sahne oluşturuldu.`,
-      { sceneId: scene.id }
-    );
-
-    return scene;
-  }
-
-  // 2. Sahne Güncelleme
-  async updateScene(user: CurrentUser, id: number, data: UpdateSceneDto) {
-    const scene = await this.prisma.aRScene.findUnique({ where: { id } });
-    if (!scene || scene.isDeleted) throw new NotFoundException('Sahne bulunamadı');
-
-    // GÜVENLİK: Başkasının sahnesini güncellemeye çalışıyorsa engelle
-    if (user.role !== Role.SUPER_ADMIN && scene.companyId !== user.companyId) {
-      throw new NotFoundException('Sahne bulunamadı');
-    }
-
-    const updatedScene = await this.prisma.aRScene.update({
-      where: { id },
-      data: {
-        name: data.name,
-        settings: data.settings ? (data.settings as any) : undefined,
-      },
-    });
-
-    await this.activityLogger.log(
-      user.id,
-      scene.companyId,
-      'UPDATE_SCENE',
-      `"${updatedScene.name}" sahnesi güncellendi.`,
-      { sceneId: id, changes: data }
-    );
-
-    return updatedScene;
-  }
-
-  // 3. Sahne Silme (Soft Delete)
-  async deleteScene(user: CurrentUser, id: number) {
-    const scene = await this.prisma.aRScene.findUnique({ where: { id } });
-    if (!scene || scene.isDeleted) throw new NotFoundException('Sahne bulunamadı.');
-
-    // GÜVENLİK:
-    if (user.role !== Role.SUPER_ADMIN && scene.companyId !== user.companyId) {
-      throw new NotFoundException('Sahne bulunamadı');
-    }
-
-    await this.prisma.aRScene.update({
-      where: { id },
-      data: { isDeleted: true },
-    });
-
-    await this.activityLogger.log(
-      user.id,
-      scene.companyId,
-      'DELETE_SCENE',
-      `"${scene.name}" sahnesi silindi (Arşivlendi).`,
-      { sceneId: id }
-    );
-
-    return { message: 'Sahne başarıyla silindi' };
-  }
-
-  async listScenes(companyId?: number) {
-    return this.prisma.aRScene.findMany({
-      where: {
-        isDeleted: false,
-        ...(companyId ? { companyId } : {}),
-      },
-      orderBy: { updatedAt: 'desc' },
-      include: {
-        company: {
-          select: { id: true, name: true }
+    // =================================================================
+    // HELPER: YETKİ KONTROLÜ (MERKEZİ KONTROL NOKTASI)
+    // =================================================================
+    /**
+     * Kullanıcının bu sahne üzerinde "Yazma/Düzenleme" yetkisi var mı?
+     */
+    private validateWriteAccess(user: any, scene: any) {
+        // 1. Şirket Kontrolü (Temel Kural)
+        // Super Admin değilse ve sahnenin şirketi kullanıcının şirketi değilse -> YASAK
+        if (user.role !== Role.SUPER_ADMIN && scene.companyId !== user.companyId) {
+            throw new ForbiddenException('Bu işlem için yetkiniz yok (Farklı Şirket).');
         }
-      }
-    });
-  }
 
-  // 5. Sahne Detayı
-  async getScene(user: CurrentUser, id: number) {
-    const scene = await this.prisma.aRScene.findUnique({
-      where: { id },
-      include: {
-        items: {
-          include: {
-            model: {
-              select: { id: true, fileName: true, fileType: true, thumbnailPath: true }
+        // 2. Rol Bazlı Kontrol
+        if (user.role === Role.SUPER_ADMIN) return;   // Tanrı modu
+        if (user.role === Role.COMPANY_ADMIN) return; // Şirket yöneticisi
+        if (user.role === Role.EDITOR) return;        // Editör
+
+        // 3. MEMBER Kontrolü (Kritik Nokta)
+        if (user.role === Role.MEMBER) {
+            // Sahne ayarı izin veriyor mu?
+            if (scene.memberCanEdit === true) {
+                return; // İzin ver
+            } else {
+                throw new ForbiddenException('Bu sahneyi düzenleme yetkisi kısıtlanmış.');
             }
-          }
         }
-      }
-    });
-
-    if (!scene || scene.isDeleted) throw new NotFoundException('Sahne bulunamadı');
-
-    // GÜVENLİK:
-    if (user.role !== Role.SUPER_ADMIN && scene.companyId !== user.companyId) {
-      throw new NotFoundException('Sahne bulunamadı');
+        
+        // Tanımsız rol
+        throw new ForbiddenException('Yetkisiz işlem.');
     }
 
-    // Log (Await etmeyip arka planda çalıştırabiliriz, performansı etkilemesin)
-    this.activityLogger.log(
-      user.id,
-      scene.companyId,
-      'VIEW_SCENE',
-      `"${scene.name}" sahnesi görüntülendi.`,
-      { sceneId: scene.id }
-    ).catch(err => console.error('Log hatası:', err));
+    // =================================================================
+    // 1. SAHNE (SCENE) YÖNETİMİ
+    // =================================================================
 
-    return scene;
-  }
+    async listScenes(companyId?: number, onlyPublic = false) {
+        const whereClause: any = {
+            isDeleted: false
+        };
 
-  // --- EŞYA (ITEM) YÖNETİMİ ---
+        if (companyId) {
+            whereClause.companyId = companyId;
+        }
 
-  // 6. Sahneye Model Ekle
-  async addItemToScene(user: CurrentUser, data: AddSceneItemDto) {
-    // Önce Sahneyi bul ve yetki kontrolü yap
-    const scene = await this.prisma.aRScene.findUnique({ where: { id: data.sceneId } });
-    if (!scene) throw new NotFoundException('Sahne bulunamadı');
+        // NOT: Eğer Member'ların şirket içindeki "Private" sahneleri de görmesini istiyorsan
+        // Controller'daki 'onlyPublic' mantığını kaldırabilirsin.
+        // Şu anki mantık: Member sadece "Public" işaretli sahneleri görür.
+        if (onlyPublic) {
+            whereClause.isPrivate = false;
+        }
 
-    if (user.role !== Role.SUPER_ADMIN && scene.companyId !== user.companyId) {
-      throw new NotFoundException('Sahne bulunamadı');
+        return this.prisma.aRScene.findMany({
+            where: whereClause,
+            orderBy: { updatedAt: 'desc' },
+            include: {
+                company: { select: { id: true, name: true } },
+                _count: { select: { items: true } }
+            }
+        });
     }
 
-    const model = await this.prisma.aRModel.findUnique({ where: { id: data.modelId } });
-    if (!model) throw new NotFoundException('Model bulunamadı');
+    async createScene(user: any, data: CreateSceneDto) {
+        // Member yeni sahne oluşturabilir mi? 
+        // Controller'da izin verdik, burası da izin veriyor.
+        
+        const targetCompanyId = user.role === Role.SUPER_ADMIN && data.companyId
+            ? data.companyId
+            : user.companyId;
 
-    // Model de aynı şirkete ait olmalı (Opsiyonel ama iyi bir güvenlik önlemi)
-    if (user.role !== Role.SUPER_ADMIN && model.companyId !== user.companyId) {
-      throw new ForbiddenException('Bu modeli kullanmaya yetkiniz yok');
+        if (!targetCompanyId) throw new NotFoundException('Şirket bilgisi bulunamadı.');
+
+        const scene = await this.prisma.aRScene.create({
+            data: {
+                name: data.name,
+                companyId: targetCompanyId,
+                settings: data.settings ? (data.settings as any) : {},
+                isPrivate: data.isPrivate ?? false,
+                memberCanEdit: data.memberCanEdit ?? true, // Default true yapıyoruz
+            },
+        });
+
+        await this.activityLogger.log(
+            user.id,
+            targetCompanyId,
+            'CREATE_SCENE',
+            `"${scene.name}" adlı yeni sahne oluşturuldu.`,
+            { sceneId: scene.id }
+        );
+
+        return scene;
     }
 
-    const item = await this.prisma.sceneItem.create({
-      data: {
-        sceneId: data.sceneId,
-        modelId: data.modelId,
-        name: data.name || model.fileName,
-        position: data.position ? (data.position as any) : { x: 0, y: 0, z: 0 },
-        rotation: data.rotation ? (data.rotation as any) : { x: 0, y: 0, z: 0 },
-        scale: data.scale ? (data.scale as any) : { x: 1, y: 1, z: 1 },
-      },
-      include: { model: true }
-    });
+    async updateScene(user: any, id: number, data: UpdateSceneDto) {
+        const scene = await this.prisma.aRScene.findUnique({ where: { id } });
+        if (!scene || scene.isDeleted) throw new NotFoundException('Sahne bulunamadı');
 
-    await this.activityLogger.log(
-      user.id,
-      scene.companyId, // Log sahnenin şirketine yazılır
-      'ADD_ITEM',
-      `Sahneye "${item.name}" objesi eklendi.`,
-      { sceneId: data.sceneId, itemId: item.id, modelId: data.modelId }
-    );
+        // YETKİ KONTROLÜ
+        this.validateWriteAccess(user, scene);
 
-    return item;
-  }
+        const updatedScene = await this.prisma.aRScene.update({
+            where: { id },
+            data: {
+                name: data.name,
+                settings: data.settings ? (data.settings as any) : undefined,
+                isPrivate: data.isPrivate,
+                memberCanEdit: data.memberCanEdit,
+            },
+        });
 
-  // 7. Eşya Konumunu Güncelle
-  async updateItemTransform(user: CurrentUser, itemId: number, data: UpdateSceneItemDto) {
-    // Eşyayı ve bağlı olduğu sahneyi çek
-    const item = await this.prisma.sceneItem.findUnique({
-      where: { id: itemId },
-      include: { scene: true }
-    });
+        await this.activityLogger.log(
+            user.id,
+            scene.companyId,
+            'UPDATE_SCENE',
+            `"${updatedScene.name}" sahnesi güncellendi.`,
+            { sceneId: id, changes: data }
+        );
 
-    if (!item) throw new NotFoundException('Obje bulunamadı');
-
-    // Yetki kontrolü (Sahne üzerinden)
-    if (user.role !== Role.SUPER_ADMIN && item.scene.companyId !== user.companyId) {
-      throw new NotFoundException('Obje bulunamadı');
+        return updatedScene;
     }
 
-    const updatedItem = await this.prisma.sceneItem.update({
-      where: { id: itemId },
-      data: {
-        position: data.position ? (data.position as any) : undefined,
-        rotation: data.rotation ? (data.rotation as any) : undefined,
-        scale: data.scale ? (data.scale as any) : undefined,
-        materialConfig: data.materialConfig ? (data.materialConfig as any) : undefined,
-      }
-    });
+    async deleteScene(user: any, id: number) {
+        const scene = await this.prisma.aRScene.findUnique({ where: { id } });
+        if (!scene || scene.isDeleted) throw new NotFoundException('Sahne bulunamadı.');
 
-    await this.activityLogger.log(
-      user.id,
-      item.scene.companyId,
-      'UPDATE_ITEM',
-      `"${item.name}" güncellendi.`,
-      { itemId, sceneId: item.sceneId }
-    );
+        // Silme işlemi kritik olduğu için MEMBER'a kapalı olmalı (Controller'da zaten engelledik)
+        // Ama yine de güvenlik için:
+        if (user.role === Role.MEMBER) throw new ForbiddenException('Silme yetkiniz yok.');
+        
+        // Diğer roller için standart kontrol
+        if (user.role !== Role.SUPER_ADMIN && scene.companyId !== user.companyId) {
+            throw new ForbiddenException('Yetkiniz yok');
+        }
 
-    return updatedItem;
-  }
+        await this.prisma.aRScene.update({
+            where: { id },
+            data: { isDeleted: true },
+        });
 
-  // 8. Eşyayı Sil
-  async removeItem(user: CurrentUser, itemId: number) {
-    const item = await this.prisma.sceneItem.findUnique({
-      where: { id: itemId },
-      include: { scene: true }
-    });
+        await this.activityLogger.log(
+            user.id,
+            scene.companyId,
+            'DELETE_SCENE',
+            `"${scene.name}" sahnesi silindi.`,
+            { sceneId: id }
+        );
 
-    if (!item) throw new NotFoundException('Obje bulunamadı');
-
-    if (user.role !== Role.SUPER_ADMIN && item.scene.companyId !== user.companyId) {
-      throw new NotFoundException('Obje bulunamadı');
+        return { message: 'Sahne başarıyla silindi' };
     }
 
-    await this.prisma.sceneItem.delete({
-      where: { id: itemId }
-    });
+    async getScene(user: any, id: number) {
+        const scene = await this.prisma.aRScene.findUnique({
+            where: { id },
+            include: {
+                items: {
+                    include: {
+                        model: {
+                            select: { 
+                                id: true, 
+                                fileName: true, 
+                                fileType: true, 
+                                thumbnailPath: true,
+                                isPrivate: true,
+                                shareToken: true 
+                            }
+                        }
+                    }
+                }
+            }
+        });
 
-    await this.activityLogger.log(
-      user.id,
-      item.scene.companyId,
-      'REMOVE_ITEM',
-      `"${item.name}" objesi sahneden kaldırıldı.`,
-      { itemId, sceneId: item.sceneId }
-    );
+        if (!scene || scene.isDeleted) throw new NotFoundException('Sahne bulunamadı');
 
-    return { message: 'Obje silindi' };
-  }
+        if (user.role !== Role.SUPER_ADMIN && scene.companyId !== user.companyId) {
+            throw new ForbiddenException('Erişim yetkiniz yok');
+        }
 
-  // --- DOKU (TEXTURE) YÖNETİMİ ---
+        // Log
+        this.activityLogger.log(user.id, scene.companyId, 'VIEW_SCENE', `"${scene.name}" görüntülendi.`, { sceneId: scene.id }).catch(() => {});
 
-  async listFloorTextures() {
-    return this.prisma.floorTexture.findMany({
-      where: { isActive: true },
-      orderBy: { name: 'asc' },
-    });
-  }
+        return scene;
+    }
 
-  async createFloorTexture(userId: number, data: CreateFloorTextureDto) {
-    // Sadece Super Admin oluşturabildiği için companyId yok (Sistem geneli)
-    const texture = await this.prisma.floorTexture.create({
-      data: {
-        name: data.name,
-        textureUrl: data.textureUrl,
-        thumbnailUrl: data.thumbnailUrl || data.textureUrl,
-        isActive: data.isActive ?? true,
-      },
-    });
+    // =================================================================
+    // 2. EŞYA (ITEM) YÖNETİMİ
+    // =================================================================
 
-    await this.activityLogger.log(
-      userId,
-      null, // Sistem geneli işlem
-      'CREATE_TEXTURE',
-      `Yeni zemin dokusu eklendi: "${texture.name}"`,
-      { textureId: texture.id }
-    );
+    async addItemToScene(user: any, data: AddSceneItemDto) {
+        const scene = await this.prisma.aRScene.findUnique({ where: { id: data.sceneId } });
+        if (!scene || scene.isDeleted) throw new NotFoundException('Sahne bulunamadı');
 
-    return texture;
-  }
+        // YETKİ KONTROLÜ (MEMBER burada denetlenir)
+        this.validateWriteAccess(user, scene);
+
+        const model = await this.prisma.aRModel.findUnique({ where: { id: data.modelId } });
+        if (!model) throw new NotFoundException('Model bulunamadı');
+
+        // Model de aynı şirkette olmalı
+        if (user.role !== Role.SUPER_ADMIN && model.companyId !== user.companyId) {
+            throw new ForbiddenException('Bu modeli kullanamazsınız.');
+        }
+
+        const item = await this.prisma.sceneItem.create({
+            data: {
+                sceneId: data.sceneId,
+                modelId: data.modelId,
+                name: data.name || model.fileName, 
+                position: data.position ? (data.position as any) : { x: 0, y: 0, z: 0 },
+                rotation: data.rotation ? (data.rotation as any) : { x: 0, y: 0, z: 0 },
+                scale: data.scale ? (data.scale as any) : { x: 1, y: 1, z: 1 },
+            },
+            include: { model: true }
+        });
+
+        await this.activityLogger.log(user.id, scene.companyId, 'ADD_ITEM', `Sahneye "${item.name}" eklendi.`, { sceneId: data.sceneId, itemId: item.id });
+        return item;
+    }
+
+    async updateItemTransform(user: any, itemId: number, data: UpdateSceneItemDto) {
+        const item = await this.prisma.sceneItem.findUnique({
+            where: { id: itemId },
+            include: { scene: true }
+        });
+
+        if (!item || !item.scene || item.scene.isDeleted) throw new NotFoundException('Obje bulunamadı');
+
+        // YETKİ KONTROLÜ (MEMBER burada denetlenir)
+        this.validateWriteAccess(user, item.scene);
+
+        const updatedItem = await this.prisma.sceneItem.update({
+            where: { id: itemId },
+            data: {
+                position: data.position ? (data.position as any) : undefined,
+                rotation: data.rotation ? (data.rotation as any) : undefined,
+                scale: data.scale ? (data.scale as any) : undefined,
+                materialConfig: data.materialConfig ? (data.materialConfig as any) : undefined,
+            }
+        });
+
+        return updatedItem;
+    }
+
+    async removeItem(user: any, itemId: number) {
+        const item = await this.prisma.sceneItem.findUnique({
+            where: { id: itemId },
+            include: { scene: true }
+        });
+
+        if (!item || !item.scene) throw new NotFoundException('Obje bulunamadı');
+
+        // YETKİ KONTROLÜ
+        this.validateWriteAccess(user, item.scene);
+
+        await this.prisma.sceneItem.delete({ where: { id: itemId } });
+
+        await this.activityLogger.log(user.id, item.scene.companyId, 'REMOVE_ITEM', `"${item.name}" kaldırıldı.`, { itemId, sceneId: item.sceneId });
+        return { message: 'Obje silindi' };
+    }
+
+    // =================================================================
+    // 3. DİĞER (TEXTURE, TOKEN, SHARED) - AYNI KALIYOR
+    // =================================================================
+    
+    // Texture
+    async listFloorTextures() {
+        return this.prisma.floorTexture.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } });
+    }
+
+    async createFloorTexture(userId: number, data: CreateFloorTextureDto) {
+        const texture = await this.prisma.floorTexture.create({
+            data: { ...data, thumbnailUrl: data.thumbnailUrl || data.textureUrl, isActive: data.isActive ?? true },
+        });
+        return texture;
+    }
+
+    // Token & Shared
+    async generateShareToken(id: number, user: any) {
+        // Token üretmek yönetimsel bir iştir, Member yapamaz (Controller'da engelli)
+        const scene = await this.prisma.aRScene.findUnique({ where: { id } });
+        if (!scene) throw new NotFoundException('Sahne bulunamadı');
+        
+        if (user.role !== Role.SUPER_ADMIN && scene.companyId !== user.companyId) throw new ForbiddenException();
+
+        if (scene.shareToken) return { shareToken: scene.shareToken };
+
+        const token = uuidv4();
+        await this.prisma.aRScene.update({ where: { id }, data: { shareToken: token } });
+        return { shareToken: token };
+    }
+
+    async revokeShareToken(id: number, user: any) {
+        const scene = await this.prisma.aRScene.findUnique({ where: { id } });
+        if (!scene) throw new NotFoundException('Sahne bulunamadı');
+        if (user.role !== Role.SUPER_ADMIN && scene.companyId !== user.companyId) throw new ForbiddenException();
+
+        await this.prisma.aRScene.update({ where: { id }, data: { shareToken: null } });
+        return { success: true };
+    }
+
+    async getSharedScene(token: string) {
+        const scene = await this.prisma.aRScene.findUnique({
+            where: { shareToken: token },
+            include: {
+                company: { select: { name: true, isActive: true } },
+                items: {
+                    include: {
+                        model: {
+                            select: { id: true, fileName: true, fileType: true, shareToken: true, isPrivate: true }
+                        }
+                    }
+                }
+            }
+        });
+        if (!scene || scene.isDeleted) return null;
+        if (!scene.company || !scene.company.isActive) return null;
+        return scene;
+    }
 }

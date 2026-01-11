@@ -205,6 +205,16 @@ export class CreateSceneDto {
   @ValidateNested()
   @Type(() => SceneSettingsDto)
   settings?: SceneSettingsDto;
+
+  @ApiPropertyOptional({ description: 'Sahne gizli mi? (Liste dışı)', default: false })
+  @IsOptional()
+  @IsBoolean()
+  isPrivate?: boolean;
+
+  @ApiPropertyOptional({ description: 'Member rolündekiler düzenleyebilir mi?', default: true })
+  @IsOptional()
+  @IsBoolean()
+  memberCanEdit?: boolean;
 }
 
 // 2. Sahne Ayarlarını Güncelle
@@ -219,6 +229,16 @@ export class UpdateSceneDto {
   @ValidateNested()
   @Type(() => SceneSettingsDto)
   settings?: SceneSettingsDto;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  isPrivate?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  memberCanEdit?: boolean;
 }
 
 // 3. Sahneye Yeni Bir Eşya (Model) Ekle

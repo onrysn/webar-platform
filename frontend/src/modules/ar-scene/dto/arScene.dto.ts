@@ -97,7 +97,18 @@ export interface ARSceneDto {
   createdAt: string;
   updatedAt?: string;
   items: SceneItemDto[];
-  settings: SceneSettings; 
+  settings: SceneSettings;
+  
+  // --- YENİ EKLENEN ALANLAR ---
+  isPrivate: boolean;        // Liste gizliliği
+  memberCanEdit: boolean;    // Yetki kontrolü
+  shareToken?: string | null; // Paylaşım token'ı
+  shareUrl?: string | null;   // Frontend'de hesaplanan tam URL
+  
+  // Liste görünümünde obje sayısını göstermek için
+  _count?: {
+    items: number;
+  };
 }
 
 // --- PAYLOADS (Request Types) ---
@@ -105,16 +116,22 @@ export interface ARSceneDto {
 // 1. Yeni Sahne Oluşturma
 export interface CreateSceneDto {
   name: string;
-  // [DEĞİŞİKLİK]: Artık opsiyonel. Normal kullanıcılar için backend token'dan alır.
-  // Sadece Super Admin başkası adına oluştururken kullanır.
   companyId?: number; 
   settings?: SceneSettings;
+  
+  // Yeni
+  isPrivate?: boolean;
+  memberCanEdit?: boolean;
 }
 
 // 2. Sahne Güncelleme
 export interface UpdateSceneDto {
   name?: string;
   settings?: SceneSettings;
+  
+  // Yeni
+  isPrivate?: boolean;
+  memberCanEdit?: boolean;
 }
 
 // 3. Eşya Ekleme
@@ -133,4 +150,10 @@ export interface UpdateSceneItemDto {
   rotation?: Vector3;
   scale?: Vector3;
   materialConfig?: Record<string, any>;
+}
+
+// 5. Paylaşım Token Cevabı (YENİ)
+export interface ShareSceneResponse {
+    shareToken: string;
+    url: string;
 }

@@ -8,57 +8,69 @@ import type {
   UpdateSceneItemDto,
   SceneItemDto,
   FloorTextureDto,
-  CreateFloorTextureDto
+  CreateFloorTextureDto,
+  ShareSceneResponse
 } from "../modules/ar-scene/dto/arScene.dto";
 
 export const arSceneService = {
-  // 1. Sahne Oluştur
+  // =================================================================
+  // 1. SAHNE YÖNETİMİ
+  // =================================================================
+
+  // Sahne Oluştur
   async createScene(data: CreateSceneDto): Promise<ARSceneDto> {
     const res = await apiService.post<ARSceneDto>('/ar-scene', data);
     return res.data;
   },
 
-  // 2. Sahne Güncelle
+  // Sahne Güncelle
   async updateScene(id: number, data: UpdateSceneDto): Promise<ARSceneDto> {
     const res = await apiService.patch<ARSceneDto>(`/ar-scene/${id}`, data);
     return res.data;
   },
 
-  // 3. Listele
-  // [DEĞİŞİKLİK]: companyId opsiyonel yapıldı.
-  // Eğer parametre verilmezse backend, token'daki kullanıcının şirketini baz alır.
+  // Listele
   async listScenes(companyId?: number): Promise<ARSceneDto[]> {
     const params = companyId ? { companyId } : {};
     const res = await apiService.get<ARSceneDto[]>('/ar-scene/list', { params });
     return res.data;
   },
 
-  // 4. Detay (Editör)
+  // Detay (Editör için - Auth Gerekli)
   async getScene(id: number): Promise<ARSceneDto> {
     const res = await apiService.get<ARSceneDto>(`/ar-scene/${id}`);
     return res.data;
   },
 
-  // --- ITEM İŞLEMLERİ ---
+  // Sahne Sil (Soft Delete)
+  async deleteScene(id: number): Promise<void> {
+    await apiService.delete(`/ar-scene/${id}`);
+  },
 
-  // 5. Eşya Ekle
+  // =================================================================
+  // 2. ITEM (OBJE) İŞLEMLERİ
+  // =================================================================
+
+  // Eşya Ekle
   async addItem(data: AddSceneItemDto): Promise<SceneItemDto> {
     const res = await apiService.post<SceneItemDto>('/ar-scene/item', data);
     return res.data;
   },
 
-  // 6. Eşya Güncelle
+  // Eşya Güncelle
   async updateItem(itemId: number, data: UpdateSceneItemDto): Promise<SceneItemDto> {
     const res = await apiService.patch<SceneItemDto>(`/ar-scene/item/${itemId}`, data);
     return res.data;
   },
 
-  // 7. Eşya Sil
+  // Eşya Sil
   async removeItem(itemId: number): Promise<void> {
     await apiService.delete(`/ar-scene/item/${itemId}`);
   },
 
-  // --- DOKU (TEXTURE) İŞLEMLERİ ---
+  // =================================================================
+  // 3. DOKU (TEXTURE) İŞLEMLERİ
+  // =================================================================
 
   async listFloorTextures(): Promise<FloorTextureDto[]> {
     const res = await apiService.get<FloorTextureDto[]>('/ar-scene/textures');
@@ -70,8 +82,28 @@ export const arSceneService = {
     return res.data;
   },
 
-  // 8. Sahne Sil (Soft Delete)
-  async deleteScene(id: number): Promise<void> {
-    await apiService.delete(`/ar-scene/${id}`);
+  // =================================================================
+  // 4. PAYLAŞIM VE PUBLIC ERİŞİM (YENİ)
+  // =================================================================
+
+  // Paylaşım Linki Oluştur
+  async generateShareToken(id: number): Promise<ShareSceneResponse> {
+    const res = await apiService.post<ShareSceneResponse>(`/ar-scene/${id}/share-token`);
+    return res.data;
   },
+
+  // Paylaşımı İptal Et
+  async revokeShareToken(id: number): Promise<{ success: boolean }> {
+    const res = await apiService.post<{ success: boolean }>(`/ar-scene/${id}/revoke-token`);
+    return res.data;
+  },
+
+  // Public Sahne Detayını Getir (Müşteri ekranı için - Auth header gitmemeli)
+  // [NOT]: apiService varsayılan olarak token ekliyor olabilir.
+  // Eğer apiService interceptor'ı '/shared/' prefixini görünce token eklemiyorsa sorun yok.
+  // Eklemiyorsa bile backend'de Public endpoint olduğu için token gitmesi genelde hata vermez, sadece ignore edilir.
+  async getSharedScene(token: string): Promise<ARSceneDto> {
+    const res = await apiService.get<ARSceneDto>(`/shared/ar-scene/${token}`);
+    return res.data;
+  }
 };
