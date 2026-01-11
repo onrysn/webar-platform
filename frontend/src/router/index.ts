@@ -160,6 +160,16 @@ const routes: RouteRecordRaw[] = [
       },
     ],
   },
+
+  {
+    path: '/view/:token',
+    name: 'PublicModelView',
+    component: () => import('../modules/ar-model/pages/ARModelPublicView.vue'),
+    meta: { 
+      layout: 'blank',
+      public: true
+    }
+  },
   
   // 404 Catch-all
   { path: '/:pathMatch(.*)*', redirect: '/dashboard' }

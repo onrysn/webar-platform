@@ -1,5 +1,4 @@
-// ar-model.service.ts
-import { Injectable, InternalServerErrorException, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, BadRequestException, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { File as MulterFile } from 'multer';
 import * as crypto from 'crypto';
@@ -10,6 +9,7 @@ import fetch from 'node-fetch';
 import FormData from 'form-data';
 import { v4 as uuidv4 } from 'uuid';
 import { ActivityLogService } from '../activity-log/activity-log.service';
+import { Role } from '@prisma/client'; // Role enum'ını ekledik
 
 @Injectable()
 export class ARModelService {
@@ -61,7 +61,7 @@ export class ARModelService {
     }
 
     // --- UPLOAD HANDLERS (TEMP) ---
-
+    // (Burası aynen kalıyor...)
     async saveTempUploadedModel(file: MulterFile, kind: 'glb' | 'usdz', tempId?: string, userId?: number) {
         if (!tempId) tempId = `${Date.now()}_${uuidv4()}`;
         const tempDir = this.ensureTempDir(tempId);
@@ -82,9 +82,7 @@ export class ARModelService {
         const outPath = path.join(tempDir, filename);
         fs.writeFileSync(outPath, buffer);
 
-        // Preview URL (Nginx veya Static Serve ayarına göre değişebilir)
         const previewUrl = `/temp/${tempId}/${filename}`;
-
         return { tempId, kind, filename, previewUrl, size: buffer.length };
     }
 
@@ -97,10 +95,9 @@ export class ARModelService {
     }
 
     async convertGlbToUsdzTemp(file: MulterFile, userId?: number) {
-        // GLB yükle, USDZ'ye çevir ve Temp klasöründe her ikisini de hazırla
+        // (Burası aynen kalıyor...)
         const tempId = `${Date.now()}_${uuidv4()}`;
         const tempDir = this.ensureTempDir(tempId);
-
         const baseName = path.basename(file.originalname, path.extname(file.originalname));
         const glbName = `${baseName}.glb`;
         const glbPath = path.join(tempDir, glbName);
@@ -113,7 +110,6 @@ export class ARModelService {
             throw new InternalServerErrorException('GLB dosyası buffer veya path içermiyor.');
         }
 
-        // Converter Servisine İstek
         const formData = new FormData();
         formData.append('file', fs.createReadStream(glbPath), {
             filename: glbName,
@@ -134,7 +130,6 @@ export class ARModelService {
         const convertJson = await convertResp.json();
         const { id, name } = convertJson as { id: string; name: string };
 
-        // USDZ İndir
         const downloadUrl = `${this.converterUrl}/api/download?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`;
         const usdzResp = await fetch(downloadUrl);
 
@@ -155,8 +150,7 @@ export class ARModelService {
         };
     }
 
-    // --- INTERNAL HELPERS ---
-
+    // --- INTERNAL HELPERS (_genericConvertToTemp, convertCadToGlb, etc. - Aynen kalıyor) ---
     private async _genericConvertToTemp(file: MulterFile, userId: number | undefined, type: 'fbx' | 'step') {
         const tempId = `${Date.now()}_${uuidv4()}`;
         const tempDir = this.ensureTempDir(tempId);
@@ -185,7 +179,6 @@ export class ARModelService {
             throw error;
         }
 
-        // GLB -> USDZ Conversion
         const formData = new FormData();
         formData.append('file', fs.createReadStream(glbPath), {
             filename: path.basename(glbPath),
@@ -223,7 +216,6 @@ export class ARModelService {
         fs.copyFileSync(glbPath, finalGlbPath);
         fs.writeFileSync(finalUsdzPath, usdzBuffer);
 
-        // Cleanup intermediate file
         if (glbPath !== finalGlbPath && fs.existsSync(glbPath)) {
             try { fs.unlinkSync(glbPath); } catch (e) { /* ignore */ }
         }
@@ -235,14 +227,14 @@ export class ARModelService {
         };
     }
 
-    // --- FINALIZE (DB SAVE) ---
-
+    // --- 1. FINALIZE (DB SAVE) ---
     async finalizeTempModel(
         tempId: string,
-        companyId: number, // Controller'dan garanti number geliyor
+        companyId: number,
         uploadedBy: number,
         modelName?: string,
-        thumbnailFile?: MulterFile
+        thumbnailFile?: MulterFile,
+        isPrivate: boolean = false // Yeni parametre
     ) {
         const tempDir = path.join(this.TEMP_ROOT, tempId);
         if (!fs.existsSync(tempDir)) throw new NotFoundException('Temp folder not found');
@@ -255,7 +247,7 @@ export class ARModelService {
             throw new BadRequestException('Both GLB and USDZ must be present to finalize.');
         }
 
-        // 1. Dosyaları şifrele ve taşı
+        // 1. Şifreleme
         const glbBuffer = fs.readFileSync(path.join(tempDir, glbFile));
         const { encrypted: glbEncrypted, iv: glbIv, authTag: glbAuth } = this.encrypt(glbBuffer);
         const glbFinalName = `${Date.now()}-${uuidv4()}-${glbFile}.enc`;
@@ -268,7 +260,7 @@ export class ARModelService {
         const usdzFinalPath = path.join(this.FINAL_ROOT, usdzFinalName);
         fs.writeFileSync(usdzFinalPath, usdzEncrypted);
 
-        // 2. Thumbnail işlemleri
+        // 2. Thumbnail
         let thumbnailPath: string | null = null;
         if (thumbnailFile) {
             const thumbDir = path.join(process.cwd(), 'uploads', 'thumbnails');
@@ -285,16 +277,17 @@ export class ARModelService {
             }
         }
 
-        // 3. Veritabanına Kayıt
+        // 3. DB Kayıt
         const fileHash = crypto.createHash('sha256').update(glbBuffer).digest('hex');
         const created = await this.prisma.aRModel.create({
             data: {
                 fileName: modelName || this.getFileNameWithoutExt(glbFile),
+                // modelName: modelName, // Opsiyonel: Schema'da varsa açabilirsin
                 fileType: '.glb/.usdz',
                 filePath: glbFinalPath,
                 fileSize: glbEncrypted.length,
                 fileHash,
-                companyId, // Controller'dan gelen ID
+                companyId,
                 uploadedBy,
                 iv: glbIv.toString('hex'),
                 authTag: glbAuth.toString('hex'),
@@ -303,10 +296,11 @@ export class ARModelService {
                 usdzAuthTag: usdzAuth.toString('hex'),
                 usdzFileSize: usdzEncrypted.length,
                 thumbnailPath,
+                isPrivate: isPrivate, // <-- DB'ye kaydediliyor
             },
         });
 
-        // 4. Loglama (Yeni imza: userId, companyId, action, desc, meta)
+        // 4. Log
         await this.activityLogger.log(
             uploadedBy,
             companyId,
@@ -315,34 +309,22 @@ export class ARModelService {
             { modelId: created.id, companyId: created.companyId, size: created.fileSize }
         );
 
-        // 5. Temp temizliği
-        try {
-            fs.rmSync(tempDir, { recursive: true, force: true });
-        } catch (err) {
-            console.error('Failed to delete temp dir', tempDir, err);
-        }
+        // 5. Temp Temizlik
+        try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (e) { /* ignore */ }
 
-        return { id: created.id, fileName: created.fileName, message: 'Model and thumbnail saved successfully' };
+        return { id: created.id, fileName: created.fileName, message: 'Model saved successfully' };
     }
 
-    // --- HELPER: CAD CONVERTERS (Blender & Python) ---
-
     async convertCadToGlb(file: MulterFile): Promise<string> {
+        // ... (Mevcut kod aynen)
         let inputPath = file.path;
         const originalExt = path.extname(file.originalname).toLowerCase();
-
         if (inputPath) {
             if (!inputPath.toLowerCase().endsWith(originalExt)) {
                 const newPath = inputPath + originalExt;
-                try {
-                    fs.renameSync(inputPath, newPath);
-                    inputPath = newPath;
-                } catch (err) {
-                    console.error('Dosya yeniden adlandırılamadı:', err);
-                }
+                try { fs.renameSync(inputPath, newPath); inputPath = newPath; } catch (err) { console.error('Dosya yeniden adlandırılamadı:', err); }
             }
         }
-
         if (!inputPath) {
             if (!file.buffer) throw new InternalServerErrorException('File upload error');
             const tempDir = path.join(process.cwd(), 'uploads', 'temp');
@@ -351,7 +333,6 @@ export class ARModelService {
             inputPath = path.join(tempDir, `${Date.now()}-${safeName}${originalExt}`);
             fs.writeFileSync(inputPath, file.buffer);
         }
-
         const outputDir = path.dirname(inputPath);
         const fileName = path.basename(inputPath, path.extname(inputPath));
         const glbOutputPath = path.join(outputDir, `${fileName}.glb`);
@@ -367,6 +348,7 @@ export class ARModelService {
     }
 
     async convertStepToGlb(inputPath: string): Promise<string> {
+        // ... (Mevcut kod aynen)
         const outputDir = path.dirname(inputPath);
         const fileName = path.basename(inputPath, path.extname(inputPath));
         const glbOutputPath = path.join(outputDir, `${fileName}.glb`);
@@ -376,8 +358,6 @@ export class ARModelService {
 
         return new Promise((resolve, reject) => {
             const pythonProcess = spawn('python3', ['-u', scriptPath, inputPath, glbOutputPath]);
-            
-            // Timeout (3 dakika)
             const timeout = setTimeout(() => {
                 pythonProcess.kill('SIGKILL');
                 reject(new InternalServerErrorException('Conversion timed out'));
@@ -420,5 +400,90 @@ export class ARModelService {
         if (!filename.toLowerCase().endsWith(ext)) filename += ext;
 
         return { buffer, mimeType, filename };
+    }
+
+    // --- 2. UPDATE MODEL (YENİ) ---
+    async updateModel(id: number, user: any, data: { name?: string, isPrivate?: boolean }) {
+        const model = await this.prisma.aRModel.findUnique({ where: { id } });
+        if (!model) throw new NotFoundException('Model bulunamadı');
+
+        // Yetki: SuperAdmin veya Kendi Şirketi
+        if (user.role !== Role.SUPER_ADMIN && model.companyId !== user.companyId) {
+            throw new ForbiddenException('Bu işlem için yetkiniz yok');
+        }
+
+        const updatedModel = await this.prisma.aRModel.update({
+            where: { id },
+            data: {
+                fileName: data.name || model.fileName, 
+                isPrivate: data.isPrivate !== undefined ? data.isPrivate : model.isPrivate
+            }
+        });
+
+        await this.activityLogger.log(
+            user.id,
+            user.companyId,
+            'MODEL_UPDATE',
+            `Model güncellendi: ${updatedModel.fileName}`,
+            { modelId: id, changes: data }
+        );
+
+        return updatedModel;
+    }
+
+    // --- 3. SHARE TOKEN GENERATE (YENİ) ---
+    async generateShareToken(id: number, user: any) {
+        const model = await this.prisma.aRModel.findUnique({ where: { id } });
+        if (!model) throw new NotFoundException('Model bulunamadı');
+
+        if (user.role !== Role.SUPER_ADMIN && model.companyId !== user.companyId) {
+            throw new ForbiddenException('Yetkisiz işlem');
+        }
+
+        // Zaten varsa eskisini dön
+        if (model.shareToken) {
+            return { shareToken: model.shareToken }; // URL yok, sadece token
+        }
+
+        const token = uuidv4();
+        await this.prisma.aRModel.update({
+            where: { id },
+            data: { shareToken: token }
+        });
+
+        await this.activityLogger.log(
+            user.id,
+            user.companyId,
+            'MODEL_SHARE',
+            `Model paylaşıma açıldı: ${model.fileName}`,
+            { modelId: id }
+        );
+
+        return { shareToken: token };
+    }
+
+    // --- 4. REVOKE SHARE TOKEN (YENİ) ---
+    async revokeShareToken(id: number, user: any) {
+        const model = await this.prisma.aRModel.findUnique({ where: { id } });
+        if (!model) throw new NotFoundException('Model bulunamadı');
+
+        if (user.role !== Role.SUPER_ADMIN && model.companyId !== user.companyId) {
+            throw new ForbiddenException('Yetkisiz işlem');
+        }
+
+        await this.prisma.aRModel.update({
+            where: { id },
+            data: { shareToken: null }
+        });
+
+        await this.activityLogger.log(
+            user.id,
+            user.companyId,
+            'MODEL_UNSHARE',
+            `Model paylaşımı kapatıldı: ${model.fileName}`,
+            { modelId: id }
+        );
+
+        return { success: true, message: 'Paylaşım bağlantısı iptal edildi.' };
     }
 }

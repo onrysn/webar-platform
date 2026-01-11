@@ -1,22 +1,27 @@
 // src/services/arModelService.ts
-import type { ARModelDto, TempModelResponse, FinalizeModelDto, ModelDetailDto } from "../modules/ar-model/dto/arModel.dto";
+import type { ARModelDto, TempModelResponse, FinalizeModelDto, ModelDetailDto, UpdateModelDto, ShareTokenResponse  } from "../modules/ar-model/dto/arModel.dto";
 import { apiService } from "./httpService/apiService"; // Axios instance
 import type { AxiosProgressEvent } from "axios";
 
 // Statik dosyalar (temp klasörü) genellikle API prefix'i olmadan sunulur.
-// Eğer backend http://localhost:3000 ise:
+// Nginx proxy ayarına göre burası dinamik çalışır.
 const BACKEND_URL = `${window.location.origin}/api`;
 
 export const arModelService = {
-  // 1. Listeleme
-  // Super Admin ise companyId gönderebilir, yoksa backend token'dan okur.
+  // ----------------------------------------------------------------
+  // 1. LİSTELEME
+  // ----------------------------------------------------------------
   async listModels(companyId?: number): Promise<ARModelDto[]> {
     const params = companyId ? { companyId } : {};
     const res = await apiService.get<ARModelDto[]>('/ar-model/list', { params });
     return res.data;
   },
 
-  // 2. FBX Yükleme
+  // ----------------------------------------------------------------
+  // 2. YÜKLEME İŞLEMLERİ (TEMP)
+  // ----------------------------------------------------------------
+  
+  // FBX Yükleme
   async uploadFbx(file: File, onProgress?: (percent: number) => void): Promise<TempModelResponse> {
     const formData = new FormData();
     formData.append('file', file);
@@ -40,7 +45,7 @@ export const arModelService = {
     return res.data;
   },
 
-  // 3. GLB Yükleme
+  // GLB Yükleme
   async uploadGlb(file: File, tempId?: string, onProgress?: (percent: number) => void): Promise<TempModelResponse> {
     const formData = new FormData();
     formData.append('file', file);
@@ -53,7 +58,7 @@ export const arModelService = {
     return res.data;
   },
 
-  // 4. USDZ Yükleme
+  // USDZ Yükleme
   async uploadUsdz(file: File, tempId?: string, onProgress?: (percent: number) => void): Promise<TempModelResponse> {
     const formData = new FormData();
     formData.append('file', file);
@@ -66,13 +71,13 @@ export const arModelService = {
     return res.data;
   },
 
-  // 5. Finalize (Kaydetme)
+  // ----------------------------------------------------------------
+  // 3. KAYDETME (FINALIZE)
+  // ----------------------------------------------------------------
   async finalizeModel(data: FinalizeModelDto): Promise<ARModelDto> {
     const formData = new FormData();
     formData.append('tempId', data.tempId);
 
-    // Backend artık companyId'yi token'dan alıyor.
-    // Ancak Super Admin başkası adına yüklüyorsa manuel ekleriz.
     if (data.companyId) {
       formData.append('companyId', data.companyId.toString());
     }
@@ -81,8 +86,13 @@ export const arModelService = {
       formData.append('modelName', data.modelName);
     }
 
+    // --- YENİ: Gizlilik Durumu ---
+    if (data.isPrivate !== undefined) {
+      // FormData boolean kabul etmez, string'e çeviriyoruz
+      formData.append('isPrivate', String(data.isPrivate));
+    }
+
     if (data.thumbnail) {
-      // Blob veya File olabilir
       formData.append('thumbnail', data.thumbnail, 'thumbnail.png');
     }
 
@@ -93,13 +103,17 @@ export const arModelService = {
     return res.data;
   },
 
-  // 6. Model Detaylarını Getir
+  // ----------------------------------------------------------------
+  // 4. DETAY VE DOSYA İŞLEMLERİ (AUTH REQUIRED)
+  // ----------------------------------------------------------------
+  
+  // Model Detaylarını Getir
   async getModelDetails(id: number): Promise<ModelDetailDto> {
     const res = await apiService.get<ModelDetailDto>(`/ar-model/${id}`);
     return res.data;
   },
 
-  // 7. Dosyayı Blob Olarak Çek (Stream)
+  // Dosyayı Blob Olarak Çek (Stream) - Panelden indirme/izleme için
   async getModelFileBlob(id: number, format: 'glb' | 'usdz', mode: 'view' | 'download'): Promise<Blob> {
     const res = await apiService.get(`/ar-model/${id}/file`, {
       params: { format, mode },
@@ -108,7 +122,53 @@ export const arModelService = {
     return res.data as unknown as Blob;
   },
 
-  // 8. GLB -> USDZ Çevirici
+  // ----------------------------------------------------------------
+  // 5. YÖNETİM VE PAYLAŞIM (YENİ)
+  // ----------------------------------------------------------------
+
+  // Model Güncelleme (İsim, Gizlilik)
+  async updateModel(id: number, data: UpdateModelDto): Promise<ARModelDto> {
+    const res = await apiService.post<ARModelDto>(`/ar-model/${id}/update`, data);
+    return res.data;
+  },
+
+  // Paylaşım Linki Oluştur
+  async generateShareToken(id: number): Promise<ShareTokenResponse> {
+    const res = await apiService.post<ShareTokenResponse>(`/ar-model/${id}/share-token`);
+    return res.data;
+  },
+
+  // Paylaşımı İptal Et
+  async revokeShareToken(id: number): Promise<{ success: boolean; message: string }> {
+    const res = await apiService.post<{ success: boolean; message: string }>(`/ar-model/${id}/revoke-token`);
+    return res.data;
+  },
+
+  // ----------------------------------------------------------------
+  // 6. PUBLIC ERİŞİM (LOGIN GEREKTİRMEZ) (YENİ)
+  // ----------------------------------------------------------------
+
+  // Token ile model detayını getir (Müşteri ekranı için)
+  async getSharedModel(token: string): Promise<any> { // DTO: SharedModelDto yapılabilir
+    // Bu istekte Auth header gitse de sorun olmaz, backend guard yok.
+    const res = await apiService.get(`/shared/ar-model/${token}`);
+    return res.data;
+  },
+
+  // Token ile dosya stream et (Müşteri ekranı için)
+  async getSharedFileBlob(token: string, format: 'glb' | 'usdz'): Promise<Blob> {
+    const res = await apiService.get(`/shared/ar-model/${token}/file`, {
+      params: { format },
+      responseType: 'blob'
+    });
+    return res.data as unknown as Blob;
+  },
+
+  // ----------------------------------------------------------------
+  // 7. ARAÇLAR
+  // ----------------------------------------------------------------
+
+  // GLB -> USDZ Çevirici
   async convertGlbToUsdz(file: Blob, fileName: string): Promise<TempModelResponse> {
     const formData = new FormData();
     formData.append('file', file, fileName);
@@ -120,15 +180,10 @@ export const arModelService = {
   },
 
   // Helper: Preview URL Oluşturucu
-  // Backend'den "/temp/..." gibi gelen yolu tam URL'e çevirir.
   getPreviewUrl(relativePath?: string): string {
     if (!relativePath) return '';
     if (relativePath.startsWith('http')) return relativePath;
-
-    // Başında slash yoksa ekle
     const path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
-
-    // Backend URL ile birleştir (Statik dosyalar için)
     return `${BACKEND_URL}${path}`;
   }
 };

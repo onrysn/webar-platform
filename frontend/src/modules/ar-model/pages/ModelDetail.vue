@@ -13,8 +13,14 @@
           Geri Dön
         </button>
         
-        <div v-if="modelData" class="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded">
-          ID: #{{ modelData.id }}
+        <div v-if="modelData" class="flex items-center gap-3">
+            <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border"
+                :class="modelData.isPrivate ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-green-50 text-green-700 border-green-200'">
+                {{ modelData.isPrivate ? '🔒 Gizli Model' : '🌍 Herkese Açık' }}
+            </span>
+            <div class="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                ID: #{{ modelData.id }}
+            </div>
         </div>
       </div>
 
@@ -39,7 +45,6 @@
       <div v-else-if="modelData" class="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
 
         <div class="lg:col-span-8 bg-gray-900 rounded-3xl shadow-lg overflow-hidden relative group">
-          
           <div class="absolute top-0 left-0 right-0 p-6 bg-gradient-to-b from-black/60 to-transparent z-20 pointer-events-none">
             <h1 class="text-2xl font-bold text-white tracking-tight drop-shadow-md">
               {{ modelData.fileName }}
@@ -53,7 +58,6 @@
                 class="w-full h-full z-10" 
                 format="glb" 
              />
-             
              <div v-else class="absolute inset-0 flex flex-col items-center justify-center z-0">
                 <svg class="animate-spin h-10 w-10 text-white/20 mb-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -66,8 +70,71 @@
 
         <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-6">
 
+            <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-200 overflow-hidden relative">
+                <div v-if="processing" class="absolute inset-0 bg-white/60 z-10 flex items-center justify-center backdrop-blur-sm">
+                    <svg class="animate-spin h-6 w-6 text-indigo-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                </div>
+
+                <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Model Yönetimi</h2>
+
+                <div class="flex items-center justify-between mb-6 pb-6 border-b border-gray-100">
+                    <div class="pr-2">
+                        <div class="font-bold text-sm text-gray-800">Model Gizliliği</div>
+                        <div class="text-xs text-gray-500 mt-1">Kapalıyken model herkese açıktır.</div>
+                    </div>
+                    <button 
+                        @click="togglePrivacy" 
+                        class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+                        :class="modelData.isPrivate ? 'bg-slate-300' : 'bg-green-500'"
+                    >
+                        <span class="sr-only">Gizlilik Ayarı</span>
+                        <span 
+                            aria-hidden="true" 
+                            class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                            :class="modelData.isPrivate ? 'translate-x-0' : 'translate-x-5'"
+                        ></span>
+                    </button>
+                </div>
+
+                <div>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="font-bold text-sm text-gray-800">Müşteri Paylaşımı</div>
+                        <span v-if="modelData.shareToken" class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100 uppercase">AKTİF</span>
+                    </div>
+
+                    <div v-if="!modelData.shareToken" class="bg-indigo-50 rounded-xl p-4 text-center border border-indigo-100 border-dashed">
+                        <p class="text-xs text-indigo-800 mb-3">Müşterileriniz için benzersiz bir görüntüleme linki oluşturun.</p>
+                        <button @click="generateToken" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors">
+                            Link Oluştur
+                        </button>
+                    </div>
+
+                    <div v-else class="space-y-3">
+                        <div class="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-lg p-2">
+                            <input type="text" readonly :value="modelData.shareUrl" class="bg-transparent border-none text-xs text-gray-600 w-full focus:ring-0 truncate font-mono" />
+                            <button @click="copyToClipboard" class="text-indigo-600 hover:text-indigo-800 p-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                            </button>
+                            <a :href="modelData.shareUrl || '#'" target="_blank" class="text-indigo-600 hover:text-indigo-800 p-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                </svg>
+                            </a>
+                        </div>
+                        <button @click="revokeToken" class="w-full text-center text-xs text-red-500 hover:text-red-700 hover:underline">
+                            Linki İptal Et (Erişimi Kes)
+                        </button>
+                    </div>
+                </div>
+            </div>
+
           <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-200">
-            <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Dosya Yöneticisi</h2>
+            <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Dosya İndir</h2>
 
             <div class="space-y-3">
               <button @click="downloadFile('glb')" :disabled="isDownloading"
@@ -76,8 +143,8 @@
                   <span class="font-bold text-sm">GLB</span>
                 </div>
                 <div class="ml-4 flex-1">
-                   <p class="text-sm font-bold text-gray-900 group-hover:text-blue-700">Android & Web</p>
-                   <p class="text-xs text-gray-500 mt-0.5">{{ formatBytes(modelData.files.glb.size) }}</p>
+                    <p class="text-sm font-bold text-gray-900 group-hover:text-blue-700">Android & Web</p>
+                    <p class="text-xs text-gray-500 mt-0.5">{{ formatBytes(modelData.files.glb.size) }}</p>
                 </div>
                 <div class="mr-2">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -92,8 +159,8 @@
                   <span class="font-bold text-sm">USDZ</span>
                 </div>
                 <div class="ml-4 flex-1">
-                   <p class="text-sm font-bold text-gray-900 group-hover:text-indigo-700">iOS (AR Quick Look)</p>
-                   <p class="text-xs text-gray-500 mt-0.5">{{ formatBytes(modelData.files.usdz.size) }}</p>
+                    <p class="text-sm font-bold text-gray-900 group-hover:text-indigo-700">iOS (AR Quick Look)</p>
+                    <p class="text-xs text-gray-500 mt-0.5">{{ formatBytes(modelData.files.usdz.size) }}</p>
                 </div>
                 <div class="mr-2">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300 group-hover:text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -166,17 +233,19 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
-// Import yollarını diğer ekranlarınızla eşitledik
-import type { ModelDetailDto } from '../dto/arModel.dto';
-import { arModelService } from '../../../services/arModelService';
+import { useToast } from 'vue-toastification'; // Toast kütüphanesini ekleyin (kurulu değilse alert kullanın)
+import type { ModelDetailDto } from '../dto/arModel.dto'; // DTO dosyanızın yolu
+import { arModelService } from '../../../services/arModelService'; // Service dosyanızın yolu
 import ArPreview from "../components/ArPreview.vue";
 
 const route = useRoute();
+const toast = useToast();
 const modelId = Number(route.params.id);
 
 // State
 const isLoading = ref(true);
 const isDownloading = ref(false);
+const processing = ref(false); // Yönetim işlemleri için loading
 const error = ref<string | null>(null);
 const modelData = ref<ModelDetailDto | null>(null);
 const previewBlobUrl = ref<string | null>(null);
@@ -192,7 +261,6 @@ onMounted(() => {
 });
 
 onBeforeUnmount(() => {
-  // Memory leak'i önlemek için Blob URL'i temizle
   if (previewBlobUrl.value) {
     URL.revokeObjectURL(previewBlobUrl.value);
   }
@@ -207,7 +275,7 @@ const loadPageData = async () => {
     // 1. Model detaylarını çek
     modelData.value = await arModelService.getModelDetails(modelId);
 
-    // 2. Detaylar geldikten sonra önizleme için GLB dosyasını binary çek
+    // 2. Önizleme
     await loadPreviewModel();
 
   } catch (err: any) {
@@ -220,13 +288,10 @@ const loadPageData = async () => {
 
 const loadPreviewModel = async () => {
   try {
-    // Backend'den 'view' modunda blob iste (Auth token ile gelir)
     const blob = await arModelService.getModelFileBlob(modelId, 'glb', 'view');
-    // Blob'u URL'e çevir ve state'e ata
     previewBlobUrl.value = URL.createObjectURL(blob);
   } catch (err) {
     console.error("Önizleme dosyası alınamadı:", err);
-    // Hata olsa bile sayfa render edilmeli, sadece viewer boş kalır
   }
 };
 
@@ -235,32 +300,94 @@ const downloadFile = async (format: 'glb' | 'usdz') => {
 
   try {
     isDownloading.value = true;
-
-    // Servis üzerinden dosyayı blob olarak indir
     const blob = await arModelService.getModelFileBlob(modelId, format, 'download');
-
-    // JS ile indirmeyi tetikle
+    
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-
-    // Dosya adını belirle
+    
     const fileName = `${modelData.value.fileName}.${format}`;
     link.setAttribute('download', fileName);
-
+    
     document.body.appendChild(link);
     link.click();
-
-    // Temizlik
+    
     link.remove();
     URL.revokeObjectURL(url);
-
+    toast.success("İndirme başladı.");
   } catch (err) {
     console.error("İndirme hatası:", err);
-    alert('Dosya indirilemedi. Lütfen tekrar deneyin.');
+    toast.error('Dosya indirilemedi.');
   } finally {
     isDownloading.value = false;
   }
+};
+
+// --- YENİ YÖNETİM METODLARI ---
+
+const togglePrivacy = async () => {
+  if (!modelData.value || processing.value) return;
+
+  const newState = !modelData.value.isPrivate;
+  processing.value = true;
+
+  try {
+    const updated = await arModelService.updateModel(modelId, { isPrivate: newState });
+    modelData.value.isPrivate = updated.isPrivate;
+    
+    if (updated.isPrivate) {
+      toast.info("Model gizli duruma getirildi.");
+    } else {
+      toast.success("Model herkese açık yapıldı.");
+    }
+  } catch (error) {
+    toast.error("Gizlilik ayarı değiştirilemedi.");
+  } finally {
+    processing.value = false;
+  }
+};
+
+const generateToken = async () => {
+  if (processing.value) return;
+  processing.value = true;
+
+  try {
+    const res = await arModelService.generateShareToken(modelId);
+    if (modelData.value) {
+      modelData.value.shareToken = res.shareToken;
+      modelData.value.shareUrl = res.url;
+    }
+    toast.success("Link oluşturuldu!");
+  } catch (error) {
+    toast.error("Link oluşturulamadı.");
+  } finally {
+    processing.value = false;
+  }
+};
+
+const revokeToken = async () => {
+  if (!confirm("Bu linki iptal etmek istediğinize emin misiniz? Müşterileriniz erişimi kaybedecek.") || processing.value) return;
+
+  processing.value = true;
+  try {
+    await arModelService.revokeShareToken(modelId);
+    if (modelData.value) {
+      modelData.value.shareToken = null;
+      modelData.value.shareUrl = null;
+    }
+    toast.info("Link iptal edildi.");
+  } catch (error) {
+    toast.error("İşlem başarısız.");
+  } finally {
+    processing.value = false;
+  }
+};
+
+const copyToClipboard = () => {
+  if (!modelData.value?.shareUrl) return;
+  navigator.clipboard.writeText(modelData.value.shareUrl).then(() => {
+    toast.success("Link kopyalandı!");
+  });
 };
 
 // Helper Formatlayıcılar
@@ -278,7 +405,6 @@ const formatBytes = (bytes?: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-// DÜZELTME: Bu fonksiyon artık arModelService kullanıyor, böylece Upload ekranıyla aynı mantık çalışıyor
 const getThumbnailUrl = (path: string) => {
   return arModelService.getPreviewUrl(path);
 };

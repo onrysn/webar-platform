@@ -1,5 +1,3 @@
-
-// Veritabanındaki kalıcı kayıt modeli
 export interface ARModelDto {
   id: number;
   fileName: string;
@@ -8,16 +6,17 @@ export interface ARModelDto {
   fileSize: number;
   createdAt: string;
   thumbnailPath: string | null;
+  
+  isPrivate: boolean;
+  shareToken?: string | null;
 }
 
-// Geçici yükleme sonrası dönen cevap modeli
 export interface TempModelResponse {
   tempId: string;
   kind?: 'glb' | 'usdz';
   filename?: string;
-  previewUrl?: string; // Backend'den gelen relative path (örn: /temp/123/model.glb)
+  previewUrl?: string;
   
-  // FBX/STEP dönüşümü sonrası dönen yapı:
   glb?: {
     filename: string;
     url: string;
@@ -34,9 +33,10 @@ export interface TempModelResponse {
 
 export interface FinalizeModelDto {
   tempId: string;
-  companyId?: number; // <-- ARTIK OPSİYONEL (Sadece Super Admin kullanır)
+  companyId?: number;
   modelName?: string;
   thumbnail?: File | Blob;
+  isPrivate?: boolean;
 }
 
 export interface ModelDetailDto {
@@ -46,8 +46,22 @@ export interface ModelDetailDto {
   uploadedBy: string;
   createdAt: string;
   thumbnailUrl: string | null;
+  isPrivate: boolean;
+  shareToken?: string | null;
+  shareUrl?: string | null;
+  
   files: {
     glb: { exists: boolean; size: number; format: 'glb' };
     usdz: { exists: boolean; size: number; format: 'usdz' };
   };
+}
+
+export interface UpdateModelDto {
+  name?: string;
+  isPrivate?: boolean;
+}
+
+export interface ShareTokenResponse {
+  shareToken: string;
+  url: string;
 }

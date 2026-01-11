@@ -1,5 +1,5 @@
 // ar-model.controller.ts
-import { Controller, Post, UseInterceptors, UploadedFile, UseGuards, Query, Get, Param, Res, Body, BadRequestException, NotFoundException, StreamableFile } from '@nestjs/common';
+import { Controller, Post, UseInterceptors, UploadedFile, UseGuards, Query, Get, Param, Res, Body, BadRequestException, NotFoundException, StreamableFile, Req } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ARModelService } from './ar-model.service';
 import { modelUploadConfig } from 'src/config/multer/ar-model-upload.config';
@@ -7,7 +7,7 @@ import { File as MulterFile } from 'multer';
 import { ApiBearerAuth, ApiTags, ApiConsumes, ApiQuery, ApiBody, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PrismaService } from '../../prisma/prisma.service';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
 import * as path from 'path';
 
 // --- YENİ EKLENENLER ---
@@ -30,42 +30,39 @@ export class ARModelController {
     // ----------------------------------------------------------------
     @Get('list')
     @ApiOperation({ summary: 'Kullanıcının yetkisine göre modelleri listeler' })
-    @ApiQuery({
-        name: 'companyId',
-        required: false,
-        type: Number,
-        description: 'Sadece Super Admin için: Başka bir şirketin modellerini görmek isterse.',
-    })
-    // Herkes listeleme yapabilir (MEMBER dahil)
+    @ApiQuery({ name: 'companyId', required: false })
     async listModels(
-        @User() user: CurrentUser, // req.user yerine @User()
+        @User() user: CurrentUser,
         @Query('companyId') companyIdQuery: string | null,
     ) {
-        // --- YETKİ VE FİLTRELEME MANTIĞI ---
         const whereClause: any = {};
 
-        // A) SUPER ADMIN: Her şeyi görebilir, isterse companyId ile filtreler
+        // A) ROL KONTROLÜ
         if (user.role === Role.SUPER_ADMIN) {
             if (companyIdQuery) whereClause.companyId = +companyIdQuery;
-        }
-        // B) COMPANY ADMIN & EDITOR & MEMBER: Sadece kendi şirketini görür
-        else {
+        } else {
             whereClause.companyId = user.companyId;
         }
 
-        // --- SERVİSE GİTMEDEN SORGULAMA ---
-        // (Listeleme basit olduğu için burada bıraktım, servise de taşınabilir)
+        if (user.role === Role.MEMBER) {
+            whereClause.isPrivate = false; 
+        }
+
         const models = await this.prisma.aRModel.findMany({
             where: whereClause,
             orderBy: { createdAt: 'desc' },
             select: {
                 id: true,
                 fileName: true,
+                // modelName: true, // Eğer modelName alanı eklediysen buraya da ekle
                 fileType: true,
                 companyId: true,
                 fileSize: true,
                 createdAt: true,
                 thumbnailPath: true,
+                // --- YENİ ALANLAR ---
+                isPrivate: true,    // Frontend kilit ikonu koyabilsin
+                shareToken: true,   // Frontend paylaşım ikonunu aktif göstersin
             },
         });
 
@@ -102,6 +99,9 @@ export class ARModelController {
             uploadedBy: model.user.name,
             createdAt: model.createdAt,
             thumbnailUrl: model.thumbnailPath ? model.thumbnailPath : null,
+            isPrivate: model.isPrivate,
+            shareToken: model.shareToken,
+            shareUrl: model.shareToken ? `/view/${model.shareToken}` : null,
             files: {
                 glb: { exists: true, size: model.fileSize, format: 'glb' },
                 usdz: { exists: !!model.usdzFilePath, size: model.usdzFileSize || 0, format: 'usdz' }
@@ -242,21 +242,21 @@ export class ARModelController {
                 // companyId parametresi opsiyonel hale geldi, çünkü user.companyId kullanacağız
                 companyId: { type: 'number', description: 'Sadece Super Admin başka şirkete yüklerse gerekir' },
                 modelName: { type: 'string', nullable: true },
+                isPrivate: { type: 'boolean', default: false },
                 thumbnail: { type: 'string', format: 'binary' },
             },
             required: ['tempId']
         }
     })
     async finalize(
-        @Body() body: { tempId: string, companyId?: string, modelName?: string },
+        @Body() body: { tempId: string, companyId?: string, modelName?: string, isPrivate?: string | boolean },
         @UploadedFile() thumbnail: MulterFile,
         @User() user: CurrentUser
     ) {
         const { tempId, modelName } = body;
+
+        const isPrivate = body.isPrivate === 'true';
         
-        // Şirket ID belirleme mantığı:
-        // Eğer kullanıcı Super Admin ise ve body'de companyId varsa onu kullan.
-        // Değilse kullanıcının kendi şirket ID'sini kullan.
         let targetCompanyId = user.companyId;
         if (user.role === Role.SUPER_ADMIN && body.companyId) {
             targetCompanyId = Number(body.companyId);
@@ -271,7 +271,51 @@ export class ARModelController {
             targetCompanyId,
             user.id,
             modelName,
-            thumbnail
+            thumbnail,
+            isPrivate
         );
     }
+
+    // ----------------------------------------------------------------
+    // 5. YÖNETİM VE PAYLAŞIM (YENİ)
+    // ----------------------------------------------------------------
+
+    @Post(':id/update') // veya PATCH ':id'
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
+    @ApiOperation({ summary: 'Modelin adını veya gizlilik durumunu günceller' })
+    async updateModel(
+        @Param('id') id: number,
+        @Body() body: { name?: string, isPrivate?: boolean },
+        @User() user: CurrentUser
+    ) {
+        return this.arModelService.updateModel(id, user, body);
+    }
+
+    @Post(':id/share-token')
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
+    @ApiOperation({ summary: 'Model için paylaşılabilir public link (token) oluşturur' })
+    async generateShareToken(
+        @Param('id') id: number, 
+        @User() user: CurrentUser,
+        @Req() req: Request
+    ) {
+        const result = await this.arModelService.generateShareToken(id, user);        
+        const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+        const host = req.headers.host; 
+
+        const fullUrl = `${protocol}://${host}/view/${result.shareToken}`;
+
+        return {
+            shareToken: result.shareToken,
+            url: fullUrl
+        };
+    }
+
+    @Post(':id/revoke-token')
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
+    @ApiOperation({ summary: 'Paylaşım linkini iptal eder' })
+    async revokeShareToken(@Param('id') id: number, @User() user: CurrentUser) {
+        return this.arModelService.revokeShareToken(id, user);
+    }
+
 }
