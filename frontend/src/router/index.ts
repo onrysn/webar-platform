@@ -170,6 +170,17 @@ const routes: RouteRecordRaw[] = [
       public: true
     }
   },
+  {
+    path: '/view/scene/:token', // Backend'de ürettiğimiz link yapısı: /view/scene/...
+    name: 'PublicSceneView',
+    // Dosya yolunu kendi klasör yapına göre kontrol et:
+    component: () => import('../modules/ar-scene/pages/ARScenePublicView.vue'), 
+    meta: { 
+      layout: 'blank', // Sidebar/Header olmayan boş layout
+      public: true,    // Auth guard'a takılmaması için
+      title: 'AR Sahne Görüntüleyici'
+    }
+  },
   
   // 404 Catch-all
   { path: '/:pathMatch(.*)*', redirect: '/dashboard' }

@@ -1,7 +1,6 @@
 ﻿import { defineStore } from 'pinia';
-import type { LoginDto } from '../../modules/auth/dto/login.dto';
-import type { RegisterDto } from '../../modules/auth/dto/register.dto';
 import { authService } from '../../services/authService';
+import type { LoginDto, RegisterDto } from '../../modules/auth/dto/auth.dto';
 
 // Backend'deki yapıya uygun tipler
 export interface Company {

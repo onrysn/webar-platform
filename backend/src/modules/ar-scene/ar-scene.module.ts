@@ -4,10 +4,12 @@ import { ARSceneController } from './ar-scene.controller';
 import { ARSceneService } from './ar-scene.service';
 import { ActivityLogModule } from '../activity-log/activity-log.module';
 import { ARSceneSharedController } from './ar-scene.shared.controller';
+import { ARModelModule } from '../ar-model/ar-model.module';
 
 @Module({
     imports: [
-        ActivityLogModule
+        ActivityLogModule,
+        ARModelModule
     ], 
     controllers: [
             ARSceneController,

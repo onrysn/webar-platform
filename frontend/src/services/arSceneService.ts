@@ -98,12 +98,16 @@ export const arSceneService = {
     return res.data;
   },
 
-  // Public Sahne Detayını Getir (Müşteri ekranı için - Auth header gitmemeli)
-  // [NOT]: apiService varsayılan olarak token ekliyor olabilir.
-  // Eğer apiService interceptor'ı '/shared/' prefixini görünce token eklemiyorsa sorun yok.
-  // Eklemiyorsa bile backend'de Public endpoint olduğu için token gitmesi genelde hata vermez, sadece ignore edilir.
   async getSharedScene(token: string): Promise<ARSceneDto> {
     const res = await apiService.get<ARSceneDto>(`/shared/ar-scene/${token}`);
+    return res.data;
+  },
+
+  async getSharedModelBlob(token: string, modelId: number, format: 'glb' | 'usdz' = 'glb'): Promise<Blob> {
+    const res = await apiService.get(`/shared/ar-scene/${token}/model/${modelId}`, {
+      params: { format },
+      responseType: 'blob'
+    });
     return res.data;
   }
 };

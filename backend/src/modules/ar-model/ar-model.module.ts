@@ -13,5 +13,6 @@ import { ARModelSharedController } from './ar-model-shared.controller';
         ARModelSharedController
     ],
     providers: [ARModelService],
+    exports: [ARModelService]
 })
 export class ARModelModule { }

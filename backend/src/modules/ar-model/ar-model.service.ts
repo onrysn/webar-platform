@@ -415,7 +415,7 @@ export class ARModelService {
         const updatedModel = await this.prisma.aRModel.update({
             where: { id },
             data: {
-                fileName: data.name || model.fileName, 
+                fileName: data.name || model.fileName,
                 isPrivate: data.isPrivate !== undefined ? data.isPrivate : model.isPrivate
             }
         });
