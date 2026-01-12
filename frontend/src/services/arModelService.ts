@@ -164,6 +164,16 @@ export const arModelService = {
     return res.data as unknown as Blob;
   },
 
+  async convertSharedGlbToUsdz(file: Blob, fileName: string): Promise<TempModelResponse> {
+    const formData = new FormData();
+    formData.append('file', file, fileName);
+
+    const res = await apiService.post<TempModelResponse>('/shared/ar-model/convert-shared-glb-to-usdz', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return res.data;
+  },
+
   // ----------------------------------------------------------------
   // 7. ARAÇLAR
   // ----------------------------------------------------------------

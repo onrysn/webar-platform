@@ -1,11 +1,26 @@
-import { Controller, Get, NotFoundException, Param, Query, Res, StreamableFile } from "@nestjs/common";
-import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
+import { 
+    Controller, 
+    Get, 
+    Post,
+    UseInterceptors,
+    UploadedFile,
+    NotFoundException, 
+    BadRequestException,
+    Param, 
+    Query, 
+    Res, 
+    StreamableFile 
+} from "@nestjs/common";
+import { ApiOperation, ApiQuery, ApiTags, ApiConsumes, ApiBody } from "@nestjs/swagger";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { ARModelService } from "./ar-model.service";
 import { PrismaService } from "src/prisma/prisma.service";
-import type { Response } from 'express'; // <-- 1. BU IMPORT EKLENDİ
+import type { Response } from 'express';
 import { Public } from "src/common/decorators/public.decorator";
+import * as path from 'path';
+import { File as MulterFile } from 'multer';
 
-// ARModelSharedController - Public Erişim İçin (Guard Yok!)
+
 @ApiTags('ar-model-shared')
 @Controller('shared/ar-model')
 @Public()
@@ -23,7 +38,7 @@ export class ARModelSharedController {
         // 2. GÜVENLİK KONTROLLERİ
         if (!model) throw new NotFoundException('Model bulunamadı.');
         if (model.isDeleted) throw new NotFoundException('Model silinmiş.');
-        
+
         // 3. ŞİRKET KONTROLÜ
         if (!model.company || !model.company.isActive) throw new NotFoundException('Erişim kısıtlandı (Şirket aktif değil).');
 
@@ -48,7 +63,7 @@ export class ARModelSharedController {
         @Query('format') format: 'glb' | 'usdz' = 'glb',
         @Res({ passthrough: true }) res: Response
     ): Promise<StreamableFile> {
-        
+
         const model = await this.prisma.aRModel.findUnique({
             where: { shareToken: token },
             include: { company: true }
@@ -62,7 +77,7 @@ export class ARModelSharedController {
 
         // Servisteki mevcut stream fonksiyonunu kullanıyoruz
         const { buffer, mimeType, filename } = await this.arModelService.getModelFileBuffer(model, format);
-        
+
         // Türkçe karakter sorununa karşı encode işlemi
         const encodedFilename = encodeURIComponent(filename);
 
@@ -75,5 +90,22 @@ export class ARModelSharedController {
         });
 
         return new StreamableFile(buffer);
+    }
+
+    @Post('convert-shared-glb-to-usdz') 
+    @ApiOperation({ summary: 'Public: GLB yükler, USDZ linki döner (Export için)' })
+    @UseInterceptors(FileInterceptor('file')) // Dosya boyutu limiti gerekirse buraya options ekleyin
+    @ApiConsumes('multipart/form-data')
+    @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
+    async convertSharedGlbToUsdz(@UploadedFile() file: MulterFile) {
+        if (!file) throw new BadRequestException('Dosya gereklidir.');
+        
+        const ext = path.extname(file.originalname).toLowerCase();
+        if (ext !== '.glb') {
+            throw new BadRequestException('Sadece .glb uzantılı dosyalar desteklenmektedir.');
+        }
+
+        // Service metoduna 'null' userId gönderiyoruz çünkü anonim kullanıcı
+        return this.arModelService.convertGlbToUsdzTemp(file);
     }
 }

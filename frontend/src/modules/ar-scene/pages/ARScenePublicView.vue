@@ -1,289 +1,70 @@
 <template>
-    <div class="relative w-full h-screen overflow-hidden bg-gray-900 text-gray-100 font-sans select-none">
+  <div class="h-screen w-full bg-gray-900 flex flex-col relative overflow-hidden font-sans select-none">
 
-        <div class="absolute inset-0 z-0 touch-none">
-            <canvas ref="canvasRef" class="w-full h-full block outline-none"></canvas>
-        </div>
-
-        <div v-if="isLoading"
-            class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-900/90 backdrop-blur-md">
-            <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mb-4"></div>
-            <p class="text-white font-medium tracking-wide animate-pulse">Sahne Yükleniyor...</p>
-        </div>
-
-        <div v-if="canEdit"
-            class="absolute top-10 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none transition-opacity duration-500"
-            :class="saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'">
-
-            <div v-if="saveStatus === 'saving'"
-                class="flex items-center gap-2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/10 shadow-xl">
-                <svg class="animate-spin h-3 w-3 text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none"
-                    viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor"
-                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                    </path>
-                </svg>
-                <span class="text-xs text-gray-300 font-medium whitespace-nowrap">Kaydediliyor...</span>
-            </div>
-
-            <div v-if="saveStatus === 'saved'"
-                class="flex items-center gap-2 bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-green-500/30 shadow-xl">
-                <svg class="h-3 w-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                </svg>
-                <span class="text-xs text-green-100 font-medium whitespace-nowrap">Kaydedildi</span>
-            </div>
-
-            <div v-if="saveStatus === 'error'"
-                class="flex items-center gap-2 bg-red-900/80 backdrop-blur-md px-4 py-2 rounded-full border border-red-500/50 shadow-xl">
-                <svg class="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span class="text-xs text-white font-medium whitespace-nowrap">Kayıt Hatası</span>
-            </div>
-        </div>
-
-        <div class="absolute top-0 left-0 right-0 z-40 p-4 flex justify-between items-start pointer-events-none">
-            <div
-                class="flex items-center gap-3 pointer-events-auto bg-black/40 backdrop-blur-md p-2 pr-4 rounded-xl border border-white/10 shadow-lg">
-                <button @click="$router.back()"
-                    class="p-2 hover:bg-white/10 rounded-lg transition-colors text-gray-300 hover:text-white">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fill-rule="evenodd"
-                            d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
-                            clip-rule="evenodd" />
-                    </svg>
-                </button>
-                <div>
-                    <h1
-                        class="font-bold text-sm text-white leading-tight truncate max-w-[150px] sm:max-w-xs flex items-center gap-2">
-                        {{ sceneData?.name || 'Yükleniyor...' }}
-                        <span v-if="!canEdit"
-                            class="text-[10px] bg-gray-700 px-1.5 py-0.5 rounded text-gray-300 font-normal">Sadece
-                            İzleme</span>
-                    </h1>
-                    <p v-if="sceneData?.settings" class="text-[10px] text-gray-400">
-                        {{ sceneData.settings.width }}m x {{ sceneData.settings.depth }}m
-                    </p>
-                </div>
-            </div>
-
-            <div class="flex gap-2 pointer-events-auto">
-                <button @click="showSidebar = !showSidebar"
-                    class="p-3 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg text-white hover:bg-white/10 transition-colors"
-                    :class="showSidebar ? 'bg-blue-600/80 border-blue-500' : ''">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
-                <div class="relative">
-                    <button @click="showDownloadMenu = !showDownloadMenu" :disabled="isExporting"
-                        class="flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                        <span v-if="isExporting" class="flex items-center gap-2">
-                            <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                </path>
-                            </svg>
-                        </span>
-                        <span v-else class="flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            Dışa Aktar
-                        </span>
-                    </button>
-
-                    <div v-if="showDownloadMenu"
-                        class="absolute right-0 top-full mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up">
-                        <div class="p-2 space-y-1">
-                            <button @click="handleExport('glb')"
-                                class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-700 text-sm text-gray-200 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-green-500"></span> Android (GLB)
-                            </button>
-                            <button @click="handleExport('usdz')"
-                                class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-700 text-sm text-gray-200 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-blue-500"></span> iOS (USDZ)
-                            </button>
-                        </div>
-                    </div>
-                    <div v-if="showDownloadMenu" @click="showDownloadMenu = false" class="fixed inset-0 z-[-1]"></div>
-                </div>
-            </div>
-        </div>
-
-        <transition name="slide-fade">
-            <div v-if="showSidebar"
-                class="absolute top-20 left-4 bottom-24 w-64 md:w-72 bg-gray-800/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-30 flex flex-col overflow-hidden transform transition-transform">
-
-                <div class="p-4 border-b border-white/10 flex justify-between items-center">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Sahne Objeleri</span>
-                    <span class="bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-300">{{ sceneItems.length }}</span>
-                </div>
-
-                <div class="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                    <div v-if="sceneItems.length === 0"
-                        class="flex flex-col items-center justify-center h-40 text-gray-500 text-xs text-center p-4">
-                        <svg class="w-8 h-8 mb-2 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
-                        </svg>
-                        <span v-if="canEdit">Model ekleyerek başlayın.</span>
-                        <span v-else>Sahnede obje yok.</span>
-                    </div>
-
-                    <div v-for="item in sceneItems" :key="item.id" @click="selectItemFromTree(item.id)"
-                        class="group flex items-center justify-between p-2.5 rounded-lg cursor-pointer transition-all border border-transparent"
-                        :class="selectedItemId === item.id ? 'bg-blue-600/20 border-blue-500/50 text-white' : 'hover:bg-white/5 text-gray-300'">
-
-                        <div class="flex items-center gap-3 truncate">
-                            <div class="w-2 h-2 rounded-full"
-                                :class="selectedItemId === item.id ? 'bg-blue-400' : 'bg-gray-600'"></div>
-                            <span class="text-sm truncate">{{ item.name || item.model.fileName }}</span>
-                        </div>
-
-                        <button v-if="canEdit" @click.stop="deleteItem(item.id)"
-                            class="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 hover:text-red-400 rounded transition-all">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16">
-                                </path>
-                            </svg>
-                        </button>
-                    </div>
-                </div>
-
-                <div v-if="canEdit" class="p-4 border-t border-white/10 bg-gray-900/50">
-                    <button @click="showModelSelector = true"
-                        class="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg shadow-lg text-sm font-bold flex items-center justify-center gap-2 transition-all transform active:scale-95">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-                        </svg>
-                        Model Ekle
-                    </button>
-                </div>
-            </div>
-        </transition>
-
-        <div v-if="canEdit"
-            class="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-40 flex items-center gap-2 p-2 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl">
-            <button @click="setTransformMode('translate')"
-                class="p-3 rounded-xl transition-all flex flex-col items-center gap-1 min-w-[60px]"
-                :class="currentTransformMode === 'translate' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
-                </svg>
-                <span class="text-[10px] font-bold">Taşı</span>
-            </button>
-
-            <button @click="setTransformMode('rotate')"
-                class="p-3 rounded-xl transition-all flex flex-col items-center gap-1 min-w-[60px]"
-                :class="currentTransformMode === 'rotate' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-                </svg>
-                <span class="text-[10px] font-bold">Döndür</span>
-            </button>
-
-            <button @click="setTransformMode('scale')"
-                class="p-3 rounded-xl transition-all flex flex-col items-center gap-1 min-w-[60px]"
-                :class="currentTransformMode === 'scale' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white hover:bg-white/10'">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
-                </svg>
-                <span class="text-[10px] font-bold">Ölçekle</span>
-            </button>
-
-            <div class="w-px h-8 bg-white/20 mx-1"></div>
-
-            <button @click="togglePaintMode"
-                class="p-3 rounded-xl transition-all flex flex-col items-center gap-1 min-w-[60px]"
-                :class="isPaintMode ? 'bg-purple-600 text-white shadow-lg ring-2 ring-purple-400 ring-offset-2 ring-offset-black' : 'text-gray-400 hover:text-white hover:bg-white/10'">
-                <span class="text-xl">🎨</span>
-                <span class="text-[10px] font-bold">Boya</span>
-            </button>
-
-            <button @click="deleteSelectedItem" :disabled="!selectedItemId"
-                class="p-3 rounded-xl transition-all flex flex-col items-center gap-1 min-w-[60px] text-red-400 hover:text-red-200 hover:bg-red-500/20 disabled:opacity-30 disabled:cursor-not-allowed">
-                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                <span class="text-[10px] font-bold">Sil</span>
-            </button>
-        </div>
-
-        <div v-if="showModelSelector && canEdit"
-            class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[85vh]">
-                <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                    <h3 class="font-bold text-lg text-gray-800">Kütüphaneden Ekle</h3>
-                    <button @click="showModelSelector = false"
-                        class="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12">
-                            </path>
-                        </svg>
-                    </button>
-                </div>
-                <div class="p-6 overflow-y-auto bg-gray-50 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                    <div v-for="model in availableModels" :key="model.id" @click="addModelToScene(model)"
-                        class="group bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-lg hover:border-blue-500 cursor-pointer transition-all duration-200 flex flex-col overflow-hidden relative">
-                        <div class="aspect-square bg-gray-100 relative">
-                            <img v-if="model.thumbnailPath" :src="getThumbnailUrl(model.thumbnailPath)"
-                                class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500">
-                            <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                                Görsel Yok</div>
-                            <div
-                                class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                                <span
-                                    class="bg-white/90 text-blue-600 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Ekle
-                                    +</span>
-                            </div>
-                        </div>
-                        <div class="p-3">
-                            <p class="text-sm font-bold text-gray-800 truncate">{{ model.fileName }}</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div v-if="isLoading" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-900 text-white">
+      <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mb-4"></div>
+      <p class="text-white font-medium tracking-wide animate-pulse">Sahne Yükleniyor...</p>
     </div>
 
-    <div v-if="showShareModal && canEdit"
-        class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
-        @click.self="showShareModal = false">
-        <div
-            class="bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
-
-            <div class="p-5 border-b border-gray-800 flex justify-between items-center bg-gray-800/50">
-                <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                    🌍 Sahne Ayarları & Paylaşım
-                </h3>
-                <button @click="showShareModal = false"
-                    class="text-gray-400 hover:text-white transition-colors">✕</button>
-            </div>
-        </div>
+    <div class="absolute inset-0 z-0 touch-none bg-gradient-to-br from-gray-800 to-gray-900">
+      <canvas ref="canvasRef" class="w-full h-full block outline-none"></canvas>
     </div>
 
-    <MaterialEditor v-if="canEdit && isPaintMode && selectedSubMesh" :selectedMesh="selectedSubMesh"
-        @close="selectedSubMesh = null" @update="handleMaterialUpdate" />
+    <div class="absolute top-0 left-0 right-0 p-6 z-20 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
+      <div class="max-w-7xl mx-auto flex items-start justify-between">
+        <div>
+          <h1 class="text-xl md:text-2xl font-bold text-white drop-shadow-md leading-tight">
+            {{ sceneData?.name || 'Yükleniyor...' }}
+          </h1>
+          
+          <p v-if="sceneData?.settings" class="text-sm text-gray-300 font-medium mt-1 flex items-center gap-2">
+            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+            {{ sceneData.settings.width }}m x {{ sceneData.settings.depth }}m
+          </p>
+        </div>
+
+        <div class="hidden md:block text-right">
+           <span class="text-[10px] text-white/40 uppercase tracking-widest border border-white/20 px-2 py-1 rounded">
+             Scene Editor
+           </span>
+        </div>
+      </div>
+    </div>
+
+    <div class="absolute bottom-8 left-0 right-0 z-30 flex justify-center px-4">
+      <div class="relative">
+        <button 
+          @click="handleViewInAR" 
+          :disabled="isExporting"
+          class="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-full shadow-lg shadow-indigo-900/50 transition-all transform hover:scale-105 active:scale-95 group disabled:opacity-75 disabled:cursor-not-allowed"
+        >
+          
+          <span v-if="isExporting" class="flex items-center gap-2">
+            <svg class="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span class="hidden sm:inline font-medium">Hazırlanıyor...</span>
+          </span>
+
+          <template v-else>
+            <div class="relative w-5 h-5">
+              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+              </svg>
+            </div>
+            <span class="font-bold tracking-wide text-sm sm:text-base">AR'da Görüntüle</span>
+          </template>
+
+        </button>
+      </div>
+    </div>
+
+  </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, markRaw, shallowRef, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, nextTick, markRaw } from 'vue';
 import { useRoute } from 'vue-router';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -299,9 +80,7 @@ import { arModelService } from '../../../services/arModelService';
 
 // DTO Imports
 import type { ARSceneDto, SceneItemDto } from '../dto/arScene.dto';
-import type { ARModelDto } from '../../ar-model/dto/arModel.dto';
 import { offsetPolygon } from '../../../utils/mathUtils';
-import MaterialEditor from '../components/MaterialEditor.vue';
 
 // --- CONSTANTS: SHAPE LIBRARY ---
 const SHAPE_LIBRARY = [
@@ -375,26 +154,26 @@ const isLoading = ref(true);
 const isExporting = ref(false);
 
 const showSidebar = ref(true);
-const showModelSelector = ref(false);
-const showDownloadMenu = ref(false);
-const currentTransformMode = ref<'translate' | 'rotate' | 'scale'>('translate');
 
 const sceneData = ref<ARSceneDto | null>(null);
 const sceneItems = ref<SceneItemDto[]>([]);
-const availableModels = ref<ARModelDto[]>([]);
-const selectedItemId = ref<number | null>(null);
-const isPaintMode = ref(false);
-const selectedSubMesh = shallowRef<THREE.Mesh | null>(null);
-const saveStatus = ref<'idle' | 'saved' | 'saving' | 'error'>('idle');
-const showShareModal = ref(false);
-let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+const isIOSDevice = () => {
+    return [
+        'iPad Simulator',
+        'iPhone Simulator',
+        'iPod Simulator',
+        'iPad',
+        'iPhone',
+        'iPod'
+    ].includes(navigator.platform)
+        || (navigator.userAgent.includes("Mac") && "ontouchend" in document)
+        || /iPad|iPhone|iPod/.test(navigator.userAgent);
+};
 
-// [YENİ] Permission Check
-const canEdit = computed(() => {
-    return sceneData.value?.memberCanEdit === true;
-});
+const isAndroidDevice = () => {
+    return /Android/.test(navigator.userAgent);
+};
 
-// Mouse
 const mouseStart = new THREE.Vector2();
 
 // --- Three.js Globals ---
@@ -423,12 +202,6 @@ onMounted(async () => {
 
     try {
         await loadSceneData();
-        // Modelleri sadece yetkili ise yüklemeye çalış (Optimistic load)
-        const ownerCompanyId = sceneData.value?.companyId;
-        if (ownerCompanyId) {
-            availableModels.value = await arModelService.listModels(ownerCompanyId);
-        }
-
         await nextTick();
         initThreeJS();
         await loadSceneObjects();
@@ -446,7 +219,6 @@ onBeforeUnmount(() => {
         transformControl.detach();
         transformControl.dispose();
     }
-    window.removeEventListener('keydown', handleKeyDown);
     window.removeEventListener('resize', handleResize);
 });
 
@@ -454,70 +226,6 @@ onBeforeUnmount(() => {
 const loadSceneData = async () => {
     sceneData.value = await arSceneService.getSharedScene(shareToken);
     sceneItems.value = sceneData.value.items;
-};
-
-const triggerAutoSave = (itemId: number) => {
-    // KORUMA: Yetkisi yoksa kaydetme
-    if (!canEdit.value) return;
-
-    saveStatus.value = 'saving';
-    if (saveTimeout) clearTimeout(saveTimeout);
-    saveTimeout = setTimeout(async () => {
-        await performSave(itemId);
-    }, 1500);
-};
-
-const performSave = async (itemId: number) => {
-    // KORUMA: Yetkisi yoksa işlem yapma
-    if (!canEdit.value) return;
-
-    try {
-        const item = sceneItems.value.find(i => i.id === itemId);
-        const mesh = itemsMap.get(itemId);
-
-        if (!item || !mesh) return;
-        const updateData = {
-            position: { x: mesh.position.x, y: mesh.position.y, z: mesh.position.z },
-            rotation: { x: mesh.rotation.x, y: mesh.rotation.y, z: mesh.rotation.z },
-            scale: { x: mesh.scale.x, y: mesh.scale.y, z: mesh.scale.z },
-            materialConfig: item.materialConfig || {}
-        };
-
-        await arSceneService.updateItem(itemId, updateData);
-
-        saveStatus.value = 'saved';
-        setTimeout(() => {
-            if (saveStatus.value === 'saved') {
-                saveStatus.value = 'idle';
-            }
-        }, 2000);
-
-    } catch (err) {
-        console.error("Auto-save error:", err);
-        saveStatus.value = 'error';
-    }
-};
-
-const getThumbnailUrl = (path: string) => arModelService.getPreviewUrl(path);
-
-// --- UI ACTIONS ---
-const setTransformMode = (mode: 'translate' | 'rotate' | 'scale') => {
-    // KORUMA
-    if (!canEdit.value) return;
-
-    currentTransformMode.value = mode;
-    if (transformControl) {
-        transformControl.setMode(mode);
-    }
-};
-
-const deleteSelectedItem = () => {
-    // KORUMA
-    if (!canEdit.value) return;
-
-    if (selectedItemId.value) {
-        deleteItem(selectedItemId.value);
-    }
 };
 
 // --- YARDIMCI: Grid Texture & Floor Generation (Orjinal kod ile aynı) ---
@@ -738,37 +446,56 @@ const restoreSceneState = (
     loadSceneObjects();
 };
 
-const handleExport = async (format: 'glb' | 'usdz') => {
+const handleViewInAR = async () => {
+    const isIOS = isIOSDevice();
+    const isAndroid = isAndroidDevice();
+
+    if (!isIOS && !isAndroid) {
+        alert("AR deneyimi yalnızca mobil cihazlarda (iPhone, iPad ve Android) çalışır. Lütfen sayfayı telefonunuzdan açın.");
+        return;
+    }
+
     if (isExporting.value) return;
-    showDownloadMenu.value = false;
     isExporting.value = true;
 
     try {
         const glbBlob = await getSceneAsBlob();
         const fileName = sceneData.value?.name || 'sahne';
+        const safeFileName = fileName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
 
-        if (format === 'glb') {
-            triggerDownload(glbBlob, `${fileName}.glb`);
-        } else {
-            await convertAndDownloadUsdz(glbBlob, fileName);
+        if (isIOS) {
+            console.log("🍏 iOS Cihazı Algılandı - USDZ dönüşümü başlatılıyor...");
+            await convertAndDownloadUsdz(glbBlob, safeFileName);
+        }
+        else if (isAndroid) {
+            console.log("🤖 Android Cihazı Algılandı - GLB indiriliyor...");
+            triggerDownload(glbBlob, `${safeFileName}.glb`);
         }
 
     } catch (error) {
-        console.error("Export hatası:", error);
-        alert("Export sırasında bir hata oluştu: " + error);
+        console.error("AR Export hatası:", error);
+        alert("AR Görüntüleme başlatılamadı: " + error);
     } finally {
         isExporting.value = false;
     }
 };
 
 const convertAndDownloadUsdz = async (glbBlob: Blob, baseName: string) => {
-    const data = await arModelService.convertGlbToUsdz(glbBlob, `${baseName}.glb`);
+    const data = await arModelService.convertSharedGlbToUsdz(glbBlob, `${baseName}.glb`);
+
     if (data.usdz && data.usdz.url) {
         const downloadUrl = arModelService.getPreviewUrl(data.usdz.url);
+
         const link = document.createElement('a');
+        link.setAttribute('rel', 'ar');
         link.href = downloadUrl;
         link.download = `${baseName}.usdz`;
+
         document.body.appendChild(link);
+
+        const img = document.createElement('img');
+        link.appendChild(img);
+
         link.click();
         document.body.removeChild(link);
     } else {
@@ -785,67 +512,6 @@ const triggerDownload = (blob: Blob, filename: string) => {
 };
 
 
-// --- MOD DEĞİŞTİRME ---
-const togglePaintMode = () => {
-    // KORUMA
-    if (!canEdit.value) return;
-
-    isPaintMode.value = !isPaintMode.value;
-
-    if (isPaintMode.value && window.innerWidth < 768) {
-        showSidebar.value = false;
-    }
-
-    // Mod değişince seçimleri sıfırla
-    selectedItemId.value = null; // Ana grup seçimi
-    selectedSubMesh.value = null; // Alt parça seçimi
-    transformControl.detach();
-
-    if (isPaintMode.value) {
-        transformControl.enabled = false; // Gizmo'yu kapat
-        document.body.style.cursor = 'crosshair'; // İmleci değiştir
-    } else {
-        transformControl.enabled = true;
-        document.body.style.cursor = 'default';
-    }
-};
-
-// --- MATERYAL GÜNCELLEME ---
-const handleMaterialUpdate = (data: any) => {
-    // KORUMA
-    if (!canEdit.value) return;
-    if (!selectedSubMesh.value) return;
-
-    let parent = selectedSubMesh.value.parent;
-    let sceneItemId: number | null = null;
-
-    while (parent) {
-        if (parent.userData?.itemId) {
-            sceneItemId = parent.userData.itemId;
-            break;
-        }
-        parent = parent.parent;
-    }
-
-    if (sceneItemId) {
-        const item = sceneItems.value.find(i => i.id === sceneItemId);
-        if (item) {
-            if (!item.materialConfig) item.materialConfig = {};
-
-            // Yerel state'i güncelle
-            item.materialConfig[data.meshName] = {
-                color: data.color,
-                metalness: data.metalness,
-                roughness: data.roughness
-            };
-
-            // [EKLE] Oto-Kayıt Tetikle
-            triggerAutoSave(sceneItemId);
-        }
-    }
-};
-
-
 // =======================================================
 // THREE.JS INIT
 // =======================================================
@@ -855,7 +521,6 @@ const initThreeJS = async () => {
     const settings = sceneData.value?.settings || {};
     const sceneWidth = settings.width || 20;
     const sceneDepth = settings.depth || 20;
-    // [GÜNCELLEME]: Kullanıcının belirttiği rengi kullan, yoksa gri yap.
     const bgColor = settings.backgroundColor || '#e5e7eb';
     const floorColor = settings.floorColor || '#ffffff';
     const floorType = settings.floorType || 'rectangle';
@@ -1058,22 +723,8 @@ const initThreeJS = async () => {
 
     // [GÜNCELLEME]: Transform Controls (Yetki Kontrollü)
     transformControl = markRaw(new TransformControls(camera, renderer.domElement));
-    
-    // Eğer düzenleme yetkisi YOKSA (canEdit = false), kontrolü devre dışı bırak
-    if (!canEdit.value) {
-        transformControl.enabled = false;
-    } else {
-        // Yetki VARSA eventleri bağla ve modu ayarla
-        transformControl.addEventListener('dragging-changed', (event) => { orbit.enabled = !event.value; });
-        transformControl.addEventListener('mouseUp', async () => {
-            if (transformControl.object && selectedItemId.value) {
-                await saveTransform(selectedItemId.value);
-            }
-        });
-        // Başlangıç modunu ayarla
-        transformControl.setMode(currentTransformMode.value);
-    }
-    
+    transformControl.enabled = false;
+
     scene.add(transformControl.getHelper());
 
     raycaster = new THREE.Raycaster();
@@ -1081,7 +732,6 @@ const initThreeJS = async () => {
 
     canvasRef.value.addEventListener('mousedown', onMouseDown);
     canvasRef.value.addEventListener('mouseup', onMouseUp);
-    window.addEventListener('keydown', handleKeyDown);
     window.addEventListener('resize', handleResize);
 
     animate();
@@ -1113,7 +763,7 @@ const loadSceneObjects = async () => {
             // BURASI KRİTİK: getModelFileBlob yerine getSharedModelBlob kullanıyoruz
             const blob = await arSceneService.getSharedModelBlob(shareToken, item.model.id);
             const url = URL.createObjectURL(blob);
-            
+
             const gltf = await loader.loadAsync(url);
             const model = gltf.scene;
 
@@ -1173,62 +823,6 @@ const applyMaterialConfig = (model: THREE.Group, materialConfig: any) => {
     });
 };
 
-const addModelToScene = async (arModel: ARModelDto) => {
-    // KORUMA
-    if (!canEdit.value) return;
-
-    isLoading.value = true;
-    showModelSelector.value = false;
-
-    try {
-        const loader = new GLTFLoader();
-        const blob = await arModelService.getModelFileBlob(arModel.id, 'glb', 'view');
-        const url = URL.createObjectURL(blob);
-        const gltf = await loader.loadAsync(url);
-        const model = gltf.scene;
-
-        model.position.set(0, 0, 0);
-        model.rotation.set(0, 0, 0);
-        model.scale.set(1, 1, 1);
-        model.updateMatrixWorld(true);
-
-        model.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-                child.castShadow = true;
-                child.receiveShadow = true;
-            }
-        });
-
-        const box = new THREE.Box3().setFromObject(model);
-        const center = new THREE.Vector3();
-        box.getCenter(center);
-        const newX = -center.x;
-        const newY = -box.min.y;
-        const newZ = -center.z;
-        model.position.set(newX, newY, newZ);
-
-        const newItem = await arSceneService.addItem({
-            sceneId: sceneData.value!.id,
-            modelId: arModel.id,
-            name: arModel.fileName,
-            position: { x: newX, y: newY, z: newZ }
-        });
-
-        sceneItems.value.push(newItem);
-
-        model.userData = { isSceneItem: true, itemId: newItem.id };
-        scene.add(model);
-        itemsMap.set(newItem.id, model);
-        selectItemFromTree(newItem.id);
-
-    } catch (err) {
-        console.error("Model ekleme hatası:", err);
-        alert("Model eklenirken bir sorun oluştu.");
-    } finally {
-        isLoading.value = false;
-    }
-};
-
 // --- ETKİLEŞİM ---
 const onMouseDown = (event: MouseEvent) => {
     mouseStart.set(event.clientX, event.clientY);
@@ -1243,116 +837,8 @@ const onMouseUp = (event: MouseEvent) => {
     mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
     raycaster.setFromCamera(mouse, camera);
-
-    if (isPaintMode.value) {
-        console.log("🎨 Boyama Modu: Tıklama algılandı.");
-
-        // Sahnedeki her şeyi kontrol et
-        const intersects = raycaster.intersectObjects(scene.children, true);
-
-        if (intersects.length === 0) {
-            console.log("❌ Hiçbir nesneye denk gelmedi.");
-            selectedSubMesh.value = null;
-            return;
-        }
-
-        // SceneItem'a ait olan ilk MESH'i bul
-        const hit = intersects.find(i => {
-            // Sadece Mesh olsun
-            if (!(i.object as THREE.Mesh).isMesh) return false;
-
-            // Grid veya Helper olmasın, bir SceneItem parçası mı?
-            let p = i.object.parent;
-            while (p) {
-                if (p.userData?.isSceneItem) return true;
-                p = p.parent;
-            }
-            return false;
-        });
-
-        if (hit) {
-            const mesh = hit.object as THREE.Mesh;
-            console.log("✅ PARÇA SEÇİLDİ:", mesh.name || 'İsimsiz Parça');
-            // ShallowRef güncellemesi
-            selectedSubMesh.value = mesh;
-        } else {
-            console.log("⚠️ Tıklanan nesne bir model parçası değil (Grid veya zemin olabilir).");
-            selectedSubMesh.value = null;
-        }
-
-    } else {
-        // --- NORMAL MOD (Mevcut kodunuz) ---
-        const intersects = raycaster.intersectObjects(scene.children, true);
-        const hit = intersects.find(i => {
-            let obj = i.object;
-            while (obj.parent && obj.parent !== scene) {
-                if (obj.userData?.isSceneItem) return true;
-                obj = obj.parent;
-            }
-            return obj.userData?.isSceneItem;
-        });
-
-        if (hit) {
-            let target = hit.object;
-            while (target.parent && target.parent !== scene && !target.userData?.itemId) {
-                target = target.parent!;
-            }
-            if (target.userData?.itemId) selectItemFromTree(target.userData.itemId);
-        } else {
-            transformControl.detach();
-            selectedItemId.value = null;
-        }
-    }
 };
 
-const selectItemFromTree = (itemId: number) => {
-    selectedItemId.value = itemId;
-    const mesh = itemsMap.get(itemId);
-
-    // KORUMA: Eğer yetki varsa Transform Control ekle, yoksa sadece seçili yap (highlight vb için)
-    if (mesh && canEdit.value) {
-        transformControl.attach(mesh);
-    } else {
-        transformControl.detach();
-    }
-};
-
-const handleKeyDown = (event: KeyboardEvent) => {
-    // KORUMA: Yetki yoksa kısayolları engelle
-    if (!canEdit.value) return;
-
-    if (document.activeElement?.tagName === 'INPUT') return;
-    switch (event.key.toLowerCase()) {
-        case 'w': setTransformMode('translate'); break;
-        case 'e': setTransformMode('rotate'); break;
-        case 'r': setTransformMode('scale'); break;
-        case 'delete':
-        case 'backspace': deleteSelectedItem(); break;
-    }
-};
-
-const saveTransform = async (itemId: number) => {
-    if (canEdit.value) triggerAutoSave(itemId);
-};
-
-const deleteItem = async (itemId: number) => {
-    if (!canEdit.value) return;
-    if (!confirm("Bu objeyi silmek istediğinize emin misiniz?")) return;
-    try {
-        await arSceneService.removeItem(itemId);
-        const mesh = itemsMap.get(itemId);
-        if (mesh) {
-            transformControl.detach();
-            scene.remove(mesh);
-            itemsMap.delete(itemId);
-        }
-        sceneItems.value = sceneItems.value.filter(i => i.id !== itemId);
-        selectedItemId.value = null;
-    } catch (err) {
-        console.error(err);
-        alert("Silinemedi");
-    }
-};
 </script>
 
 <style scoped>
