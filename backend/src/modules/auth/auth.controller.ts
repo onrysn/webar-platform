@@ -10,10 +10,10 @@ import { Public } from 'src/common/decorators/public.decorator';
 
 @ApiTags('auth')
 @Controller('auth')
-@Public()
 export class AuthController {
   constructor(private authService: AuthService) { }
 
+  @Public()
   @Post('register')
   @ApiOperation({ summary: 'Yeni kullanıcı ve şirket kaydı' })
   @ApiResponse({ status: 201, description: 'Kullanıcı ve Şirket oluşturuldu' })
@@ -22,6 +22,7 @@ export class AuthController {
     return this.authService.register(registerDto);
   }
 
+  @Public()
   @Post('login')
   @ApiOperation({ summary: 'Kullanıcı girişi' })
   @ApiResponse({ status: 200, description: 'Giriş başarılı, JWT döner' })
