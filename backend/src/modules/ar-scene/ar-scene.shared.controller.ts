@@ -7,9 +7,11 @@ import { join } from 'path';
 import { ARSceneService } from "./ar-scene.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ARModelService } from "../ar-model/ar-model.service";
+import { Public } from "src/common/decorators/public.decorator";
 
 @ApiTags('ar-scene-shared')
 @Controller('shared/ar-scene')
+@Public()
 export class ARSceneSharedController {
     constructor(
         private readonly arSceneService: ARSceneService,

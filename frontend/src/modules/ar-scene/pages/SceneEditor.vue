@@ -11,7 +11,8 @@
             <p class="text-white font-medium tracking-wide animate-pulse">3D Sahne Hazırlanıyor...</p>
         </div>
 
-        <div class="absolute top-10 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none transition-opacity duration-500"
+        <div v-if="canEdit"
+            class="absolute top-10 left-1/2 transform -translate-x-1/2 z-50 pointer-events-none transition-opacity duration-500"
             :class="saveStatus === 'idle' ? 'opacity-0' : 'opacity-100'">
 
             <div v-if="saveStatus === 'saving'"
@@ -56,8 +57,12 @@
                     </svg>
                 </button>
                 <div>
-                    <h1 class="font-bold text-sm text-white leading-tight truncate max-w-[150px] sm:max-w-xs">{{
-                        sceneData?.name || 'Yükleniyor...' }}</h1>
+                    <h1
+                        class="font-bold text-sm text-white leading-tight truncate max-w-[150px] sm:max-w-xs flex items-center gap-2">
+                        {{ sceneData?.name || 'Yükleniyor...' }}
+                        <span v-if="!canEdit"
+                            class="text-[10px] bg-gray-700 px-1.5 py-0.5 rounded text-gray-300 font-normal">Sadece İzleme</span>
+                    </h1>
                     <p v-if="sceneData?.settings" class="text-[10px] text-gray-400">
                         {{ sceneData.settings.width }}m x {{ sceneData.settings.depth }}m
                     </p>
@@ -139,7 +144,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                         </svg>
-                        Model ekleyerek başlayın.
+                        <span v-if="canEdit">Model ekleyerek başlayın.</span>
+                        <span v-else>Sahnede obje yok.</span>
                     </div>
 
                     <div v-for="item in sceneItems" :key="item.id" @click="selectItemFromTree(item.id)"
@@ -152,7 +158,7 @@
                             <span class="text-sm truncate">{{ item.name || item.model.fileName }}</span>
                         </div>
 
-                        <button @click.stop="deleteItem(item.id)"
+                        <button v-if="canEdit" @click.stop="deleteItem(item.id)"
                             class="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-500/20 hover:text-red-400 rounded transition-all">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -163,7 +169,7 @@
                     </div>
                 </div>
 
-                <div class="p-4 border-t border-white/10 bg-gray-900/50">
+                <div v-if="canEdit" class="p-4 border-t border-white/10 bg-gray-900/50">
                     <button @click="showModelSelector = true"
                         class="w-full py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white rounded-lg shadow-lg text-sm font-bold flex items-center justify-center gap-2 transition-all transform active:scale-95">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -176,7 +182,7 @@
             </div>
         </transition>
 
-        <div
+        <div v-if="canEdit"
             class="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-40 flex items-center gap-2 p-2 bg-black/60 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl">
             <button @click="setTransformMode('translate')"
                 class="p-3 rounded-xl transition-all flex flex-col items-center gap-1 min-w-[60px]"
@@ -226,7 +232,7 @@
             </button>
         </div>
 
-        <div v-if="showModelSelector"
+        <div v-if="showModelSelector && canEdit"
             class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[85vh]">
                 <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
@@ -262,7 +268,7 @@
             </div>
         </div>
     </div>
-    <div v-if="showShareModal"
+    <div v-if="showShareModal && canEdit"
         class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
         @click.self="showShareModal = false">
         <div
@@ -343,12 +349,12 @@
             </div>
         </div>
     </div>
-    <MaterialEditor v-if="isPaintMode && selectedSubMesh" :selectedMesh="selectedSubMesh"
+    <MaterialEditor v-if="canEdit && isPaintMode && selectedSubMesh" :selectedMesh="selectedSubMesh"
         @close="selectedSubMesh = null" @update="handleMaterialUpdate" />
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, markRaw, shallowRef } from 'vue';
+import { ref, onMounted, onBeforeUnmount, nextTick, markRaw, shallowRef, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -367,6 +373,7 @@ import type { ARSceneDto, SceneItemDto } from '../dto/arScene.dto';
 import type { ARModelDto } from '../../ar-model/dto/arModel.dto';
 import { offsetPolygon } from '../../../utils/mathUtils';
 import MaterialEditor from '../components/MaterialEditor.vue';
+import { useAuthStore } from '../../../store/modules/auth';
 
 // --- CONSTANTS: SHAPE LIBRARY ---
 const SHAPE_LIBRARY = [
@@ -433,6 +440,7 @@ const SHAPE_LIBRARY = [
 
 // --- STATE ---
 const route = useRoute();
+const authStore = useAuthStore();
 const sceneId = Number(route.params.id);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 
@@ -455,6 +463,11 @@ const saveStatus = ref<'idle' | 'saved' | 'saving' | 'error'>('idle');
 const showShareModal = ref(false);
 const publicShareUrl = ref<string | null>(null);
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
+const isMember = computed(() => authStore.user?.role === 'MEMBER');
+
+const canEdit = computed(() => {
+    return !isMember.value || sceneData.value?.memberCanEdit === true;
+});
 
 // Mouse
 const mouseStart = new THREE.Vector2();
@@ -520,6 +533,8 @@ const loadSceneData = async () => {
 
 // [EKLE] DEBOUNCED AUTO-SAVE TETİKLEYİCİSİ
 const triggerAutoSave = (itemId: number) => {
+    if (!canEdit.value) return;
+
     saveStatus.value = 'saving';
     if (saveTimeout) clearTimeout(saveTimeout);
 
@@ -531,6 +546,8 @@ const triggerAutoSave = (itemId: number) => {
 
 // [EKLE] GERÇEK KAYIT İŞLEMİ
 const performSave = async (itemId: number) => {
+    if (!canEdit.value) return;
+
     try {
         const item = sceneItems.value.find(i => i.id === itemId);
         const mesh = itemsMap.get(itemId);
@@ -562,6 +579,8 @@ const getThumbnailUrl = (path: string) => arModelService.getPreviewUrl(path);
 
 // --- [YENİ] UI AKSİYONLARI ---
 const setTransformMode = (mode: 'translate' | 'rotate' | 'scale') => {
+    if (!canEdit.value) return;
+
     currentTransformMode.value = mode;
     if (transformControl) {
         transformControl.setMode(mode);
@@ -569,6 +588,8 @@ const setTransformMode = (mode: 'translate' | 'rotate' | 'scale') => {
 };
 
 const deleteSelectedItem = () => {
+    if (!canEdit.value) return;
+
     if (selectedItemId.value) {
         deleteItem(selectedItemId.value);
     }
@@ -843,6 +864,8 @@ const triggerDownload = (blob: Blob, filename: string) => {
 
 // --- MOD DEĞİŞTİRME ---
 const togglePaintMode = () => {
+    if (!canEdit.value) return;
+
     isPaintMode.value = !isPaintMode.value;
 
     if (isPaintMode.value && window.innerWidth < 768) {
@@ -865,6 +888,8 @@ const togglePaintMode = () => {
 
 // --- MATERYAL GÜNCELLEME ---
 const handleMaterialUpdate = (data: any) => {
+    if (!canEdit.value) return;
+
     if (!selectedSubMesh.value) return;
 
     let parent = selectedSubMesh.value.parent;
@@ -1109,14 +1134,22 @@ const initThreeJS = async () => {
 
     // [GÜNCELLEME]: Transform Controls'u UI state ile bağla
     transformControl = markRaw(new TransformControls(camera, renderer.domElement));
-    transformControl.addEventListener('dragging-changed', (event) => { orbit.enabled = !event.value; });
-    transformControl.addEventListener('mouseUp', async () => {
-        if (transformControl.object && selectedItemId.value) {
-            await saveTransform(selectedItemId.value);
-        }
-    });
-    // Başlangıç modunu ayarla
-    transformControl.setMode(currentTransformMode.value);
+    
+    // Eğer düzenleme yetkisi YOKSA (canEdit = false), kontrolü devre dışı bırak
+    if (!canEdit.value) {
+        transformControl.enabled = false;
+    } else {
+        // Yetki VARSA eventleri bağla ve modu ayarla
+        transformControl.addEventListener('dragging-changed', (event) => { orbit.enabled = !event.value; });
+        transformControl.addEventListener('mouseUp', async () => {
+            if (transformControl.object && selectedItemId.value) {
+                await saveTransform(selectedItemId.value);
+            }
+        });
+        // Başlangıç modunu ayarla
+        transformControl.setMode(currentTransformMode.value);
+    }
+    
     scene.add(transformControl.getHelper());
 
     raycaster = new THREE.Raycaster();
@@ -1206,6 +1239,7 @@ const loadSceneObjects = async () => {
             model.userData = { isSceneItem: true, itemId: item.id };
             scene.add(model);
             itemsMap.set(item.id, model);
+            URL.revokeObjectURL(url);
         } catch (err) {
             console.error(`Item ${item.id} yüklenemedi:`, err);
         }
@@ -1213,6 +1247,8 @@ const loadSceneObjects = async () => {
 };
 
 const addModelToScene = async (arModel: ARModelDto) => {
+    if (!canEdit.value) return;
+
     isLoading.value = true;
     showModelSelector.value = false;
 
@@ -1347,7 +1383,11 @@ const onMouseUp = (event: MouseEvent) => {
 const selectItemFromTree = (itemId: number) => {
     selectedItemId.value = itemId;
     const mesh = itemsMap.get(itemId);
-    if (mesh) transformControl.attach(mesh);
+    if (mesh && canEdit.value) {
+        transformControl.attach(mesh);
+    } else {
+        transformControl.detach();
+    }
 };
 
 // [GÜNCELLEME]: Klavye kısayollarını UI State ile eşle

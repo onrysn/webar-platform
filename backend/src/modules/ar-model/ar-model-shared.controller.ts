@@ -3,10 +3,12 @@ import { ApiOperation, ApiQuery, ApiTags } from "@nestjs/swagger";
 import { ARModelService } from "./ar-model.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import type { Response } from 'express'; // <-- 1. BU IMPORT EKLENDİ
+import { Public } from "src/common/decorators/public.decorator";
 
 // ARModelSharedController - Public Erişim İçin (Guard Yok!)
 @ApiTags('ar-model-shared')
 @Controller('shared/ar-model')
+@Public()
 export class ARModelSharedController {
     constructor(private readonly arModelService: ARModelService, private prisma: PrismaService) { }
 
