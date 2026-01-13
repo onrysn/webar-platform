@@ -6,12 +6,17 @@ cd webar-platform
 # 2️⃣ Docker container’larını durdur build et ve başlat
 docker compose down
 docker compose up -d --build
+docker compose -f docker-compose.dev.yml up -d --build
+docker compose -f docker-compose.prod.yml up -d --build
 
 # 3️⃣ Backend container içine gir (Prisma migrate ve prisma studio için)
 docker exec -it webar-platform-backend-1 sh
 
 # 4️⃣ Prisma migrate çalıştır (tabloları oluştur)
 npx prisma migrate dev --name init
+
+# 4️⃣4️⃣ Prisma update çalıştır
+npx prisma migrate deploy
 
 # 4️⃣4️⃣ Prisma seed çalıştır
 npx ts-node prisma/seed.ts

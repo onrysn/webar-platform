@@ -1,0 +1,90 @@
+version: '3.8'
+
+networks:
+  web:
+    external: false
+
+services:
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: arapp_dev
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - web
+
+  adminer:
+    image: adminer
+    restart: always
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.adminer.rule=Host(`adminer.ozmediadigital.online`)"
+      - "traefik.http.routers.adminer.entrypoints=websecure"
+      - "traefik.http.routers.adminer.tls.certresolver=letsencrypt"
+    networks:
+      - web
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql://dev:dev@postgres:5432/arapp_dev?schema=public
+      JWT_SECRET: supersecretkey123
+      JWT_EXPIRES_IN: 1d
+      CONVERTER_URL: http://converter:3001
+    depends_on:
+      - postgres
+      - converter
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`ozmediadigital.online`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend.entrypoints=websecure"
+      - "traefik.http.routers.backend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.backend.loadbalancer.server.port=3000"
+    networks:
+      - web
+
+  frontend:
+    build: ./frontend
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`ozmediadigital.online`,`www.ozmediadigital.online`)"
+      - "traefik.http.routers.frontend.entrypoints=websecure"
+      - "traefik.http.routers.frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.services.frontend.loadbalancer.server.port=5173"
+    depends_on:
+      - backend
+    networks:
+      - web
+
+  converter:
+    build: ./gltf2usdz
+    restart: always
+    networks:
+      - web
+
+  traefik:
+    image: traefik:v3.0
+    command:
+      - "--api.dashboard=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=admin@ozmediadigital.online"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./letsencrypt:/letsencrypt"
+    networks:
+      - web
+
+volumes:
+  db_data:
