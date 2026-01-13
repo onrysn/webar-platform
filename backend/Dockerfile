@@ -1,5 +1,5 @@
 # 1. Base Image
-FROM node:20-bookworm-slim
+FROM node:20-bookworm-slim as base
 
 # Çalışma dizini
 WORKDIR /app
@@ -63,5 +63,23 @@ RUN npx prisma generate
 # Port
 EXPOSE 3000
 
-# Başlat
+# ==========================================
+# 2. DEVELOPMENT STAGE (Local Geliştirme)
+# ==========================================
+FROM base as dev
+# Localde kod değişikliklerini anlık görmek için 'start:dev' çalıştırılır.
+# Not: docker-compose.dev.yml'de volume bind edileceği için kodlar oradan gelir.
 CMD ["npm", "run", "start:dev"]
+
+# ==========================================
+# 3. PRODUCTION STAGE (Canlı Sunucu)
+# ==========================================
+FROM base as prod
+# Production ortamı için Typescript kodunu Javascript'e derle
+RUN npm run build
+
+# Ortam değişkenini production olarak ayarla
+ENV NODE_ENV=production
+
+# Uygulamayı derlenmiş (dist) klasöründen başlat
+CMD ["npm", "run", "start:prod"]

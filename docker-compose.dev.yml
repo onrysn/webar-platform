@@ -17,9 +17,13 @@ services:
     restart: always
     ports:
       - "9080:8080"
+    depends_on:
+      - postgres
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      target: dev
     environment:
       DATABASE_URL: postgresql://dev:dev@postgres:5432/arapp_dev?schema=public
       JWT_SECRET: supersecretkey123
@@ -36,7 +40,9 @@ services:
       - /app/node_modules
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      target: dev
     environment:
       NODE_ENV: development
       CHOKIDAR_USEPOLLING: "true"
