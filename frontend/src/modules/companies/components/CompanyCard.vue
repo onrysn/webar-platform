@@ -93,8 +93,8 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import type { CompanyDto } from '../dto/company.dto';
 // Yolunuz değiştiyse burayı güncelleyin:
-import type { CompanyDto } from '../modules/companies/dto/company.dto';
 
 const props = defineProps<{
   company: CompanyDto;
@@ -131,7 +131,7 @@ const companyInitials = computed(() => {
   if (!props.company.name) return 'Co';
   return props.company.name
     .split(' ')
-    .map((word) => word[0])
+    .map((word: string) => word[0])
     .slice(0, 2)
     .join('')
     .toUpperCase();
