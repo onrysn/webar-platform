@@ -1,5 +1,5 @@
 # 1. Base Image
-FROM node:20-bookworm-slim as base
+FROM node:20-bookworm-slim AS base
 
 # Çalışma dizini
 WORKDIR /app
@@ -66,7 +66,7 @@ EXPOSE 3000
 # ==========================================
 # 2. DEVELOPMENT STAGE (Local Geliştirme)
 # ==========================================
-FROM base as dev
+FROM base AS dev
 # Localde kod değişikliklerini anlık görmek için 'start:dev' çalıştırılır.
 # Not: docker-compose.dev.yml'de volume bind edileceği için kodlar oradan gelir.
 CMD ["npm", "run", "start:dev"]
@@ -74,7 +74,7 @@ CMD ["npm", "run", "start:dev"]
 # ==========================================
 # 3. PRODUCTION STAGE (Canlı Sunucu)
 # ==========================================
-FROM base as prod
+FROM base AS prod
 # Production ortamı için Typescript kodunu Javascript'e derle
 RUN npm run build
 

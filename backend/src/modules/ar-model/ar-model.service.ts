@@ -348,7 +348,6 @@ export class ARModelService {
     }
 
     async convertStepToGlb(inputPath: string): Promise<string> {
-        // ... (Mevcut kod aynen)
         const outputDir = path.dirname(inputPath);
         const fileName = path.basename(inputPath, path.extname(inputPath));
         const glbOutputPath = path.join(outputDir, `${fileName}.glb`);
@@ -357,7 +356,25 @@ export class ARModelService {
         if (!fs.existsSync(scriptPath)) throw new InternalServerErrorException('Script not found');
 
         return new Promise((resolve, reject) => {
+            // '-u' parametresi Python çıktılarının bufferlanmadan (unbuffered) gelmesini sağlar
             const pythonProcess = spawn('python3', ['-u', scriptPath, inputPath, glbOutputPath]);
+
+            // Çıktıları biriktirmek için değişkenler (Hata durumunda mesaj olarak dönmek için)
+            let stderrData = '';
+
+            // 1. Standart Çıktıları (Print) Yakala ve Logla
+            pythonProcess.stdout.on('data', (data) => {
+                const message = data.toString();
+                console.log(`[Python-Log]: ${message.trim()}`);
+            });
+
+            // 2. Hata Çıktılarını Yakala ve Logla
+            pythonProcess.stderr.on('data', (data) => {
+                const message = data.toString();
+                console.error(`[Python-Error]: ${message.trim()}`);
+                stderrData += message; // Hatayı biriktir
+            });
+
             const timeout = setTimeout(() => {
                 pythonProcess.kill('SIGKILL');
                 reject(new InternalServerErrorException('Conversion timed out'));
@@ -365,8 +382,17 @@ export class ARModelService {
 
             pythonProcess.on('close', (code) => {
                 clearTimeout(timeout);
-                if (code === 0 && fs.existsSync(glbOutputPath)) resolve(glbOutputPath);
-                else reject(new InternalServerErrorException(`STEP conversion failed (Code: ${code})`));
+
+                if (code === 0 && fs.existsSync(glbOutputPath)) {
+                    console.log(`[Success] STEP conversion completed: ${glbOutputPath}`);
+                    resolve(glbOutputPath);
+                } else {
+                    // Hata oluştuğunda Python'dan gelen hata mesajını da ekleyelim
+                    console.error(`[Failed] Process exited with code ${code}`);
+                    reject(new InternalServerErrorException(
+                        `STEP conversion failed (Code: ${code}). Details: ${stderrData}`
+                    ));
+                }
             });
         });
     }
