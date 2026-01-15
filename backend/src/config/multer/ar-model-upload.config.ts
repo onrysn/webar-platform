@@ -21,6 +21,6 @@ export const modelUploadConfig = {
         }
     },
     limits: {
-        fileSize: 200 * 1024 * 1024, // Örn: 200MB sınırı
+        fileSize: 500 * 1024 * 1024, // Örn: 500MB sınırı
     },
 };
