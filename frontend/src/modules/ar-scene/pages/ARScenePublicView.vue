@@ -1,66 +1,72 @@
 <template>
-  <div class="h-screen w-full bg-gray-900 flex flex-col relative overflow-hidden font-sans select-none">
+    <div class="mobile-vh w-full bg-gray-900 flex flex-col relative overflow-hidden font-sans select-none">
 
-    <div v-if="isLoading" class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-900 text-white">
-      <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mb-4"></div>
-      <p class="text-white font-medium tracking-wide animate-pulse">Sahne Yükleniyor...</p>
-    </div>
-
-    <div class="absolute inset-0 z-0 touch-none bg-gradient-to-br from-gray-800 to-gray-900">
-      <canvas ref="canvasRef" class="w-full h-full block outline-none"></canvas>
-    </div>
-
-    <div class="absolute top-0 left-0 right-0 p-6 z-20 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
-      <div class="max-w-7xl mx-auto flex items-start justify-between">
-        <div>
-          <h1 class="text-xl md:text-2xl font-bold text-white drop-shadow-md leading-tight">
-            {{ sceneData?.name || 'Yükleniyor...' }}
-          </h1>
-          
-          <p v-if="sceneData?.settings" class="text-sm text-gray-300 font-medium mt-1 flex items-center gap-2">
-            <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
-            {{ sceneData.settings.width }}m x {{ sceneData.settings.depth }}m
-          </p>
+        <div v-if="isLoading"
+            class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-900 text-white">
+            <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mb-4"></div>
+            <p class="text-white font-medium tracking-wide animate-pulse">Sahne Yükleniyor...</p>
         </div>
 
-        <div class="hidden md:block text-right">
-           <span class="text-[10px] text-white/40 uppercase tracking-widest border border-white/20 px-2 py-1 rounded">
-             Scene Editor
-           </span>
+        <div class="absolute inset-0 z-0 touch-none bg-gradient-to-br from-gray-800 to-gray-900">
+            <canvas ref="canvasRef" class="w-full h-full block outline-none"></canvas>
         </div>
-      </div>
-    </div>
 
-    <div class="absolute bottom-8 left-0 right-0 z-30 flex justify-center px-4">
-      <div class="relative">
-        <button 
-          @click="handleViewInAR" 
-          :disabled="isExporting"
-          class="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-full shadow-lg shadow-indigo-900/50 transition-all transform hover:scale-105 active:scale-95 group disabled:opacity-75 disabled:cursor-not-allowed"
-        >
-          
-          <span v-if="isExporting" class="flex items-center gap-2">
-            <svg class="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            <span class="hidden sm:inline font-medium">Hazırlanıyor...</span>
-          </span>
+        <div
+            class="absolute top-0 left-0 right-0 p-6 z-20 bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
+            <div class="max-w-7xl mx-auto flex items-start justify-between">
+                <div>
+                    <h1 class="text-xl md:text-2xl font-bold text-white drop-shadow-md leading-tight">
+                        {{ sceneData?.name || 'Yükleniyor...' }}
+                    </h1>
 
-          <template v-else>
-            <div class="relative w-5 h-5">
-              <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:animate-bounce" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
-              </svg>
+                    <p v-if="sceneData?.settings"
+                        class="text-sm text-gray-300 font-medium mt-1 flex items-center gap-2">
+                        <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                        {{ sceneData.settings.width }}m x {{ sceneData.settings.depth }}m
+                    </p>
+                </div>
+
+                <div class="hidden md:block text-right">
+                    <span
+                        class="text-[10px] text-white/40 uppercase tracking-widest border border-white/20 px-2 py-1 rounded">
+                        Scene Editor
+                    </span>
+                </div>
             </div>
-            <span class="font-bold tracking-wide text-sm sm:text-base">AR'da Görüntüle</span>
-          </template>
+        </div>
 
-        </button>
-      </div>
+        <div class="ar-button-container absolute left-0 right-0 z-30 flex justify-center px-4">
+            <div class="relative">
+                <button @click="handleViewInAR" :disabled="isExporting"
+                    class="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-full shadow-lg shadow-indigo-900/50 transition-all transform hover:scale-105 active:scale-95 group disabled:opacity-75 disabled:cursor-not-allowed">
+
+                    <span v-if="isExporting" class="flex items-center gap-2">
+                        <svg class="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
+                            </circle>
+                            <path class="opacity-75" fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                            </path>
+                        </svg>
+                        <span class="hidden sm:inline font-medium">Hazırlanıyor...</span>
+                    </span>
+
+                    <template v-else>
+                        <div class="relative w-5 h-5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:animate-bounce"
+                                fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+                            </svg>
+                        </div>
+                        <span class="font-bold tracking-wide text-sm sm:text-base">AR'da Görüntüle</span>
+                    </template>
+
+                </button>
+            </div>
+        </div>
+
     </div>
-
-  </div>
 </template>
 
 <script setup lang="ts">
@@ -174,6 +180,11 @@ const isAndroidDevice = () => {
     return /Android/.test(navigator.userAgent);
 };
 
+const setViewportHeight = () => {
+    const vh = window.innerHeight * 0.01;
+    document.documentElement.style.setProperty('--vh', `${vh}px`);
+};
+
 const mouseStart = new THREE.Vector2();
 
 // --- Three.js Globals ---
@@ -190,6 +201,14 @@ const itemsMap = new Map<number, THREE.Object3D>();
 
 // --- LIFECYCLE ---
 onMounted(async () => {
+    setViewportHeight();
+    window.addEventListener('resize', setViewportHeight);
+    window.addEventListener('orientationchange', setViewportHeight);
+
+    setTimeout(() => {
+        window.scrollTo(0, 1);
+    }, 100);
+
     if (window.innerWidth < 768) {
         showSidebar.value = false;
     }
@@ -213,6 +232,9 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+    window.removeEventListener('resize', setViewportHeight);
+    window.removeEventListener('orientationchange', setViewportHeight);
+
     cancelAnimationFrame(animationId);
     renderer?.dispose();
     if (transformControl) {
@@ -739,7 +761,9 @@ const initThreeJS = async () => {
 
 const handleResize = () => {
     if (!canvasRef.value || !camera || !renderer) return;
-    // Full screen olduğu için window boyutunu kullanmak daha güvenlidir
+
+    setViewportHeight();
+
     const width = window.innerWidth;
     const height = window.innerHeight;
     camera.aspect = width / height;
@@ -842,7 +866,67 @@ const onMouseUp = (event: MouseEvent) => {
 </script>
 
 <style scoped>
-/* Orjinal CSS Aynen Kalmalı */
+/* ✅ Mobil viewport height düzeltmesi */
+.mobile-vh {
+    height: 100vh;
+    height: calc(var(--vh, 1vh) * 100);
+    min-height: -webkit-fill-available;
+}
+
+/* Modern tarayıcılar için dynamic viewport height desteği */
+@supports (height: 100dvh) {
+    .mobile-vh {
+        height: 100dvh;
+    }
+}
+
+/* ✅ AR butonu için safe area ve dinamik bottom pozisyonlama */
+.ar-button-container {
+    bottom: 2rem;
+    bottom: max(2rem, calc(2rem + env(safe-area-inset-bottom)));
+    padding-bottom: env(safe-area-inset-bottom, 0);
+}
+
+/* iOS notch/home indicator desteği */
+@supports (padding: max(0px)) {
+    .ar-button-container {
+        padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+    }
+}
+
+/* Tablet ve büyük ekranlar için ek margin */
+@media (min-width: 768px) {
+    .ar-button-container {
+        bottom: 3rem;
+    }
+}
+
+/* Landscape mode için özel ayar */
+@media (orientation: landscape) and (max-height: 500px) {
+    .ar-button-container {
+        bottom: 1rem;
+    }
+}
+
+/* Canvas touch optimize */
+canvas {
+    touch-action: none;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+/* 🆕 EKLE: Body overflow kontrolü (mobil için) */
+:global(body) {
+    overflow: hidden;
+    background-color: #111827;
+    position: fixed;
+    /* iOS Safari için */
+    width: 100%;
+    height: 100%;
+}
+
+/* Orijinal CSS Aynen Kalmalı */
 .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
 }
