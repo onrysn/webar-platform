@@ -1,5 +1,5 @@
 // ar-model.controller.ts
-import { Controller, Post, UseInterceptors, UploadedFile, UseGuards, Query, Get, Param, Res, Body, BadRequestException, NotFoundException, StreamableFile, Req } from '@nestjs/common';
+import { Controller, Post, UseInterceptors, UploadedFile, UseGuards, Query, Get, Param, Res, Body, BadRequestException, NotFoundException, StreamableFile, Req, ParseIntPipe } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ARModelService } from './ar-model.service';
 import { modelUploadConfig } from 'src/config/multer/ar-model-upload.config';
@@ -17,6 +17,7 @@ import { User } from 'src/common/decorators/current-user.decorator';
 import type { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
 import { CompanyActiveGuard } from 'src/common/guards/company-active.guard';
+import { ApiResponse } from '@nestjs/swagger';
 
 @UseGuards(JwtAuthGuard, RolesGuard, CompanyActiveGuard) // 1. Rol korumasını ekledik
 @ApiBearerAuth('access-token')
@@ -78,12 +79,36 @@ export class ARModelController {
         return models;
     }
 
+    // --- Upload Queue: Status & Listing ---
+    @Get('upload-status')
+    @ApiOperation({ summary: 'Geçici yükleme (tempId) için dönüşüm durumunu getirir' })
+    @ApiQuery({ name: 'tempId', required: true })
+    async getUploadStatus(@Query('tempId') tempId: string) {
+        if (!tempId) throw new BadRequestException('tempId gerekli');
+        return this.arModelService.getUploadStatus(tempId);
+    }
+
+    @Get('upload-jobs')
+    @ApiOperation({ summary: 'Kullanıcının/şirketin upload kuyruğunu listeler' })
+    @ApiQuery({ name: 'companyId', required: false })
+    @ApiQuery({ name: 'status', required: false, description: 'Filtre: QUEUED|CONVERTING|CONVERTED|ERROR|APPROVED' })
+    async getUploadJobs(
+        @Req() req: any,
+        @Query('companyId') companyId?: string,
+        @Query('status') status?: string,
+    ) {
+        const parsedCompanyId = companyId ? parseInt(companyId, 10) : undefined;
+        return this.arModelService.listUploadJobs(req.user, parsedCompanyId, status);
+    }
+
+    
+
     // ----------------------------------------------------------------
     // 2. DOSYA DETAY VE İNDİRME
     // ----------------------------------------------------------------
     @Get(':id')
     @ApiOperation({ summary: 'Model detaylarını getirir' })
-    async getModelDetails(@Param('id') id: number, @User() user: CurrentUser) {
+    async getModelDetails(@Param('id', ParseIntPipe) id: number, @User() user: CurrentUser) {
         // Servis içinde yetki kontrolü yapılmalı veya burada manuel kontrol eklenmeli
         // Şimdilik sadece bulup dönüyor, detaylı güvenlik için servise 'user' gönderilmeli.
         const model = await this.prisma.aRModel.findUnique({
@@ -125,7 +150,7 @@ export class ARModelController {
 
     @Get('download/:id')
     @ApiOperation({ summary: 'Model dosyasını indirir (Eski Yöntem)' })
-    async downloadModel(@Param('id') id: number, @Res() res: Response, @User() user: CurrentUser) {
+    async downloadModel(@Param('id', ParseIntPipe) id: number, @Res() res: Response, @User() user: CurrentUser) {
         const model = await this.prisma.aRModel.findUnique({ where: { id: +id } });
         if (!model) return res.status(404).send('Model not found');
 
@@ -151,7 +176,7 @@ export class ARModelController {
     @ApiQuery({ name: 'format', enum: ['glb', 'usdz'], required: false })
     @ApiQuery({ name: 'mode', enum: ['view', 'download'], required: false })
     async getModelFile(
-        @Param('id') id: number,
+        @Param('id', ParseIntPipe) id: number,
         @User() user: CurrentUser, // User eklendi
         @Query('format') format: 'glb' | 'usdz' = 'glb',
         @Query('mode') mode: 'view' | 'download' = 'view',
@@ -189,9 +214,11 @@ export class ARModelController {
     @ApiConsumes('multipart/form-data')
     @ApiOperation({ summary: 'FBX dosyasını yükler ve GLB/USDZ formatına çevirir' })
     @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
-    async uploadFbx(@UploadedFile() file: MulterFile, @User() user: CurrentUser) {
+    async uploadFbx(@UploadedFile() file: MulterFile, @User() user: CurrentUser, @Body('companyId') companyId?: string) {
         if (!file) throw new BadRequestException('File is required');
-        return this.arModelService.convertFbxToTemp(file, user.id);
+        let targetCompanyId: number | undefined = user.companyId ?? undefined;
+        if (user.role === Role.SUPER_ADMIN && companyId) targetCompanyId = Number(companyId);
+        return this.arModelService.convertFbxToTemp(file, user.id, targetCompanyId);
     }
 
     @Post('upload-step')
@@ -200,9 +227,11 @@ export class ARModelController {
     @ApiConsumes('multipart/form-data')
     @ApiOperation({ summary: 'STEP/STP dosyasını yükler ve GLB/USDZ formatına çevirir' })
     @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
-    async uploadStep(@UploadedFile() file: MulterFile, @User() user: CurrentUser) {
+    async uploadStep(@UploadedFile() file: MulterFile, @User() user: CurrentUser, @Body('companyId') companyId?: string) {
         if (!file) throw new BadRequestException('File is required');
-        return this.arModelService.convertStepToTemp(file, user.id);
+        let targetCompanyId: number | undefined = user.companyId ?? undefined;
+        if (user.role === Role.SUPER_ADMIN && companyId) targetCompanyId = Number(companyId);
+        return this.arModelService.convertStepToTemp(file, user.id, targetCompanyId);
     }
 
     @Post('upload-glb')
@@ -308,6 +337,7 @@ export class ARModelController {
         );
     }
 
+
     // ----------------------------------------------------------------
     // 5. YÖNETİM VE PAYLAŞIM (YENİ)
     // ----------------------------------------------------------------
@@ -316,7 +346,7 @@ export class ARModelController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
     @ApiOperation({ summary: 'Modelin adını veya gizlilik durumunu günceller' })
     async updateModel(
-        @Param('id') id: number,
+        @Param('id', ParseIntPipe) id: number,
         @Body() body: { name?: string, isPrivate?: boolean, categoryId?: number | null, seriesId?: number | null },
         @User() user: CurrentUser
     ) {
@@ -327,7 +357,7 @@ export class ARModelController {
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
     @ApiOperation({ summary: 'Model için paylaşılabilir public link (token) oluşturur' })
     async generateShareToken(
-        @Param('id') id: number, 
+        @Param('id', ParseIntPipe) id: number, 
         @User() user: CurrentUser,
         @Req() req: Request
     ) {
@@ -346,7 +376,7 @@ export class ARModelController {
     @Post(':id/revoke-token')
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
     @ApiOperation({ summary: 'Paylaşım linkini iptal eder' })
-    async revokeShareToken(@Param('id') id: number, @User() user: CurrentUser) {
+    async revokeShareToken(@Param('id', ParseIntPipe) id: number, @User() user: CurrentUser) {
         return this.arModelService.revokeShareToken(id, user);
     }
 

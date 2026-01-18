@@ -10,6 +10,8 @@ import FormData from 'form-data';
 import { v4 as uuidv4 } from 'uuid';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { Role } from '@prisma/client'; // Role enum'ını ekledik
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 
 @Injectable()
 export class ARModelService {
@@ -20,7 +22,8 @@ export class ARModelService {
 
     constructor(
         private prisma: PrismaService,
-        private activityLogger: ActivityLogService
+        private activityLogger: ActivityLogService,
+        @InjectQueue('model-convert') private convertQueue: Queue
     ) {
         const keyHex = process.env.ENCRYPTION_KEY;
         if (!keyHex || keyHex.length !== 64) {
@@ -86,17 +89,17 @@ export class ARModelService {
         return { tempId, kind, filename, previewUrl, size: buffer.length };
     }
 
-    async convertStepToTemp(file: MulterFile, userId?: number) {
-        return this._genericConvertToTemp(file, userId, 'step');
+    async convertStepToTemp(file: MulterFile, userId?: number, companyId?: number) {
+        return this._enqueueConversion(file, userId, 'step', companyId);
     }
 
-    async convertFbxToTemp(file: MulterFile, userId?: number) {
-        return this._genericConvertToTemp(file, userId, 'fbx');
+    async convertFbxToTemp(file: MulterFile, userId?: number, companyId?: number) {
+        return this._enqueueConversion(file, userId, 'fbx', companyId);
     }
 
-    async convertGlbToUsdzTemp(file: MulterFile, userId?: number) {
-        // (Burası aynen kalıyor...)
-        const tempId = `${Date.now()}_${uuidv4()}`;
+    async convertGlbToUsdzTemp(file: MulterFile, userId?: number, targetTempId?: string) {
+        // Optional: write into existing temp folder (used by queue processor)
+        const tempId = targetTempId || `${Date.now()}_${uuidv4()}`;
         const tempDir = this.ensureTempDir(tempId);
         const baseName = path.basename(file.originalname, path.extname(file.originalname));
         const glbName = `${baseName}.glb`;
@@ -105,7 +108,8 @@ export class ARModelService {
         if (file.buffer) {
             fs.writeFileSync(glbPath, file.buffer);
         } else if (file.path && fs.existsSync(file.path)) {
-            fs.copyFileSync(file.path, glbPath);
+            // If already copied by caller, ensure it exists; otherwise copy
+            if (!fs.existsSync(glbPath)) fs.copyFileSync(file.path, glbPath);
         } else {
             throw new InternalServerErrorException('GLB dosyası buffer veya path içermiyor.');
         }
@@ -151,80 +155,37 @@ export class ARModelService {
     }
 
     // --- INTERNAL HELPERS (_genericConvertToTemp, convertCadToGlb, etc. - Aynen kalıyor) ---
-    private async _genericConvertToTemp(file: MulterFile, userId: number | undefined, type: 'fbx' | 'step') {
+    private async _enqueueConversion(file: MulterFile, userId: number | undefined, type: 'fbx' | 'step', companyId?: number) {
         const tempId = `${Date.now()}_${uuidv4()}`;
         const tempDir = this.ensureTempDir(tempId);
-        let inputPath: string | undefined;
 
+        let inputPath: string | undefined;
         if (file.buffer && file.buffer.length > 0) {
             const inputName = `${Date.now()}_${path.basename(file.originalname)}`;
             inputPath = path.join(tempDir, inputName);
             fs.writeFileSync(inputPath, file.buffer);
         } else if (file.path && fs.existsSync(file.path)) {
-            inputPath = path.join(tempDir, `${Date.now()}_${path.basename(file.path) + path.extname(file.originalname)}`);
+            inputPath = path.join(tempDir, `${Date.now()}_${path.basename(file.originalname)}`);
             fs.copyFileSync(file.path, inputPath);
         } else {
             throw new InternalServerErrorException(`No file buffer or path for ${type.toUpperCase()} upload`);
         }
 
-        let glbPath: string;
-        try {
-            if (type === 'fbx') {
-                const fakeMulterFile = { originalname: path.basename(inputPath), path: inputPath } as unknown as MulterFile;
-                glbPath = await this.convertCadToGlb(fakeMulterFile);
-            } else {
-                glbPath = await this.convertStepToGlb(inputPath);
-            }
-        } catch (error) {
-            throw error;
-        }
-
-        const formData = new FormData();
-        formData.append('file', fs.createReadStream(glbPath), {
-            filename: path.basename(glbPath),
-            contentType: 'model/gltf-binary'
+        await (this.prisma as any).modelUploadJob.create({
+            data: {
+                tempId,
+                type,
+                userId: userId || 0,
+                companyId: companyId,
+                inputPath,
+                status: 'QUEUED',
+                progress: 0,
+            },
         });
 
-        const convertResp = await fetch(`${this.converterUrl}/api/convert`, {
-            method: 'POST',
-            body: formData,
-            headers: formData.getHeaders(),
-        });
+        await this.convertQueue.add('convert', { tempId, type, inputPath, userId, companyId });
 
-        if (!convertResp.ok) {
-            const text = await convertResp.text();
-            throw new InternalServerErrorException('USDZ Converter failed: ' + text);
-        }
-
-        const convertJson = await convertResp.json();
-        const { id, name } = convertJson as { id: string; name: string };
-
-        const downloadUrl = `${this.converterUrl}/api/download?id=${encodeURIComponent(id)}&name=${encodeURIComponent(name)}`;
-        const usdzResp = await fetch(downloadUrl);
-        if (!usdzResp.ok) {
-            throw new InternalServerErrorException('USDZ download failed: ' + (await usdzResp.text()));
-        }
-        const usdzBuffer = await usdzResp.buffer();
-
-        const safeBase = path.basename(this.getFileNameWithoutExt(file.originalname));
-        const glbName = `${safeBase}.glb`;
-        const usdzName = `${safeBase}.usdz`;
-
-        const finalGlbPath = path.join(tempDir, glbName);
-        const finalUsdzPath = path.join(tempDir, usdzName);
-
-        fs.copyFileSync(glbPath, finalGlbPath);
-        fs.writeFileSync(finalUsdzPath, usdzBuffer);
-
-        if (glbPath !== finalGlbPath && fs.existsSync(glbPath)) {
-            try { fs.unlinkSync(glbPath); } catch (e) { /* ignore */ }
-        }
-
-        return {
-            tempId,
-            glb: { filename: glbName, url: `/temp/${tempId}/${glbName}`, path: finalGlbPath, size: fs.statSync(finalGlbPath).size },
-            usdz: { filename: usdzName, url: `/temp/${tempId}/${usdzName}`, path: finalUsdzPath, size: fs.statSync(finalUsdzPath).size },
-        };
+        return { tempId, status: 'QUEUED' };
     }
 
     // --- 1. FINALIZE (DB SAVE) ---
@@ -241,9 +202,28 @@ export class ARModelService {
         const tempDir = path.join(this.TEMP_ROOT, tempId);
         if (!fs.existsSync(tempDir)) throw new NotFoundException('Temp folder not found');
 
-        const files = fs.readdirSync(tempDir);
-        const glbFile = files.find(f => f.toLowerCase().endsWith('.glb'));
-        const usdzFile = files.find(f => f.toLowerCase().endsWith('.usdz'));
+        let files = fs.readdirSync(tempDir);
+        let glbFile = files.find(f => f.toLowerCase().endsWith('.glb'));
+        let usdzFile = files.find(f => f.toLowerCase().endsWith('.usdz'));
+
+        // Fallback for legacy jobs: if files missing, try to copy from recorded job paths
+        if (!glbFile || !usdzFile) {
+            const job = await (this.prisma as any).modelUploadJob.findUnique({ where: { tempId } });
+            if (job) {
+                if (!glbFile && job.glbPath && fs.existsSync(job.glbPath)) {
+                    const dest = path.join(tempDir, path.basename(job.glbPath));
+                    if (!fs.existsSync(dest)) fs.copyFileSync(job.glbPath, dest);
+                }
+                if (!usdzFile && job.usdzPath && fs.existsSync(job.usdzPath)) {
+                    const dest = path.join(tempDir, path.basename(job.usdzPath));
+                    if (!fs.existsSync(dest)) fs.copyFileSync(job.usdzPath, dest);
+                }
+                // Refresh listing
+                files = fs.readdirSync(tempDir);
+                glbFile = files.find(f => f.toLowerCase().endsWith('.glb'));
+                usdzFile = files.find(f => f.toLowerCase().endsWith('.usdz'));
+            }
+        }
 
         if (!glbFile || !usdzFile) {
             throw new BadRequestException('Both GLB and USDZ must be present to finalize.');
@@ -345,7 +325,62 @@ export class ARModelService {
         // 5. Temp Temizlik
         try { fs.rmSync(tempDir, { recursive: true, force: true }); } catch (e) { /* ignore */ }
 
+        // Job status update to APPROVED
+        try {
+            await (this.prisma as any).modelUploadJob.update({ where: { tempId }, data: { status: 'APPROVED' } });
+        } catch {}
+
         return { id: created.id, fileName: created.fileName, message: 'Model saved successfully' };
+    }
+
+    // STATUS API
+    async getUploadStatus(tempId: string) {
+        const job = await (this.prisma as any).modelUploadJob.findUnique({ where: { tempId } });
+        if (!job) throw new NotFoundException('Upload job not found');
+
+        const resp: any = {
+            tempId,
+            status: job.status,
+            progress: job.progress,
+            message: job.message,
+        };
+        if (job.status === 'CONVERTED' && job.glbPath && job.usdzPath) {
+            const glbName = path.basename(job.glbPath);
+            const usdzName = path.basename(job.usdzPath);
+            let glbSize = 0;
+            let usdzSize = 0;
+            try { glbSize = fs.statSync(job.glbPath).size; } catch {}
+            try { usdzSize = fs.statSync(job.usdzPath).size; } catch {}
+            resp.glb = { filename: glbName, url: `/temp/${tempId}/${glbName}`, size: glbSize };
+            resp.usdz = { filename: usdzName, url: `/temp/${tempId}/${usdzName}`, size: usdzSize };
+        }
+        return resp;
+    }
+
+    async listUploadJobs(user: any, companyId?: number, status?: string) {
+        const where: any = {};
+        // SUPER_ADMIN: filter by selected companyId if provided, otherwise own jobs
+        if (user.role === Role.SUPER_ADMIN) {
+            if (companyId) where.companyId = companyId; else where.userId = user.id;
+        } else {
+            // Company roles: list jobs for their company
+            where.companyId = user.companyId;
+        }
+        if (status) where.status = status as any;
+        const jobs = await (this.prisma as any).modelUploadJob.findMany({
+            where,
+            orderBy: { createdAt: 'desc' },
+            select: {
+                tempId: true,
+                type: true,
+                status: true,
+                progress: true,
+                message: true,
+                createdAt: true,
+                updatedAt: true,
+            }
+        });
+        return jobs;
     }
 
     async convertCadToGlb(file: MulterFile): Promise<string> {

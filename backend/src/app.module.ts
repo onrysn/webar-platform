@@ -14,6 +14,7 @@ import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
 import { CategoryModule } from './modules/category/category.module';
 import { ProductSeriesModule } from './modules/product-series/product-series.module';
 import { ShapeModule } from './modules/shape/shape.module';
+import { UploadQueueModule } from './modules/upload-queue/upload-queue.module';
 
 @Module({
   imports: [
@@ -37,7 +38,8 @@ import { ShapeModule } from './modules/shape/shape.module';
     DashboardModule,
     CategoryModule,
     ProductSeriesModule,
-    ShapeModule
+    ShapeModule,
+    UploadQueueModule
   ],
   // --- 3. PROVIDERS KISMI EKLENDİ ---
   providers: [

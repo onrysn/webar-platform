@@ -32,9 +32,12 @@ services:
       SDL_AUDIODRIVER: dummy
       AUDIODEV: null
       CONVERTER_URL: http://converter:3001
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       - postgres
       - converter
+      - redis
     volumes:
       - ./backend:/app
       - /app/node_modules
@@ -59,6 +62,12 @@ services:
     volumes:
       - ./gltf2usdz:/app
       - /app/node_modules
+
+  redis:
+    image: redis:7-alpine
+    restart: always
+    ports:
+      - "6379:6379"
 
   nginx:
     image: nginx:alpine

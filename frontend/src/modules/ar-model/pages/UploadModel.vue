@@ -93,6 +93,15 @@
                      <span class="text-sm">Önizleme hazırlanamadı</span>
                   </div>
                </div>
+            <div v-if="queueStatus?.status && (queueStatus.status === 'QUEUED' || queueStatus.status === 'CONVERTING')" class="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-md text-white px-4 py-3 rounded-lg text-xs font-medium border border-white/10">
+              <div class="flex items-center justify-between">
+                <span>📦 Dönüştürme kuyruğa alındı / işleniyor...</span>
+                <span class="text-blue-300">%{{ Math.round(queueStatus.progress || 0) }}</span>
+              </div>
+              <div class="mt-2 w-full bg-white/10 rounded-full h-2">
+                <div class="bg-blue-500 h-2 rounded-full transition-all" :style="{ width: (queueStatus.progress || 0) + '%' }"></div>
+              </div>
+             </div>
                <div class="absolute top-4 left-4 bg-black/60 backdrop-blur-md text-white px-3 py-1.5 rounded-lg text-xs font-medium border border-white/10 flex items-center gap-2">
                   <svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -152,7 +161,7 @@
                <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                </svg>
-               <p class="text-xs text-amber-800 font-medium">Modeli yayınlayabilmek için hem GLB hem de USDZ dosyasının eksiksiz yüklenmesi gerekmektedir.</p>
+              <p class="text-xs text-amber-800 font-medium">Modeli yayınlayabilmek için hem GLB hem de USDZ dosyasının eksiksiz yüklenmesi gerekmektedir. FBX/STEP yüklediyseniz dönüşüm tamamlandığında aşağıda görünecek.</p>
             </div>
 
             <hr class="border-gray-200 my-4" />
@@ -205,7 +214,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted, watch } from "vue";
+import { ref, computed, onMounted, watch, onBeforeUnmount } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useToast } from "vue-toastification";
 import ArPreview from "../components/ArPreview.vue";
@@ -235,6 +244,8 @@ const progress = ref(0);
 const error = ref<string | null>(null);
 const modelName = ref("");
 const tempData = ref<TempModelResponse | null>(null);
+const queueStatus = ref<{ status?: string; progress?: number; message?: string } | null>(null);
+let statusTimer: number | null = null;
 
 // [YENİ] Şirket Seçimi İçin State
 const companiesList = ref<CompanyDto[]>([]);
@@ -263,6 +274,13 @@ onMounted(async () => {
 
   // Varsayılan şirket bağlamına göre kategori/seri listelerini yükle
   await loadCatalogLists();
+
+  // [YENİ] Eğer URL'de tempId varsa, kuyruğu takip ederek ekrana getir
+  const qTempId = route.query.tempId as string | undefined;
+  if (qTempId) {
+    tempData.value = { tempId: qTempId } as any;
+    startStatusPolling();
+  }
 });
 
 // --- Computed ---
@@ -357,13 +375,15 @@ const processUpload = async (file: File, type: 'auto' | 'glb' | 'usdz') => {
 
     if (ext === 'fbx') {
       if (type !== 'auto') throw new Error("FBX dosyaları sadece ana ekrandan yüklenebilir.");
-      res = await arModelService.uploadFbx(file, (p) => progress.value = p);
+      res = await arModelService.uploadFbx(file, activeCompanyContext.value, (p) => progress.value = p);
       tempData.value = res;
+      startStatusPolling();
     }
     else if (ext === 'step' || ext === 'stp') {
       if (type !== 'auto') throw new Error("STEP dosyaları sadece ana ekrandan yüklenebilir.");
-      res = await arModelService.uploadStep(file, (p) => progress.value = p);
+      res = await arModelService.uploadStep(file, activeCompanyContext.value, (p) => progress.value = p);
       tempData.value = res;
+      startStatusPolling();
     }
     else if (ext === 'glb' || ext === 'gltf') {
       if (type === 'usdz') throw new Error("Lütfen buraya USDZ dosyası yükleyin.");
@@ -408,6 +428,47 @@ const processUpload = async (file: File, type: 'auto' | 'glb' | 'usdz') => {
     if (usdzInput.value) usdzInput.value.value = "";
   }
 };
+
+const startStatusPolling = () => {
+  stopStatusPolling();
+  if (!tempData.value?.tempId) return;
+  queueStatus.value = { status: 'QUEUED', progress: 0 };
+  const tempId = tempData.value.tempId;
+  const tick = async () => {
+    try {
+      const s = await arModelService.getUploadStatus(tempId);
+      queueStatus.value = { status: s.status, progress: s.progress, message: s.message };
+      // when converted, fill glb/usdz and stop
+      if (s.status === 'CONVERTED') {
+        tempData.value = {
+          ...tempData.value!,
+          tempId: s.tempId,
+          glb: s.glb ? { filename: s.glb.filename, url: s.glb.url, path: s.glb.url, size: (s as any).glb?.size || 0 } : tempData.value?.glb,
+          usdz: s.usdz ? { filename: s.usdz.filename, url: s.usdz.url, path: s.usdz.url, size: (s as any).usdz?.size || 0 } : tempData.value?.usdz,
+        };
+        stopStatusPolling();
+        toast.success('Dönüştürme tamamlandı. Lütfen onaylayın.');
+      } else if (s.status === 'ERROR') {
+        stopStatusPolling();
+        error.value = s.message || 'Dönüştürme sırasında hata oluştu.';
+        toast.error(error.value);
+      }
+    } catch (e) {
+      // silently continue; possibly backend not ready
+    }
+  };
+  statusTimer = window.setInterval(tick, 3000);
+  tick();
+};
+
+const stopStatusPolling = () => {
+  if (statusTimer) {
+    clearInterval(statusTimer);
+    statusTimer = null;
+  }
+};
+
+onBeforeUnmount(() => stopStatusPolling());
 
 const finalizeUpload = async () => {
   if (!isReadyToFinalize.value || !tempData.value?.tempId) return;

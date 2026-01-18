@@ -31,6 +31,8 @@ export interface TempModelResponse {
     path: string;
     size: number;
   };
+  status?: 'QUEUED' | 'CONVERTING' | 'CONVERTED' | 'WAITING_APPROVAL' | 'APPROVED' | 'ERROR';
+  progress?: number;
 }
 
 export interface FinalizeModelDto {
@@ -73,4 +75,23 @@ export interface UpdateModelDto {
 export interface ShareTokenResponse {
   shareToken: string;
   url: string;
+}
+
+export interface UploadStatusResponse {
+  tempId: string;
+  status: 'QUEUED' | 'CONVERTING' | 'CONVERTED' | 'WAITING_APPROVAL' | 'APPROVED' | 'ERROR';
+  progress?: number;
+  message?: string;
+  glb?: { filename: string; url: string; size?: number };
+  usdz?: { filename: string; url: string; size?: number };
+}
+
+export interface UploadJobDto {
+  tempId: string;
+  type: 'FBX' | 'STEP' | 'GLB' | 'USDZ' | string;
+  status: 'QUEUED' | 'CONVERTING' | 'CONVERTED' | 'ERROR' | 'APPROVED' | string;
+  progress?: number;
+  message?: string;
+  createdAt: string;
+  updatedAt: string;
 }

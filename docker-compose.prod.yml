@@ -41,9 +41,12 @@ services:
       SDL_AUDIODRIVER: dummy
       AUDIODEV: null
       NODE_ENV: production
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
     depends_on:
       - postgres
       - converter
+      - redis
     volumes:
       - ./uploads:/app/uploads
     labels:
@@ -75,6 +78,12 @@ services:
 
   converter:
     build: ./gltf2usdz
+    restart: always
+    networks:
+      - web
+
+  redis:
+    image: redis:7-alpine
     restart: always
     networks:
       - web

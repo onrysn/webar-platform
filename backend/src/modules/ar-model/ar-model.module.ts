@@ -3,10 +3,12 @@ import { ARModelController } from './ar-model.controller';
 import { ARModelService } from './ar-model.service';
 import { ActivityLogModule } from '../activity-log/activity-log.module';
 import { ARModelSharedController } from './ar-model-shared.controller';
+import { BullModule } from '@nestjs/bullmq';
 
 @Module({
     imports: [
-        ActivityLogModule
+        ActivityLogModule,
+        BullModule.registerQueue({ name: 'model-convert' })
     ],
     controllers: [
         ARModelController,

@@ -25,6 +25,7 @@ import SubscriptionLocked from '../modules/auth/pages/SubscriptionLocked.vue';
 // --- AR MODEL PAGES ---
 import ModelList from '../modules/ar-model/pages/ModelList.vue';
 import UploadModel from '../modules/ar-model/pages/UploadModel.vue';
+import UploadJobs from '../modules/ar-model/pages/UploadJobs.vue';
 import ModelDetail from '../modules/ar-model/pages/ModelDetail.vue';
 
 // --- AR SCENE PAGES ---
@@ -147,6 +148,12 @@ const routes: RouteRecordRaw[] = [
         name: 'UploadModel', 
         component: UploadModel, 
         // Sadece yetkililer yükleme yapabilir
+        meta: { roles: EDITORS_AND_ABOVE } 
+      },
+      { 
+        path: 'ar-model/upload-jobs', 
+        name: 'UploadJobs', 
+        component: UploadJobs, 
         meta: { roles: EDITORS_AND_ABOVE } 
       },
       { 

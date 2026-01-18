@@ -1,5 +1,5 @@
 // src/services/arModelService.ts
-import type { ARModelDto, TempModelResponse, FinalizeModelDto, ModelDetailDto, UpdateModelDto, ShareTokenResponse  } from "../modules/ar-model/dto/arModel.dto";
+import type { ARModelDto, TempModelResponse, FinalizeModelDto, ModelDetailDto, UpdateModelDto, ShareTokenResponse, UploadStatusResponse, UploadJobDto } from "../modules/ar-model/dto/arModel.dto";
 import { apiService } from "./httpService/apiService"; // Axios instance
 import type { AxiosProgressEvent } from "axios";
 
@@ -25,9 +25,10 @@ export const arModelService = {
   // ----------------------------------------------------------------
   
   // FBX Yükleme
-  async uploadFbx(file: File, onProgress?: (percent: number) => void): Promise<TempModelResponse> {
+  async uploadFbx(file: File, companyId?: number, onProgress?: (percent: number) => void): Promise<TempModelResponse> {
     const formData = new FormData();
     formData.append('file', file);
+    if (companyId) formData.append('companyId', String(companyId));
 
     const res = await apiService.post<TempModelResponse>('/ar-model/upload-fbx', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -37,9 +38,10 @@ export const arModelService = {
   },
 
   // STEP Yükleme
-  async uploadStep(file: File, onProgress?: (percent: number) => void): Promise<TempModelResponse> {
+  async uploadStep(file: File, companyId?: number, onProgress?: (percent: number) => void): Promise<TempModelResponse> {
     const formData = new FormData();
     formData.append('file', file);
+    if (companyId) formData.append('companyId', String(companyId));
 
     const res = await apiService.post<TempModelResponse>('/ar-model/upload-step', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
@@ -151,6 +153,21 @@ export const arModelService = {
   // Paylaşımı İptal Et
   async revokeShareToken(id: number): Promise<{ success: boolean; message: string }> {
     const res = await apiService.post<{ success: boolean; message: string }>(`/ar-model/${id}/revoke-token`);
+    return res.data;
+  },
+
+  // Kuyruk Durumu
+  async getUploadStatus(tempId: string): Promise<UploadStatusResponse> {
+    const res = await apiService.get<UploadStatusResponse>('/ar-model/upload-status', { params: { tempId } });
+    return res.data;
+  },
+
+  // Upload job list (queue overview)
+  async listUploadJobs(companyId?: number, status?: string): Promise<UploadJobDto[]> {
+    const params: any = {};
+    if (companyId) params.companyId = companyId;
+    if (status) params.status = status;
+    const res = await apiService.get<UploadJobDto[]>('/ar-model/upload-jobs', { params });
     return res.data;
   },
 
