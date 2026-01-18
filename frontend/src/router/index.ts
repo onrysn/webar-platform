@@ -30,6 +30,10 @@ import ModelDetail from '../modules/ar-model/pages/ModelDetail.vue';
 // --- AR SCENE PAGES ---
 import SceneList from '../modules/ar-scene/pages/SceneList.vue';
 import SceneEditor from '../modules/ar-scene/pages/SceneEditor.vue';
+// --- NEW: Catalog Management Pages ---
+import CategoryList from '../modules/category/pages/CategoryList.vue';
+import SeriesList from '../modules/series/pages/SeriesList.vue';
+import ShapeList from '../modules/shape/pages/ShapeList.vue';
 
 // --- ROL SABİTLERİ ---
 const ROLES = {
@@ -157,6 +161,26 @@ const routes: RouteRecordRaw[] = [
         name: 'SceneList', 
         component: SceneList 
         // Herkes görebilir
+      },
+
+      // 6. Catalog Management
+      {
+        path: 'catalog/categories',
+        name: 'CategoryList',
+        component: CategoryList,
+        meta: { roles: ADMINS_AND_EDITORS }
+      },
+      {
+        path: 'catalog/series',
+        name: 'SeriesList',
+        component: SeriesList,
+        meta: { roles: ADMINS_AND_EDITORS }
+      },
+      {
+        path: 'catalog/shapes',
+        name: 'ShapeList',
+        component: ShapeList,
+        meta: { roles: [ROLES.SUPER_ADMIN] }
       },
     ],
   },

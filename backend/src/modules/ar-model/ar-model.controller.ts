@@ -31,9 +31,13 @@ export class ARModelController {
     @Get('list')
     @ApiOperation({ summary: 'Kullanıcının yetkisine göre modelleri listeler' })
     @ApiQuery({ name: 'companyId', required: false })
+    @ApiQuery({ name: 'categoryId', required: false })
+    @ApiQuery({ name: 'seriesId', required: false })
     async listModels(
         @User() user: CurrentUser,
         @Query('companyId') companyIdQuery: string | null,
+        @Query('categoryId') categoryIdQuery?: string,
+        @Query('seriesId') seriesIdQuery?: string,
     ) {
         const whereClause: any = {};
 
@@ -47,6 +51,9 @@ export class ARModelController {
         if (user.role === Role.MEMBER) {
             whereClause.isPrivate = false; 
         }
+
+        if (categoryIdQuery) whereClause.categoryId = +categoryIdQuery;
+        if (seriesIdQuery) whereClause.seriesId = +seriesIdQuery;
 
         const models = await this.prisma.aRModel.findMany({
             where: whereClause,
@@ -63,6 +70,8 @@ export class ARModelController {
                 // --- YENİ ALANLAR ---
                 isPrivate: true,    // Frontend kilit ikonu koyabilsin
                 shareToken: true,   // Frontend paylaşım ikonunu aktif göstersin
+                categoryId: true,
+                seriesId: true,
             },
         });
 
@@ -81,7 +90,9 @@ export class ARModelController {
             where: { id: +id },
             include: {
                 company: { select: { name: true } },
-                user: { select: { name: true, email: true } }
+                user: { select: { name: true, email: true } },
+                category: { select: { id: true, name: true } },
+                series: { select: { id: true, name: true, code: true } }
             }
         });
 
@@ -102,6 +113,9 @@ export class ARModelController {
             isPrivate: model.isPrivate,
             shareToken: model.shareToken,
             shareUrl: model.shareToken ? `/view/${model.shareToken}` : null,
+            companyId: model.companyId,
+            category: model.category ? { id: model.category.id, name: model.category.name } : null,
+            series: model.series ? { id: model.series.id, name: model.series.name, code: model.series.code } : null,
             files: {
                 glb: { exists: true, size: model.fileSize, format: 'glb' },
                 usdz: { exists: !!model.usdzFilePath, size: model.usdzFileSize || 0, format: 'usdz' }
@@ -239,17 +253,18 @@ export class ARModelController {
             type: 'object',
             properties: {
                 tempId: { type: 'string' },
-                // companyId parametresi opsiyonel hale geldi, çünkü user.companyId kullanacağız
-                companyId: { type: 'number', description: 'Sadece Super Admin başka şirkete yüklerse gerekir' },
+                companyId: { type: 'number', description: 'Sadece Super Admin başka şirkeye yüklerse gerekir' },
                 modelName: { type: 'string', nullable: true },
                 isPrivate: { type: 'boolean', default: false },
+                categoryId: { type: 'number', nullable: true },
+                seriesId: { type: 'number', nullable: true },
                 thumbnail: { type: 'string', format: 'binary' },
             },
             required: ['tempId']
         }
     })
     async finalize(
-        @Body() body: { tempId: string, companyId?: string, modelName?: string, isPrivate?: string | boolean },
+        @Body() body: { tempId: string, companyId?: string, modelName?: string, isPrivate?: string | boolean, categoryId?: string, seriesId?: string },
         @UploadedFile() thumbnail: MulterFile,
         @User() user: CurrentUser
     ) {
@@ -266,13 +281,30 @@ export class ARModelController {
             throw new BadRequestException('Şirket bilgisi bulunamadı.');
         }
 
+        // Parse optional relations safely
+        const categoryId = body.categoryId !== undefined && body.categoryId !== null && body.categoryId !== ''
+            ? Number(body.categoryId)
+            : undefined;
+        const seriesId = body.seriesId !== undefined && body.seriesId !== null && body.seriesId !== ''
+            ? Number(body.seriesId)
+            : undefined;
+
+        if (categoryId !== undefined && Number.isNaN(categoryId)) {
+            throw new BadRequestException('Geçersiz categoryId');
+        }
+        if (seriesId !== undefined && Number.isNaN(seriesId)) {
+            throw new BadRequestException('Geçersiz seriesId');
+        }
+
         return this.arModelService.finalizeTempModel(
             tempId,
             targetCompanyId,
             user.id,
             modelName,
             thumbnail,
-            isPrivate
+            isPrivate,
+            categoryId,
+            seriesId
         );
     }
 
@@ -285,7 +317,7 @@ export class ARModelController {
     @ApiOperation({ summary: 'Modelin adını veya gizlilik durumunu günceller' })
     async updateModel(
         @Param('id') id: number,
-        @Body() body: { name?: string, isPrivate?: boolean },
+        @Body() body: { name?: string, isPrivate?: boolean, categoryId?: number | null, seriesId?: number | null },
         @User() user: CurrentUser
     ) {
         return this.arModelService.updateModel(id, user, body);

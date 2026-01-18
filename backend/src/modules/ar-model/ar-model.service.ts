@@ -234,7 +234,9 @@ export class ARModelService {
         uploadedBy: number,
         modelName?: string,
         thumbnailFile?: MulterFile,
-        isPrivate: boolean = false // Yeni parametre
+        isPrivate: boolean = false,
+        categoryId?: number,
+        seriesId?: number
     ) {
         const tempDir = path.join(this.TEMP_ROOT, tempId);
         if (!fs.existsSync(tempDir)) throw new NotFoundException('Temp folder not found');
@@ -277,7 +279,19 @@ export class ARModelService {
             }
         }
 
-        // 3. DB Kayıt
+        // 3a. Opsiyonel kategori/seri doğrulamaları (şirket uyumu)
+        if (categoryId !== undefined) {
+            const cat = await this.prisma.category.findUnique({ where: { id: categoryId } });
+            if (!cat) throw new BadRequestException('Kategori bulunamadı');
+            if (cat.companyId !== companyId) throw new BadRequestException('Kategori hedef şirket ile uyuşmuyor');
+        }
+        if (seriesId !== undefined) {
+            const ser = await this.prisma.series.findUnique({ where: { id: seriesId } });
+            if (!ser) throw new BadRequestException('Seri bulunamadı');
+            if (ser.companyId !== companyId) throw new BadRequestException('Seri hedef şirket ile uyuşmuyor');
+        }
+
+        // 3b. DB Kayıt
         const fileHash = crypto.createHash('sha256').update(glbBuffer).digest('hex');
         const created = await this.prisma.aRModel.create({
             data: {
@@ -296,7 +310,9 @@ export class ARModelService {
                 usdzAuthTag: usdzAuth.toString('hex'),
                 usdzFileSize: usdzEncrypted.length,
                 thumbnailPath,
-                isPrivate: isPrivate, // <-- DB'ye kaydediliyor
+                isPrivate: isPrivate,
+                categoryId: categoryId,
+                seriesId: seriesId
             },
         });
 
@@ -429,7 +445,7 @@ export class ARModelService {
     }
 
     // --- 2. UPDATE MODEL (YENİ) ---
-    async updateModel(id: number, user: any, data: { name?: string, isPrivate?: boolean }) {
+    async updateModel(id: number, user: any, data: { name?: string, isPrivate?: boolean, categoryId?: number | null, seriesId?: number | null }) {
         const model = await this.prisma.aRModel.findUnique({ where: { id } });
         if (!model) throw new NotFoundException('Model bulunamadı');
 
@@ -442,7 +458,9 @@ export class ARModelService {
             where: { id },
             data: {
                 fileName: data.name || model.fileName,
-                isPrivate: data.isPrivate !== undefined ? data.isPrivate : model.isPrivate
+                isPrivate: data.isPrivate !== undefined ? data.isPrivate : model.isPrivate,
+                categoryId: data.categoryId === undefined ? model.categoryId : data.categoryId,
+                seriesId: data.seriesId === undefined ? model.seriesId : data.seriesId
             }
         });
 

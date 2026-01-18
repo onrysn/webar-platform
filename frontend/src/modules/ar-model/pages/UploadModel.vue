@@ -157,6 +157,28 @@
 
             <hr class="border-gray-200 my-4" />
 
+            <!-- [YENİ] Katalog Alanları (Opsiyonel) -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
+              <h3 class="text-sm font-bold text-gray-800 mb-3">Katalog</h3>
+              <p class="text-[11px] text-gray-500 mb-3">İsteğe bağlı olarak bu modeli bir kategori ve seriye bağlayabilirsiniz.</p>
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1">Kategori (Opsiyonel)</label>
+                  <select v-model="selectedCategoryId" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    <option :value="null">Seçili değil</option>
+                    <option v-for="c in categoriesList" :key="c.id" :value="c.id">{{ c.name }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1">Seri (Opsiyonel)</label>
+                  <select v-model="selectedSeriesId" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                    <option :value="null">Seçili değil</option>
+                    <option v-for="s in seriesList" :key="s.id" :value="s.id">{{ s.name }}<span v-if="s.code"> ({{ s.code }})</span></option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
             <div class="flex flex-col gap-3">
                <button @click="finalizeUpload" :disabled="!isReadyToFinalize || finalizing" class="w-full py-4 px-6 rounded-xl font-bold text-white transition-all duration-200 flex items-center justify-center gap-2 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:transform-none disabled:shadow-none disabled:bg-gray-300 disabled:cursor-not-allowed" :class="isReadyToFinalize ? 'bg-gradient-to-r from-gray-900 to-black hover:from-gray-800 hover:to-gray-900' : 'bg-gray-300'">
                   <svg v-if="finalizing" class="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -183,7 +205,7 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, onMounted } from "vue";
+import { ref, computed, onMounted, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import { useToast } from "vue-toastification";
 import ArPreview from "../components/ArPreview.vue";
@@ -192,6 +214,8 @@ import type { CompanyDto } from "../../companies/dto/company.dto"; // Company DT
 import { arModelService } from "../../../services/arModelService";
 import { companyService } from "../../../services/companyService";
 import { useAuthStore } from "../../../store/modules/auth"; // Auth Store
+import { categoryService, type CategoryDto } from "../../../services/categoryService";
+import { seriesService, type SeriesDto } from "../../../services/seriesService";
 
 const route = useRoute();
 const router = useRouter();
@@ -216,6 +240,12 @@ const tempData = ref<TempModelResponse | null>(null);
 const companiesList = ref<CompanyDto[]>([]);
 const selectedCompanyId = ref<number | null>(null);
 
+// [YENİ] Katalog Seçimleri (Opsiyonel)
+const categoriesList = ref<CategoryDto[]>([]);
+const seriesList = ref<SeriesDto[]>([]);
+const selectedCategoryId = ref<number | null>(null);
+const selectedSeriesId = ref<number | null>(null);
+
 // --- Multi-tenant (SaaS) ID Yönetimi ---
 const targetCompanyId = computed(() => route.query.companyId ? Number(route.query.companyId) : undefined);
 const isSuperAdmin = computed(() => authStore.user?.role === 'SUPER_ADMIN');
@@ -230,6 +260,9 @@ onMounted(async () => {
       toast.error("Şirket listesi yüklenirken hata oluştu.");
     }
   }
+
+  // Varsayılan şirket bağlamına göre kategori/seri listelerini yükle
+  await loadCatalogLists();
 });
 
 // --- Computed ---
@@ -242,6 +275,27 @@ const previewUrl = computed(() => {
 
 const isReadyToFinalize = computed(() => {
   return tempData.value && tempData.value.glb && tempData.value.usdz;
+});
+
+// Aktif şirket bağlamını hesapla (Super Admin seçim → route companyId → kullanıcının şirketi)
+const activeCompanyContext = computed<number | undefined>(() => {
+  return selectedCompanyId.value || targetCompanyId.value || authStore.user?.companyId || undefined;
+});
+
+// Katalog listelerini şirket değişince güncelle
+const loadCatalogLists = async () => {
+  try {
+    const ctx = activeCompanyContext.value;
+    categoriesList.value = await categoryService.list(ctx);
+    seriesList.value = await seriesService.list(ctx);
+  } catch (err) {
+    console.warn('Kategori/seri listeleri yüklenemedi', err);
+  }
+};
+
+// Şirket seçimi değişince katalog listelerini yenile
+watch(() => activeCompanyContext.value, async () => {
+  await loadCatalogLists();
 });
 
 // --- Helper Functions ---
@@ -376,7 +430,10 @@ const finalizeUpload = async () => {
       tempId: tempData.value.tempId,
       companyId: finalCompanyId, // [YENİ] Seçilen ID'yi gönder
       modelName: modelName.value,
-      thumbnail: thumbnailBlob
+      thumbnail: thumbnailBlob,
+      // [YENİ] Opsiyonel katalog alanları
+      categoryId: selectedCategoryId.value === null ? undefined : selectedCategoryId.value || undefined,
+      seriesId: selectedSeriesId.value === null ? undefined : selectedSeriesId.value || undefined,
     });
 
     toast.success("Model ve thumbnail başarıyla yayınlandı!");

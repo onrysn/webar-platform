@@ -11,8 +11,11 @@ export const arModelService = {
   // ----------------------------------------------------------------
   // 1. LİSTELEME
   // ----------------------------------------------------------------
-  async listModels(companyId?: number): Promise<ARModelDto[]> {
-    const params = companyId ? { companyId } : {};
+  async listModels(companyId?: number, filters?: { categoryId?: number; seriesId?: number }): Promise<ARModelDto[]> {
+    const params: any = {};
+    if (companyId) params.companyId = companyId;
+    if (filters?.categoryId) params.categoryId = filters.categoryId;
+    if (filters?.seriesId) params.seriesId = filters.seriesId;
     const res = await apiService.get<ARModelDto[]>('/ar-model/list', { params });
     return res.data;
   },
@@ -94,6 +97,13 @@ export const arModelService = {
 
     if (data.thumbnail) {
       formData.append('thumbnail', data.thumbnail, 'thumbnail.png');
+    }
+
+    if (data.categoryId !== undefined) {
+      formData.append('categoryId', String(data.categoryId));
+    }
+    if (data.seriesId !== undefined) {
+      formData.append('seriesId', String(data.seriesId));
     }
 
     const res = await apiService.post<ARModelDto>('/ar-model/finalize', formData, {

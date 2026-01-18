@@ -23,6 +23,19 @@ enum Role {
   MEMBER         // Sadece İzleyici
 }
 
+enum ShapeCategory {
+  BASIC        // Temel şekiller (kare, daire, üçgen)
+  GEOMETRIC    // Geometrik şekiller (beşgen, altıgen)
+  ARCHITECTURAL // Mimari (L şekli, merdiven, kolon)
+  ARROWS       // Oklar
+  SYMBOLS      // Semboller (onay, uyarı, bilgi)
+  CONTROLS     // Kontroller (play, pause)
+  ICONS        // İkonlar (kullanıcı, kalp, ev)
+  NATURE       // Doğa (yaprak, su, ateş)
+  OBJECTS      // Nesneler (kutu, kilit, kamera)
+  CUSTOM       // Özel şekiller
+}
+
 model User {
   id           Int      @id @default(autoincrement())
   name         String
@@ -54,10 +67,13 @@ model Company {
 
   isActive           Boolean   @default(true)
   subscriptionEndsAt DateTime?
+  maxStorage    Int?     // MB cinsinden
 
   users     User[]  
   arModels  ARModel[]    
   scenes    ARScene[] 
+  categories    Category[]
+  series        Series[]
   activities ActivityLog[]  
 }
 
@@ -84,6 +100,12 @@ model ARModel {
 
   isPrivate     Boolean  @default(false)
   shareToken    String?  @unique
+
+  categoryId    Int?
+  category      Category? @relation(fields: [categoryId], references: [id])
+  
+  seriesId      Int?
+  series        Series?   @relation(fields: [seriesId], references: [id])
 
   company       Company  @relation(fields: [companyId], references: [id])
   user          User     @relation(fields: [uploadedBy], references: [id])
@@ -129,6 +151,8 @@ model SceneItem {
 
   scene          ARScene  @relation(fields: [sceneId], references: [id], onDelete: Cascade)
   model          ARModel  @relation(fields: [modelId], references: [id])
+  
+  @@index([modelId])
 }
 
 model FloorTexture {
@@ -158,4 +182,76 @@ model ActivityLog {
   @@index([userId])
   @@index([companyId])
   @@index([createdAt])
+}
+
+model Category {
+  id          Int       @id @default(autoincrement())
+  name        String
+  description String?
+  parentId    Int?      // Alt kategoriler için
+  parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryHierarchy")
+  
+  companyId   Int
+  company     Company   @relation(fields: [companyId], references: [id])
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  isDeleted   Boolean   @default(false)
+  
+  models      ARModel[]
+  
+  @@index([companyId])
+  @@index([parentId])
+}
+
+model Series {
+  id          Int      @id @default(autoincrement())
+  name        String
+  code        String?  // Seri kodu (örn: "S2024-01")
+  description String?
+  
+  companyId   Int
+  company     Company  @relation(fields: [companyId], references: [id])
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isDeleted   Boolean  @default(false)
+  
+  models      ARModel[]
+  
+  @@index([companyId])
+}
+
+model Shape {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique // 'rect', 'circle', vs.
+  
+  // Görsel Bilgiler
+  icon        String   // '⬛', '⚪', vs.
+  svgPath     String   @db.Text // SVG path data
+  
+  // Çoklu Dil Desteği
+  labelTR     String   // 'Kare/Dikdörtgen'
+  labelEN     String?  // 'Square/Rectangle'
+  descTR      String?  // Opsiyonel açıklama
+  descEN      String?
+  
+  // Kategorileme
+  category    ShapeCategory @default(BASIC)
+  tags        String[]      // ['mimari', 'geometrik']
+  
+  // Görünürlük & Sıralama
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  
+  // İstatistikler
+  usageCount  Int      @default(0)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  isDeleted   Boolean  @default(false)
+  
+  @@index([category])
+  @@index([isActive, sortOrder])
 }

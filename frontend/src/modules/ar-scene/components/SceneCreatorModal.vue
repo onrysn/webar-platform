@@ -219,11 +219,11 @@
                         <div v-if="activeTool"
                             class="bg-slate-900 text-white p-3 rounded-xl flex gap-3 items-center shadow-lg animate-in fade-in slide-in-from-bottom-2">
                             <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-lg">
-                                {{SHAPE_LIBRARY.find(t => t.id === activeTool)?.icon}}
+                                {{shapeLibrary.find(t => t.id === activeTool)?.icon}}
                             </div>
                             <div class="flex-1">
                                 <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mod Aktif</p>
-                                <p class="text-xs font-bold">{{SHAPE_LIBRARY.find(t => t.id === activeTool)?.label}}
+                                <p class="text-xs font-bold">{{shapeLibrary.find(t => t.id === activeTool)?.label}}
                                     çiziliyor...</p>
                             </div>
                             <button @click="cancelTool" class="text-slate-400 hover:text-white px-2">✕</button>
@@ -712,90 +712,16 @@ interface FloorLayer {
 }
 
 // --- SABİTLER ---
-const SHAPE_LIBRARY = [
-    // ==========================================
-    // 1. TEMEL GEOMETRİ (BASIC GEOMETRY)
-    // ==========================================
-    { id: 'rect', label: 'Kare/Dikdörtgen', icon: '⬛', path: 'M -0.5 -0.5 L 0.5 -0.5 L 0.5 0.5 L -0.5 0.5 Z' },
-    { id: 'circle', label: 'Daire', icon: '⚪', path: 'M 0 0 m -0.5 0 a 0.5 0.5 0 1 0 1 0 a 0.5 0.5 0 1 0 -1 0' },
-    { id: 'triangle', label: 'Üçgen', icon: '🔺', path: 'M 0 -0.5 L 0.5 0.5 L -0.5 0.5 Z' },
-    { id: 'right-triangle', label: 'Dik Üçgen', icon: '📐', path: 'M -0.5 -0.5 L 0.5 0.5 L -0.5 0.5 Z' },
-    { id: 'diamond', label: 'Eşkenar Dörtgen', icon: '🔶', path: 'M 0 -0.5 L 0.5 0 L 0 0.5 L -0.5 0 Z' },
-    { id: 'trapezoid', label: 'Yamuk', icon: '⏢', path: 'M -0.3 -0.5 L 0.3 -0.5 L 0.5 0.5 L -0.5 0.5 Z' },
-    { id: 'parallelogram', label: 'Paralelkenar', icon: '▰', path: 'M -0.5 -0.5 L 0.3 -0.5 L 0.5 0.5 L -0.3 0.5 Z' },
-    { id: 'pentagon', label: 'Beşgen', icon: '⬠', path: 'M 0 -0.5 L 0.48 -0.15 L 0.29 0.45 L -0.29 0.45 L -0.48 -0.15 Z' },
-    { id: 'hexagon', label: 'Altıgen', icon: '🛑', path: 'M -0.25 -0.43 L 0.25 -0.43 L 0.5 0 L 0.25 0.43 L -0.25 0.43 L -0.5 0 Z' },
-    { id: 'octagon', label: 'Sekizgen', icon: '✴️', path: 'M -0.2 -0.5 L 0.2 -0.5 L 0.5 -0.2 L 0.5 0.2 L 0.2 0.5 L -0.2 0.5 L -0.5 0.2 L -0.5 -0.2 Z' },
-    { id: 'star-5', label: 'Yıldız (5)', icon: '⭐', path: 'M 0 -0.5 L 0.11 -0.15 L 0.47 -0.15 L 0.18 0.06 L 0.29 0.4 L 0 0.19 L -0.29 0.4 L -0.18 0.06 L -0.47 -0.15 L -0.11 -0.15 Z' },
-    { id: 'star-4', label: 'Yıldız (4)', icon: '✨', path: 'M 0 -0.5 Q 0.1 -0.1 0.5 0 Q 0.1 0.1 0 0.5 Q -0.1 0.1 -0.5 0 Q -0.1 -0.1 0 -0.5 Z' },
-    { id: 'donut', label: 'Halka', icon: '⭕', path: 'M 0 0 m -0.5 0 a 0.5 0.5 0 1 0 1 0 a 0.5 0.5 0 1 0 -1 0 M 0 0 m -0.3 0 a 0.3 0.3 0 1 1 0.6 0 a 0.3 0.3 0 1 1 -0.6 0' },
-    { id: 'plus', label: 'Artı', icon: '➕', path: 'M -0.15 -0.5 L 0.15 -0.5 L 0.15 -0.15 L 0.5 -0.15 L 0.5 0.15 L 0.15 0.15 L 0.15 0.5 L -0.15 0.5 L -0.15 0.15 L -0.5 0.15 L -0.5 -0.15 L -0.15 -0.15 Z' },
-    { id: 'cross', label: 'Çarpı', icon: '❌', path: 'M -0.4 -0.3 L -0.3 -0.4 L 0 -0.1 L 0.3 -0.4 L 0.4 -0.3 L 0.1 0 L 0.4 0.3 L 0.3 0.4 L 0 0.1 L -0.3 0.4 L -0.4 0.3 L -0.1 0 Z' },
-
-    // ==========================================
-    // 2. MİMARİ & YAPI (ARCHITECTURE)
-    // ==========================================
-    { id: 'l-shape', label: 'L Köşe', icon: 'L', path: 'M -0.5 -0.5 L 0.5 -0.5 L 0.5 -0.1 L -0.1 -0.1 L -0.1 0.5 L -0.5 0.5 Z' },
-    { id: 't-shape', label: 'T Profil', icon: 'T', path: 'M -0.5 -0.5 L 0.5 -0.5 L 0.5 -0.15 L 0.15 -0.15 L 0.15 0.5 L -0.15 0.5 L -0.15 -0.15 L -0.5 -0.15 Z' },
-    { id: 'u-shape', label: 'U Profil', icon: '∪', path: 'M -0.5 -0.5 L -0.15 -0.5 L -0.15 0.15 L 0.15 0.15 L 0.15 -0.5 L 0.5 -0.5 L 0.5 0.5 L -0.5 0.5 Z' },
-    { id: 'stairs', label: 'Merdiven', icon: '📶', path: 'M -0.5 0.5 L -0.5 -0.5 L -0.2 -0.5 L -0.2 -0.2 L 0.1 -0.2 L 0.1 0.1 L 0.4 0.1 L 0.4 0.5 Z' },
-    { id: 'door', label: 'Kapı Yayı', icon: '🚪', path: 'M -0.5 0.5 L -0.5 -0.5 L -0.4 -0.5 L -0.4 0.5 Z M -0.4 -0.5 A 1 1 0 0 1 0.6 0.5 L 0.5 0.5 A 0.9 0.9 0 0 0 -0.4 -0.4 Z' },
-    { id: 'arc-wall', label: 'Yay Duvar', icon: '🌈', path: 'M -0.5 0.5 L -0.5 0.2 A 0.5 0.5 0 0 1 0.5 0.2 L 0.5 0.5 L 0.2 0.5 A 0.2 0.2 0 0 0 -0.2 0.5 Z' },
-    { id: 'pillar', label: 'Kolon', icon: '🏛️', path: 'M -0.3 -0.5 L 0.3 -0.5 L 0.3 -0.4 L 0.2 -0.4 L 0.2 0.4 L 0.3 0.4 L 0.3 0.5 L -0.3 0.5 L -0.3 0.4 L -0.2 0.4 L -0.2 -0.4 L -0.3 -0.4 Z' },
-
-    // ==========================================
-    // 3. YÖNLENDİRME & OKLAR (ARROWS)
-    // ==========================================
-    { id: 'arrow-up', label: 'İleri Ok', icon: '⬆️', path: 'M -0.15 0.5 L -0.15 -0.1 L -0.4 -0.1 L 0 -0.5 L 0.4 -0.1 L 0.15 -0.1 L 0.15 0.5 Z' },
-    { id: 'arrow-down', label: 'Geri Ok', icon: '⬇️', path: 'M -0.15 -0.5 L -0.15 0.1 L -0.4 0.1 L 0 0.5 L 0.4 0.1 L 0.15 0.1 L 0.15 -0.5 Z' },
-    { id: 'arrow-left', label: 'Sola Ok', icon: '⬅️', path: 'M 0.5 -0.15 L -0.1 -0.15 L -0.1 -0.4 L -0.5 0 L -0.1 0.4 L -0.1 0.15 L 0.5 0.15 Z' },
-    { id: 'arrow-right', label: 'Sağa Ok', icon: '➡️', path: 'M -0.5 -0.15 L 0.1 -0.15 L 0.1 -0.4 L 0.5 0 L 0.1 0.4 L 0.1 0.15 L -0.5 0.15 Z' },
-    { id: 'arrow-double-v', label: 'Dikey Çift', icon: '↕️', path: 'M -0.15 -0.2 L -0.4 -0.2 L 0 -0.5 L 0.4 -0.2 L 0.15 -0.2 L 0.15 0.2 L 0.4 0.2 L 0 0.5 L -0.4 0.2 L -0.15 0.2 Z' },
-    { id: 'arrow-double-h', label: 'Yatay Çift', icon: '↔️', path: 'M -0.2 -0.15 L -0.2 -0.4 L -0.5 0 L -0.2 0.4 L -0.2 0.15 L 0.2 0.15 L 0.2 0.4 L 0.5 0 L 0.2 -0.4 L 0.2 -0.15 Z' },
-    { id: 'chevron-up', label: 'Yön (Chevron)', icon: '⏫', path: 'M -0.5 -0.1 L 0 -0.5 L 0.5 -0.1 L 0.5 0.2 L 0 -0.2 L -0.5 0.2 Z M -0.5 0.2 L 0 -0.2 L 0.5 0.2 L 0.5 0.5 L 0 0.1 L -0.5 0.5 Z' },
-    { id: 'u-turn-left', label: 'U Dönüşü', icon: '↩️', path: 'M 0.2 0.5 L 0.2 -0.1 A 0.2 0.2 0 0 0 -0.2 -0.1 L -0.2 0.1 L 0 0.1 L -0.35 0.5 L -0.7 0.1 L -0.5 0.1 L -0.5 -0.1 A 0.5 0.5 0 0 1 0.5 -0.1 L 0.5 0.5 Z' },
-    { id: 'curve-arrow', label: 'Dönüş', icon: '⤴️', path: 'M -0.4 0.4 L -0.4 0 A 0.4 0.4 0 0 1 0 -0.4 L 0.1 -0.4 L 0.1 -0.55 L 0.5 -0.25 L 0.1 0.05 L 0.1 -0.1 L 0 -0.1 A 0.1 0.1 0 0 0 -0.1 0 L -0.1 0.4 Z' },
-
-    // ==========================================
-    // 4. ARAYÜZ & İKONLAR (UI & ICONS)
-    // ==========================================
-    { id: 'check', label: 'Onay', icon: '✅', path: 'M -0.4 0 L -0.15 0.25 L 0.4 -0.3 L 0.3 -0.4 L -0.15 0.05 L -0.3 -0.1 Z' },
-    { id: 'info', label: 'Bilgi', icon: 'ℹ️', path: 'M -0.1 -0.1 L 0.1 -0.1 L 0.1 0.4 L -0.1 0.4 Z M 0 -0.4 A 0.1 0.1 0 1 1 0 -0.2 A 0.1 0.1 0 1 1 0 -0.4 Z' },
-    { id: 'warning', label: 'Uyarı', icon: '⚠️', path: 'M 0 -0.5 L 0.45 0.35 L -0.45 0.35 Z M -0.05 -0.1 L 0.05 -0.1 L 0.05 0.15 L -0.05 0.15 Z M -0.05 0.2 L 0.05 0.2 L 0.05 0.3 L -0.05 0.3 Z' },
-    { id: 'question', label: 'Soru', icon: '❓', path: 'M -0.1 0.2 L 0.1 0.2 L 0.1 0.4 L -0.1 0.4 Z M -0.2 -0.1 L -0.1 -0.1 C -0.1 0.1 0.1 0.1 0.1 -0.1 C 0.1 -0.3 -0.2 -0.3 -0.2 -0.5 C -0.2 -0.8 0.4 -0.8 0.4 -0.5 L 0.2 -0.5 C 0.2 -0.6 -0.0 -0.6 -0.0 -0.5 C -0.0 -0.4 0.2 -0.3 0.2 -0.1 C 0.2 0.3 -0.2 0.1 -0.2 0.1 Z' },
-    { id: 'pause', label: 'Duraklat', icon: '⏸️', path: 'M -0.3 -0.4 L -0.1 -0.4 L -0.1 0.4 L -0.3 0.4 Z M 0.1 -0.4 L 0.3 -0.4 L 0.3 0.4 L 0.1 0.4 Z' },
-    { id: 'play', label: 'Oynat', icon: '▶️', path: 'M -0.2 -0.4 L 0.4 0 L -0.2 0.4 Z' },
-    { id: 'stop', label: 'Dur', icon: '⏹️', path: 'M -0.4 -0.4 L 0.4 -0.4 L 0.4 0.4 L -0.4 0.4 Z' },
-    { id: 'menu', label: 'Menü', icon: '☰', path: 'M -0.4 -0.4 L 0.4 -0.4 L 0.4 -0.2 L -0.4 -0.2 Z M -0.4 -0.1 L 0.4 -0.1 L 0.4 0.1 L -0.4 0.1 Z M -0.4 0.2 L 0.4 0.2 L 0.4 0.4 L -0.4 0.4 Z' },
-
-    // ==========================================
-    // 5. YER & LOKASYON (LOCATION)
-    // ==========================================
-    { id: 'pin', label: 'Konum/Pin', icon: '📍', path: 'M 0 -0.5 A 0.3 0.3 0 1 1 0 0.1 L 0 0.5 L 0 0.1 A 0.3 0.3 0 1 1 0 -0.5 Z M 0 -0.35 A 0.1 0.1 0 1 0 0 -0.15 A 0.1 0.1 0 1 0 0 -0.35 Z' },
-    { id: 'home', label: 'Ev', icon: '🏠', path: 'M 0 -0.5 L 0.5 -0.1 L 0.4 -0.1 L 0.4 0.5 L 0.1 0.5 L 0.1 0.1 L -0.1 0.1 L -0.1 0.5 L -0.4 0.5 L -0.4 -0.1 L -0.5 -0.1 Z' },
-    { id: 'flag', label: 'Bayrak', icon: '🚩', path: 'M -0.4 -0.5 L -0.4 0.5 L -0.3 0.5 L -0.3 0 L 0.4 -0.25 L -0.3 -0.5 Z' },
-    { id: 'map', label: 'Harita', icon: '🗺️', path: 'M -0.5 -0.4 L -0.2 -0.5 L 0.2 -0.4 L 0.5 -0.5 L 0.5 0.4 L 0.2 0.5 L -0.2 0.4 L -0.5 0.5 Z M -0.2 -0.5 L -0.2 0.4 M 0.2 -0.4 L 0.2 0.5' },
-
-    // ==========================================
-    // 6. GÜNLÜK NESNELER & EMOJİLER (OBJECTS)
-    // ==========================================
-    { id: 'user', label: 'Kullanıcı', icon: '👤', path: 'M 0 -0.4 A 0.2 0.2 0 1 1 0 0 A 0.2 0.2 0 1 1 0 -0.4 Z M -0.4 0.5 A 0.4 0.4 0 0 1 0.4 0.5 L -0.4 0.5 Z' },
-    { id: 'heart', label: 'Kalp', icon: '❤️', path: 'M 0 0.2 C 0.1 -0.1 0.5 -0.4 0.5 -0.15 C 0.5 0.1 0.1 0.3 0 0.5 C -0.1 0.3 -0.5 0.1 -0.5 -0.15 C -0.5 -0.4 -0.1 -0.1 0 0.2 Z' },
-    { id: 'lightning', label: 'Şimşek', icon: '⚡', path: 'M 0.1 -0.5 L -0.3 0 L 0 0 L -0.1 0.5 L 0.3 0 L 0 0 Z' },
-    { id: 'cloud', label: 'Bulut', icon: '☁️', path: 'M -0.2 0.2 L 0.2 0.2 A 0.15 0.15 0 0 0 0.2 -0.1 A 0.2 0.2 0 0 0 -0.2 -0.1 A 0.15 0.15 0 0 0 -0.2 0.2 Z' },
-    { id: 'moon', label: 'Hilal', icon: '🌙', path: 'M 0.1 -0.4 A 0.4 0.4 0 1 1 0.1 0.4 A 0.3 0.3 0 1 0 0.1 -0.4 Z' },
-    { id: 'sun', label: 'Güneş', icon: '☀️', path: 'M 0 0 m -0.2 0 a 0.2 0.2 0 1 0 0.4 0 a 0.2 0.2 0 1 0 -0.4 0 M 0 -0.3 L 0 -0.45 M 0.21 -0.21 L 0.32 -0.32 M 0.3 0 L 0.45 0 M 0.21 0.21 L 0.32 0.32 M 0 0.3 L 0 0.45 M -0.21 0.21 L -0.32 0.32 M -0.3 0 L -0.45 0 M -0.21 -0.21 L -0.32 -0.32' }, // Rays as lines, SVG loader handles strokes if specified or simplified
-    { id: 'drop', label: 'Su Damlası', icon: '💧', path: 'M 0 -0.5 Q 0.4 0 0.4 0.25 A 0.4 0.4 0 1 1 -0.4 0.25 Q -0.4 0 0 -0.5 Z' },
-    { id: 'fire', label: 'Ateş', icon: '🔥', path: 'M 0 -0.5 Q 0.4 0 0.3 0.3 A 0.3 0.3 0 1 1 -0.3 0.3 Q -0.4 0 0 -0.5 Z M 0 0 Q 0.1 0.2 0 0.4 Q -0.1 0.2 0 0 Z' },
-    { id: 'leaf', label: 'Yaprak', icon: '🍃', path: 'M -0.4 0.4 Q -0.4 -0.4 0.4 -0.4 Q 0.4 0.4 -0.4 0.4 Z M -0.4 0.4 L 0.2 -0.2' },
-    { id: 'box', label: 'Kutu', icon: '📦', path: 'M -0.4 -0.3 L 0.4 -0.3 L 0.4 0.4 L -0.4 0.4 Z M -0.4 -0.3 L -0.5 -0.5 L 0.5 -0.5 L 0.4 -0.3 M 0 -0.3 L 0 0.4' },
-    { id: 'lock', label: 'Kilit', icon: '🔒', path: 'M -0.3 0 L 0.3 0 L 0.3 0.5 L -0.3 0.5 Z M -0.2 0 L -0.2 -0.2 A 0.2 0.2 0 1 1 0.2 -0.2 L 0.2 0 Z' },
-    { id: 'key', label: 'Anahtar', icon: '🔑', path: 'M -0.3 -0.3 A 0.2 0.2 0 1 1 -0.1 -0.1 L 0.4 0.4 L 0.4 0.5 L 0.3 0.5 L 0.3 0.4 L 0.2 0.4 L 0.2 0.3 L -0.1 -0.1 Z M -0.25 -0.25 A 0.05 0.05 0 1 0 -0.2 -0.2 Z' },
-    { id: 'tool', label: 'Tamir/Ayarlar', icon: '🔧', path: 'M -0.4 -0.2 L -0.2 -0.4 L 0.4 0.2 L 0.2 0.4 Z M -0.5 -0.5 L -0.3 -0.5 L -0.3 -0.3 L -0.5 -0.3 Z' }, // Simplified Wrench
-    { id: 'camera', label: 'Kamera', icon: '📷', path: 'M -0.4 -0.2 L -0.1 -0.2 L 0 -0.3 L 0.3 -0.3 L 0.4 -0.2 L 0.4 0.3 L -0.4 0.3 Z M 0 0.05 A 0.15 0.15 0 1 0 0 0.06 Z' },
-    { id: 'mail', label: 'Mektup', icon: '✉️', path: 'M -0.5 -0.3 L 0.5 -0.3 L 0.5 0.3 L -0.5 0.3 Z M -0.5 -0.3 L 0 0.1 L 0.5 -0.3' },
-    { id: 'bubble', label: 'Balon', icon: '💬', path: 'M -0.5 -0.3 L 0.5 -0.3 L 0.5 0.2 L 0.1 0.2 L -0.2 0.5 L -0.2 0.2 L -0.5 0.2 Z' }
-];
+// --- NEW: Dynamic Shape Library from backend ---
+import { shapesStore } from '../../../store/modules/shapes';
+import type { ShapeDto } from '../../../services/shapeService';
+const shapeLibrary = computed(() => shapesStore.items.map(s => ({ id: s.code, label: s.labelTR || s.labelEN || s.code, icon: s.icon, path: s.svgPath, category: s.category })));
+// Ensure shapes are loaded when component mounts
+onMounted(async () => {
+    if (!shapesStore.items || shapesStore.items.length === 0) {
+        try { await shapesStore.fetch(undefined, true); } catch (e) { /* silent */ }
+    }
+});
 
 const shapes = [
     { id: 'rectangle', label: 'Dikdörtgen', icon: '⬛' },
@@ -804,14 +730,11 @@ const shapes = [
     { id: 'custom', label: 'Serbest', icon: '✏️' }
 ];
 
-const toolCategories = [
-    { id: 'all', label: 'Tümü' },
-    { id: 'basic', label: 'Temel', ids: ['rect', 'circle', 'triangle', 'right-triangle', 'diamond', 'trapezoid', 'parallelogram', 'pentagon', 'hexagon', 'octagon', 'star-5', 'star-4', 'donut', 'plus', 'cross'] },
-    { id: 'arch', label: 'Mimari', ids: ['l-shape', 't-shape', 'u-shape', 'stairs', 'door', 'arc-wall', 'pillar'] },
-    { id: 'arrow', label: 'Oklar', ids: ['arrow-up', 'arrow-down', 'arrow-left', 'arrow-right', 'arrow-double-v', 'arrow-double-h', 'chevron-up', 'u-turn-left', 'curve-arrow'] },
-    { id: 'icon', label: 'İkonlar', ids: ['check', 'info', 'warning', 'question', 'pause', 'play', 'stop', 'menu', 'user', 'heart', 'lightning', 'cloud', 'moon', 'sun', 'drop', 'fire', 'leaf', 'box', 'lock', 'key', 'tool', 'camera', 'mail', 'bubble'] },
-    { id: 'loc', label: 'Konum', ids: ['pin', 'home', 'flag', 'map'] }
-];
+const toolCategories = computed(() => {
+    const cats = new Set<string>();
+    shapesStore.items.forEach(s => cats.add(s.category));
+    return [{ id: 'all', label: 'Tümü' }, ...Array.from(cats).map(c => ({ id: c.toLowerCase(), label: c }))];
+});
 
 const props = defineProps<{ isOpen: boolean; mode: 'create' | 'edit'; initialData?: any; }>();
 const emit = defineEmits(['close', 'save']);
@@ -835,12 +758,9 @@ const libraryTools = computed(() => {
     const q = toolSearch.value.trim().toLowerCase();
 
     // Önce kategoriye göre filtrele
-    let list = SHAPE_LIBRARY;
+    let list = shapeLibrary.value;
     if (activeCategory.value !== 'all') {
-        const cat = toolCategories.find(c => c.id === activeCategory.value);
-        if (cat) {
-            list = SHAPE_LIBRARY.filter(t => cat.ids?.includes(t.id));
-        }
+        list = list.filter(t => t.category?.toLowerCase() === activeCategory.value);
     }
 
     // Sonra aramaya göre filtrele
@@ -848,7 +768,7 @@ const libraryTools = computed(() => {
     return list.filter(t => t.label.toLowerCase().includes(q));
 });
 
-const quickAccessTools = computed(() => SHAPE_LIBRARY.slice(0, 8));
+const quickAccessTools = computed(() => shapeLibrary.value.slice(0, 8));
 
 const updateSheetMax = () => { sheetMaxHeight = Math.round(window.innerHeight - 96); if (sheetHeight.value > sheetMaxHeight) sheetHeight.value = sheetMaxHeight; };
 
@@ -1036,6 +956,10 @@ watch(() => props.isOpen, (open) => {
             // animate in
             isShowing.value = true;
         });
+        // Load shapes when opening if not present
+        if (!shapesStore.items || shapesStore.items.length === 0) {
+            shapesStore.fetch(undefined, true).catch(() => {});
+        }
     } else {
         isShowing.value = false;
         document.body.style.overflow = '';
@@ -1184,7 +1108,7 @@ const cancelTool = () => {
 };
 
 const getShapePath = (shapeId: string) => {
-    return SHAPE_LIBRARY.find(s => s.id === shapeId)?.path || '';
+    return shapeLibrary.value.find(s => s.id === shapeId)?.path || '';
 };
 
 // MOUSE EVENT: Down (Container)
@@ -1196,7 +1120,7 @@ const handleMouseDown = (e: MouseEvent) => {
         drawStartPos.x = mousePos.x;
         drawStartPos.z = mousePos.z;
 
-        const shapeDef = SHAPE_LIBRARY.find(s => s.id === activeTool.value);
+        const shapeDef = shapeLibrary.value.find(s => s.id === activeTool.value);
         const newLayer: FloorLayer = {
             id: crypto.randomUUID(),
             shapeId: activeTool.value,

@@ -115,6 +115,31 @@
               <div class="absolute inset-0 opacity-10 pointer-events-none"
                 style="background-image: radial-gradient(#000 1px, transparent 1px); background-size: 20px 20px;"></div>
 
+              <!-- Privacy & Share badges -->
+              <div class="absolute top-3 left-3 z-20 flex items-center gap-1">
+                <span v-if="scene.isPrivate"
+                  class="px-2 py-1 text-[10px] font-bold rounded-lg bg-slate-100/90 text-slate-700 border border-slate-200 flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11V7a4 4 0 10-8 0v4m12 0V7a4 4 0 10-8 0v4m-2 0h12v8a2 2 0 01-2 2H6a2 2 0 01-2-2v-8z" />
+                  </svg>
+                  Gizli
+                </span>
+                <span v-else
+                  class="px-2 py-1 text-[10px] font-bold rounded-lg bg-green-100/90 text-green-700 border border-green-200 flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a10 10 0 100 20 10 10 0 000-20zm4.5 6.5L10 15l-2.5-2.5" />
+                  </svg>
+                  Açık
+                </span>
+                <span v-if="scene.shareToken"
+                  class="px-2 py-1 text-[10px] font-bold rounded-lg bg-indigo-100/90 text-indigo-700 border border-indigo-200 flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 015.657 0l.343.343a4 4 0 010 5.657l-3.536 3.536a4 4 0 01-5.657 0l-.343-.343M10.172 13.828a4 4 0 010-5.657l3.536-3.536a4 4 0 015.657 0l.343.343" />
+                  </svg>
+                  Paylaşıldı
+                </span>
+              </div>
+
               <div class="absolute inset-0 flex items-center justify-center">
                 <div v-if="scene.settings?.floorTextureUrl"
                   class="w-24 h-24 shadow-2xl transform rotate-45 border-4 border-white/30 bg-cover bg-center rounded-xl transition-transform group-hover:scale-110 duration-500"

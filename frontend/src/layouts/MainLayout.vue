@@ -19,6 +19,7 @@
           </svg>
         </button>
       </div>
+      
 
       <nav class="flex-1 flex flex-col space-y-6 px-3 py-6 overflow-y-auto custom-scrollbar">
         <div v-for="(group, index) in navigation" :key="index">
@@ -180,6 +181,29 @@ const navigation = computed(() => [
         to: '/dashboard/ar-model/upload',
         icon: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12',
         visible: canEdit.value // Member göremez
+      }
+    ]
+  },
+  {
+    title: 'Katalog',
+    items: [
+      {
+        name: 'Kategoriler',
+        to: '/dashboard/catalog/categories',
+        icon: 'M4 6h16M4 12h10M4 18h7',
+        visible: canEdit.value
+      },
+      {
+        name: 'Seriler',
+        to: '/dashboard/catalog/series',
+        icon: 'M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z',
+        visible: canEdit.value
+      },
+      {
+        name: 'Şekiller',
+        to: '/dashboard/catalog/shapes',
+        icon: 'M12 2l9 4-9 4-9-4 9-4zm0 8l9 4-9 4-9-4 9-4zm0 8l9 4-9 4-9-4 9-4z',
+        visible: isSuperAdmin.value
       }
     ]
   },

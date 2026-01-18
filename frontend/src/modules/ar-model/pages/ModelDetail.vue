@@ -83,7 +83,8 @@
                 <div class="flex items-center justify-between mb-6 pb-6 border-b border-gray-100">
                     <div class="pr-2">
                         <div class="font-bold text-sm text-gray-800">Model Gizliliği</div>
-                        <div class="text-xs text-gray-500 mt-1">Kapalıyken model herkese açıktır.</div>
+                        <div v-if="modelData.isPrivate" class="text-xs text-gray-500 mt-1">Model gizli olarak ayarlandı.</div>
+                        <div v-else class="text-xs text-gray-500 mt-1">Model herkese açık olarak ayarlandı.</div>
                     </div>
                     <button 
                         @click="togglePrivacy" 
@@ -131,6 +132,30 @@
                         </button>
                     </div>
                 </div>
+            </div>
+
+            <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-200">
+              <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Katalog</h2>
+              <p class="text-[11px] text-gray-500 mb-3">Bu modeli isteğe bağlı olarak kategori ve seriye bağlayın.</p>
+              <div class="space-y-3">
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1">Kategori</label>
+                  <select v-model="editCategoryId" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                    <option :value="null">Seçili değil</option>
+                    <option v-for="c in categoriesList" :key="c.id" :value="c.id">{{ c.name }}</option>
+                  </select>
+                </div>
+                <div>
+                  <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1">Seri</label>
+                  <select v-model="editSeriesId" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
+                    <option :value="null">Seçili değil</option>
+                    <option v-for="s in seriesList" :key="s.id" :value="s.id">{{ s.name }}<span v-if="s.code"> ({{ s.code }})</span></option>
+                  </select>
+                </div>
+              </div>
+              <div class="mt-4 flex justify-end">
+                <button @click="saveCatalog" :disabled="processing" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">Kaydet</button>
+              </div>
             </div>
 
           <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-200">
@@ -237,6 +262,9 @@ import { useToast } from 'vue-toastification'; // Toast kütüphanesini ekleyin 
 import type { ModelDetailDto } from '../dto/arModel.dto'; // DTO dosyanızın yolu
 import { arModelService } from '../../../services/arModelService'; // Service dosyanızın yolu
 import ArPreview from "../components/ArPreview.vue";
+import { categoryService, type CategoryDto } from '../../../services/categoryService';
+import { seriesService, type SeriesDto } from '../../../services/seriesService';
+import { useAuthStore } from '../../../store/modules/auth';
 
 const route = useRoute();
 const toast = useToast();
@@ -249,6 +277,13 @@ const processing = ref(false); // Yönetim işlemleri için loading
 const error = ref<string | null>(null);
 const modelData = ref<ModelDetailDto | null>(null);
 const previewBlobUrl = ref<string | null>(null);
+const authStore = useAuthStore();
+
+// [YENİ] Katalog düzenleme durumu
+const categoriesList = ref<CategoryDto[]>([]);
+const seriesList = ref<SeriesDto[]>([]);
+const editCategoryId = ref<number | null>(null);
+const editSeriesId = ref<number | null>(null);
 
 // Lifecycle
 onMounted(() => {
@@ -277,6 +312,11 @@ const loadPageData = async () => {
 
     // 2. Önizleme
     await loadPreviewModel();
+
+    // 3. Katalog listelerini yükle ve mevcut değerleri doldur
+    await loadCatalogLists();
+    editCategoryId.value = modelData.value?.category?.id ?? null;
+    editSeriesId.value = modelData.value?.series?.id ?? null;
 
   } catch (err: any) {
     console.error('Model yükleme hatası:', err);
@@ -407,5 +447,40 @@ const formatBytes = (bytes?: number) => {
 
 const getThumbnailUrl = (path: string) => {
   return arModelService.getPreviewUrl(path);
+};
+
+// [YENİ] Katalog listelerini yükle
+const loadCatalogLists = async () => {
+  try {
+    // Şirket bağlamı: SUPER_ADMIN ise modelin companyId'sini kullan; değilse kullanıcının şirketi
+    const companyCtx = authStore.user?.role === 'SUPER_ADMIN'
+      ? (modelData.value?.companyId || undefined)
+      : (authStore.user?.companyId || undefined);
+
+    categoriesList.value = await categoryService.list(companyCtx);
+    seriesList.value = await seriesService.list(companyCtx);
+  } catch (err) {
+    console.warn('Kategori/seri listeleri getirilemedi', err);
+  }
+};
+
+// [YENİ] Katalog güncelle kaydet
+const saveCatalog = async () => {
+  if (!modelData.value || processing.value) return;
+  processing.value = true;
+  try {
+    const updated = await arModelService.updateModel(modelId, {
+      categoryId: editCategoryId.value,
+      seriesId: editSeriesId.value,
+    });
+    // UI'yi senkronize et
+    modelData.value.category = updated.categoryId ? { id: updated.categoryId, name: categoriesList.value.find(c => c.id === updated.categoryId)?.name || '' } : null;
+    modelData.value.series = updated.seriesId ? { id: updated.seriesId, name: seriesList.value.find(s => s.id === updated.seriesId)?.name || '', code: seriesList.value.find(s => s.id === updated.seriesId)?.code || null } : null;
+    toast.success('Katalog bilgileri güncellendi.');
+  } catch (err) {
+    toast.error('Katalog bilgileri güncellenemedi.');
+  } finally {
+    processing.value = false;
+  }
 };
 </script>

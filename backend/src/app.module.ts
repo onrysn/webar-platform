@@ -11,6 +11,9 @@ import { ARModelModule } from './modules/ar-model/ar-model.module';
 import { ARSceneModule } from './modules/ar-scene/ar-scene.module';
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
+import { CategoryModule } from './modules/category/category.module';
+import { ProductSeriesModule } from './modules/product-series/product-series.module';
+import { ShapeModule } from './modules/shape/shape.module';
 
 @Module({
   imports: [
@@ -31,7 +34,10 @@ import { JwtAuthGuard } from './modules/auth/jwt-auth.guard';
     CompanyModule,
     ARModelModule,
     ARSceneModule,
-    DashboardModule
+    DashboardModule,
+    CategoryModule,
+    ProductSeriesModule,
+    ShapeModule
   ],
   // --- 3. PROVIDERS KISMI EKLENDİ ---
   providers: [

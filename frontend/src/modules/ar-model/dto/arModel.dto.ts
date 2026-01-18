@@ -9,6 +9,8 @@ export interface ARModelDto {
   
   isPrivate: boolean;
   shareToken?: string | null;
+  categoryId?: number | null;
+  seriesId?: number | null;
 }
 
 export interface TempModelResponse {
@@ -37,6 +39,8 @@ export interface FinalizeModelDto {
   modelName?: string;
   thumbnail?: File | Blob;
   isPrivate?: boolean;
+  categoryId?: number;
+  seriesId?: number;
 }
 
 export interface ModelDetailDto {
@@ -49,6 +53,9 @@ export interface ModelDetailDto {
   isPrivate: boolean;
   shareToken?: string | null;
   shareUrl?: string | null;
+  companyId?: number; // SUPER_ADMIN için şirket bağlamı
+  category?: { id: number; name: string } | null;
+  series?: { id: number; name: string; code?: string | null } | null;
   
   files: {
     glb: { exists: boolean; size: number; format: 'glb' };
@@ -59,6 +66,8 @@ export interface ModelDetailDto {
 export interface UpdateModelDto {
   name?: string;
   isPrivate?: boolean;
+  categoryId?: number | null;
+  seriesId?: number | null;
 }
 
 export interface ShareTokenResponse {
