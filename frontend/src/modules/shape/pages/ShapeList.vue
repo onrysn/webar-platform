@@ -90,8 +90,7 @@
 
 <script setup lang="ts">
 import { onMounted, reactive, ref, computed } from 'vue';
-import { shapeService, type ShapeDto } from '../../../services/shapeService';
-import type { ShapeCategory } from '@prisma/client';
+import { shapeService, type ShapeDto, type ShapeCategory } from '../../../services/shapeService';
 
 const items = ref<ShapeDto[]>([]);
 const showModal = ref(false);
@@ -99,7 +98,7 @@ const editing = ref(false);
 const editId = ref<number | null>(null);
 const search = ref('');
 
-const categories = Object.values(({} as any).ShapeCategory || { BASIC: 'BASIC', GEOMETRIC: 'GEOMETRIC', ARCHITECTURAL: 'ARCHITECTURAL', ARROWS: 'ARROWS', SYMBOLS: 'SYMBOLS', CONTROLS: 'CONTROLS', ICONS: 'ICONS', NATURE: 'NATURE', OBJECTS: 'OBJECTS', CUSTOM: 'CUSTOM' });
+const categories: ShapeCategory[] = ['BASIC','GEOMETRIC','ARCHITECTURAL','ARROWS','SYMBOLS','CONTROLS','ICONS','NATURE','OBJECTS','CUSTOM'];
 
 const form = reactive({
   code: '', icon: '', svgPath: '', labelTR: '', labelEN: '', descTR: '', descEN: '',

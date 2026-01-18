@@ -1,6 +1,5 @@
 import { reactive } from "vue";
-import { shapeService, type ShapeDto } from "../../../services/shapeService";
-import type { ShapeCategory } from "@prisma/client";
+import { shapeService, type ShapeDto, type ShapeCategory } from "../../../services/shapeService";
 
 export const shapesStore = reactive({
   items: [] as ShapeDto[],

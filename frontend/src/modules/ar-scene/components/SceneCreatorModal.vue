@@ -714,7 +714,6 @@ interface FloorLayer {
 // --- SABİTLER ---
 // --- NEW: Dynamic Shape Library from backend ---
 import { shapesStore } from '../../../store/modules/shapes';
-import type { ShapeDto } from '../../../services/shapeService';
 const shapeLibrary = computed(() => shapesStore.items.map(s => ({ id: s.code, label: s.labelTR || s.labelEN || s.code, icon: s.icon, path: s.svgPath, category: s.category })));
 // Ensure shapes are loaded when component mounts
 onMounted(async () => {

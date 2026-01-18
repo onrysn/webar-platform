@@ -1,5 +1,18 @@
 import { apiService } from "./httpService/apiService";
-import type { ShapeCategory } from "@prisma/client";
+
+// Frontend tarafında Prisma türlerini import etmeyin.
+// Backend ile uyumlu olacak şekilde local union type tanımlıyoruz.
+export type ShapeCategory =
+  | 'BASIC'
+  | 'GEOMETRIC'
+  | 'ARCHITECTURAL'
+  | 'ARROWS'
+  | 'SYMBOLS'
+  | 'CONTROLS'
+  | 'ICONS'
+  | 'NATURE'
+  | 'OBJECTS'
+  | 'CUSTOM';
 
 export interface ShapeDto {
   id: number;
