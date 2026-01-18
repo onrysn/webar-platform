@@ -61,20 +61,53 @@ model Company {
   id        Int      @id @default(autoincrement())
   name      String
   domain    String
-  apiKey    String   @unique
   createdAt DateTime @default(now())
   isDeleted Boolean  @default(false)
 
   isActive           Boolean   @default(true)
   subscriptionEndsAt DateTime?
-  maxStorage    Int?     // MB cinsinden
+  maxStorage         Int?      @default(1000) // MB cinsinden
+  maxApiKeys         Int?      @default(1)
 
   users     User[]  
   arModels  ARModel[]    
   scenes    ARScene[] 
   categories    Category[]
   series        Series[]
+  apiKeys    ApiKey[]
   activities ActivityLog[]  
+}
+
+model ApiKey {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique @default(cuid())
+  name        String   // "example.com API Key", "test-website.com"
+  description String?
+  
+  companyId   Int
+  company     Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  
+  // ✅ CORS & Domain Kontrolü
+  allowedOrigins  String[]  @default([]) // ["https://example.com", "https://test.com"]
+  allowedDomains  String[]  @default([]) // Wildcard destekli: ["*.example.com"]
+  
+  // ✅ İzinler (Hangi işlemleri yapabilir?)
+  permissions     Json      @default("{}") // { "readModels": true, "readScenes": true, "createScenes": false }
+  
+  // ✅ Rate Limiting
+  rateLimit       Int?      // Saat başına istek limiti (örn: 1000)
+  rateLimitWindow Int?      @default(3600) // Saniye cinsinden (3600 = 1 saat)
+  
+  isActive    Boolean   @default(true)
+  expiresAt   DateTime? // Süre dolumu
+  lastUsedAt  DateTime?
+  usageCount  Int       @default(0)
+  
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  @@index([companyId])
+  @@index([key])
 }
 
 model ARModel {

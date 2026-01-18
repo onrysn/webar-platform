@@ -14,14 +14,16 @@ export interface CompanyDto {
   id: number;
   name: string;
   domain?: string;
-  apiKey?: string;
   createdAt?: string;
   isActive?: boolean;
   subscriptionEndsAt?: string | null;
+  maxStorage?: number | null; // MB
+  maxApiKeys?: number | null;
 
   _count?: {
     users: number;
     scenes: number;
+    apiKeys?: number;
   };
 
   users?: CompanyUserDto[];
@@ -37,6 +39,8 @@ export interface CreateCompanyDto {
 export interface UpdateCompanyDto {
   name?: string;
   domain?: string;
+  isActive?: boolean;
+  subscriptionEndsAt?: string | null;
 }
 
 // 6. EKİBE YENİ ÜYE EKLEME
@@ -49,4 +53,24 @@ export interface AddUserToCompanyDto {
 
 export interface UpdateCompanyUserDto {
   role?: 'EDITOR' | 'MEMBER';
+}
+
+// 7. API KEY DTO
+export interface ApiKeyDto {
+  id: number;
+  key: string;
+  name: string;
+  description?: string | null;
+  companyId: number;
+  allowedOrigins: string[];
+  allowedDomains: string[];
+  permissions: any;
+  rateLimit?: number | null;
+  rateLimitWindow?: number | null;
+  isActive: boolean;
+  expiresAt?: string | null;
+  lastUsedAt?: string | null;
+  usageCount: number;
+  createdAt: string;
+  updatedAt: string;
 }

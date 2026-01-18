@@ -89,6 +89,21 @@
               </div>
 
             </div>
+
+            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Maksimum API Key Sayısı</label>
+                <input type="number" min="0" v-model.number="form.maxApiKeys"
+                  class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <p class="text-xs text-slate-400 mt-1">Sınırsız için boş bırakın.</p>
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Maksimum Depolama (MB)</label>
+                <input type="number" min="0" v-model.number="form.maxStorage"
+                  class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <p class="text-xs text-slate-400 mt-1">Toplam GLB+USDZ şifreli boyut sınırı.</p>
+              </div>
+            </div>
           </div>
 
           <div class="pt-4 flex items-center justify-end border-t border-slate-100 mt-6">
@@ -134,7 +149,9 @@ const form = reactive({
   name: '',
   domain: '',
   isActive: true,
-  subscriptionEndsAt: ''
+  subscriptionEndsAt: '',
+  maxApiKeys: null as number | null,
+  maxStorage: null as number | null
 });
 
 // COMPUTED
@@ -170,6 +187,8 @@ async function loadCompany() {
       } else {
         form.subscriptionEndsAt = '';
       }
+      form.maxApiKeys = data.maxApiKeys ?? null;
+      form.maxStorage = data.maxStorage ?? null;
     }
 
   } catch (error) {
@@ -200,6 +219,12 @@ async function handleUpdate() {
       };
 
       await companyService.updateCompany(targetCompanyId.value, payload);
+
+      // Limits update
+      await companyService.updateCompanyLimits(targetCompanyId.value, {
+        maxApiKeys: form.maxApiKeys,
+        maxStorage: form.maxStorage
+      });
     } else {
       // --- COMPANY ADMIN GÜNCELLEMESİ (KISITLI ALANLAR) ---
       // isActive ve subscriptionEndsAt BURADA YOK. 

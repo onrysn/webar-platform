@@ -398,7 +398,9 @@ const processUpload = async (file: File, type: 'auto' | 'glb' | 'usdz') => {
     }
   } catch (err: any) {
     console.error(err);
-    error.value = err.message || err.response?.data?.message || "Yükleme hatası";
+    const msg = err.response?.data?.message || err.message || "Yükleme hatası";
+    error.value = msg;
+    try { toast.error(msg); } catch (_) {}
   } finally {
     uploading.value = false;
     if (mainInput.value) mainInput.value.value = "";
@@ -450,7 +452,9 @@ const finalizeUpload = async () => {
 
   } catch (err: any) {
     console.error(err);
-    error.value = err.response?.data?.message || "Kaydetme başarısız.";
+    const msg = err.response?.data?.message || "Kaydetme başarısız.";
+    error.value = msg;
+    try { toast.error(msg); } catch (_) {}
     finalizing.value = false;
   }
 };

@@ -67,7 +67,39 @@ export class CompanyController {
   @ApiOperation({ summary: 'Şirketin API anahtarını yeniler' })
   async regenerateApiKey(@User() user: CurrentUser) {
     if (!user.companyId) throw new BadRequestException('Şirket bulunamadı');
-    return this.companyService.regenerateApiKey(user, user.companyId);
+    // Yeni ApiKey kaydı oluştur (limit kontrolü ile)
+    return this.companyService.createApiKey(user, user.companyId, { name: 'Primary Key' });
+  }
+
+  // --- MY COMPANY API KEYS (Company Admin) ---
+  @Get('my-company/api-keys')
+  @Roles(Role.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Kendi şirketinin API anahtarlarını listeler' })
+  async listMyCompanyApiKeys(@User() user: CurrentUser) {
+    if (!user.companyId) throw new BadRequestException('Şirket bulunamadı');
+    return this.companyService.listApiKeys(user.companyId);
+  }
+
+  @Post('my-company/api-keys')
+  @Roles(Role.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Kendi şirketine yeni API anahtarı oluşturur' })
+  async createMyCompanyApiKey(@User() user: CurrentUser, @Body() body: any) {
+    if (!user.companyId) throw new BadRequestException('Şirket bulunamadı');
+    return this.companyService.createApiKey(user, user.companyId, body);
+  }
+
+  @Put('my-company/api-keys/:keyId')
+  @Roles(Role.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Kendi şirketine ait API anahtarını günceller' })
+  async updateMyCompanyApiKey(@User() user: CurrentUser, @Param('keyId', ParseIntPipe) keyId: number, @Body() body: any) {
+    return this.companyService.updateApiKey(user, keyId, body);
+  }
+
+  @Delete('my-company/api-keys/:keyId')
+  @Roles(Role.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Kendi şirketine ait API anahtarını siler' })
+  async deleteMyCompanyApiKey(@User() user: CurrentUser, @Param('keyId', ParseIntPipe) keyId: number) {
+    return this.companyService.deleteApiKey(user, keyId);
   }
 
   // =================================================================
@@ -160,6 +192,55 @@ export class CompanyController {
     @User() user: CurrentUser,
     @Param('id', ParseIntPipe) companyId: number
   ) {
-    return this.companyService.regenerateApiKey(user, companyId);
+    return this.companyService.createApiKey(user, companyId, { name: 'Primary Key' });
+  }
+
+  // --- API KEY MANAGEMENT (Super Admin) ---
+  @Get(':id/api-keys')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Şirketin API anahtarlarını listeler (Super Admin)' })
+  async listCompanyApiKeys(@Param('id', ParseIntPipe) companyId: number) {
+    return this.companyService.listApiKeys(companyId);
+  }
+
+  @Post(':id/api-keys')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Şirket için yeni API anahtarı oluşturur (Super Admin)' })
+  async createCompanyApiKey(
+    @User() user: CurrentUser,
+    @Param('id', ParseIntPipe) companyId: number,
+    @Body() body: { name?: string; description?: string; allowedOrigins?: string[]; allowedDomains?: string[]; permissions?: any; rateLimit?: number | null; rateLimitWindow?: number | null; expiresAt?: Date | null }
+  ) {
+    return this.companyService.createApiKey(user, companyId, body);
+  }
+
+  @Delete('api-keys/:keyId')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'API anahtarını siler (Super Admin)' })
+  async deleteApiKey(@User() user: CurrentUser, @Param('keyId', ParseIntPipe) keyId: number) {
+    return this.companyService.deleteApiKey(user, keyId);
+  }
+
+  @Put('api-keys/:keyId')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'API anahtarı ayarlarını günceller (Super Admin)' })
+  async updateApiKey(
+    @User() user: CurrentUser,
+    @Param('keyId', ParseIntPipe) keyId: number,
+    @Body() body: { name?: string; description?: string; allowedOrigins?: string[]; allowedDomains?: string[]; permissions?: any; rateLimit?: number | null; rateLimitWindow?: number | null; isActive?: boolean; expiresAt?: Date | null }
+  ) {
+    return this.companyService.updateApiKey(user, keyId, body);
+  }
+
+  // --- LIMITS (Super Admin) ---
+  @Put(':id/limits')
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Şirket limitlerini günceller (maxApiKeys, maxStorage) (Super Admin)' })
+  async updateCompanyLimits(
+    @User() user: CurrentUser,
+    @Param('id', ParseIntPipe) companyId: number,
+    @Body() body: { maxApiKeys?: number | null; maxStorage?: number | null }
+  ) {
+    return this.companyService.updateCompanyLimits(user, companyId, body);
   }
 }

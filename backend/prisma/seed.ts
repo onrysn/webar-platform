@@ -11,23 +11,55 @@ async function main() {
   // ------------------------------
   console.log("🏢 Şirketler hazırlanıyor...");
 
-  const companyA = await prisma.company.upsert({
-    where: { apiKey: "COMPANY_A_KEY" },
-    update: {},
+  // Create or reuse Company A by domain (not unique in schema, so findFirst + create)
+  let companyA = await prisma.company.findFirst({ where: { domain: "companya.com" } });
+  if (!companyA) {
+    companyA = await prisma.company.create({
+      data: {
+        name: "Company A (Teknoloji A.Ş.)",
+        domain: "companya.com",
+      },
+    });
+  }
+
+  // Ensure a default API key exists for Company A
+  await prisma.apiKey.upsert({
+    where: { key: "COMPANY_A_KEY" },
+    update: {
+      name: "Company A Default API Key",
+      companyId: companyA.id,
+      isActive: true,
+    },
     create: {
-      name: "Company A (Teknoloji A.Ş.)",
-      domain: "companya.com",
-      apiKey: "COMPANY_A_KEY",
+      key: "COMPANY_A_KEY",
+      name: "Company A Default API Key",
+      companyId: companyA.id,
     },
   });
 
-  const companyB = await prisma.company.upsert({
-    where: { apiKey: "COMPANY_B_KEY" },
-    update: {},
+  // Create or reuse Company B by domain
+  let companyB = await prisma.company.findFirst({ where: { domain: "companyb.com" } });
+  if (!companyB) {
+    companyB = await prisma.company.create({
+      data: {
+        name: "Company B (Mimarlık Ofisi)",
+        domain: "companyb.com",
+      },
+    });
+  }
+
+  // Ensure a default API key exists for Company B
+  await prisma.apiKey.upsert({
+    where: { key: "COMPANY_B_KEY" },
+    update: {
+      name: "Company B Default API Key",
+      companyId: companyB.id,
+      isActive: true,
+    },
     create: {
-      name: "Company B (Mimarlık Ofisi)",
-      domain: "companyb.com",
-      apiKey: "COMPANY_B_KEY",
+      key: "COMPANY_B_KEY",
+      name: "Company B Default API Key",
+      companyId: companyB.id,
     },
   });
 

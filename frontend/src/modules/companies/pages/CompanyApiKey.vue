@@ -1,6 +1,6 @@
 <template>
   <div class="py-6 px-4 sm:px-0">
-    <div class="max-w-4xl mx-auto">
+    <div class="max-w-5xl mx-auto">
 
       <div v-if="loading" class="animate-pulse space-y-6">
         <div class="h-32 bg-slate-200 rounded-2xl"></div>
@@ -10,86 +10,46 @@
       <div v-else class="space-y-6">
 
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div class="p-6">
-            <div class="flex items-center gap-2 mb-1">
-              <h3 class="text-base font-bold text-slate-800">Gizli API Anahtarı</h3>
+          <div class="p-6 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <h3 class="text-base font-bold text-slate-800">API Anahtarları</h3>
               <span v-if="isSuperAdmin && targetCompanyId"
                 class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700">ADMIN MODU</span>
             </div>
+            <button @click="createKey" :disabled="!canCreate"
+              class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
+              Yeni API Key Oluştur
+            </button>
+          </div>
 
-            <p class="text-sm text-slate-500 mb-4">
-              Bu anahtarı backend servislerinizde WebAR API'ye erişmek için kullanın.
-              <span class="font-bold text-red-500">Bu anahtarı frontend (istemci) tarafında asla paylaşmayın.</span>
-            </p>
+          <div class="px-6 pb-4 text-xs text-slate-500">Maksimum anahtar: {{ maxApiKeysDisplay }}</div>
 
-            <div class="relative group">
-              <input :type="showKey ? 'text' : 'password'" :value="apiKey" readonly
-                class="w-full bg-slate-50 border border-slate-300 text-slate-600 text-sm font-mono rounded-xl p-4 pr-32 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-50 transition-all cursor-text" />
+          <div class="p-6 pt-0">
+            <div v-if="keys.length === 0" class="text-sm text-slate-500">Henüz bir anahtar yok.</div>
 
-              <div class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                <button @click="showKey = !showKey"
-                  class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors"
-                  :title="showKey ? 'Gizle' : 'Göster'">
-                  <svg v-if="!showKey" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none"
-                    viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a10.05 10.05 0 011.574-2.59M5.333 5.333A10.05 10.05 0 0112 5c4.478 0 8.268 2.943 9.542 7a10.05 10.05 0 01-1.574 2.59M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3l18 18" />
-                  </svg>
-                </button>
-
-                <button @click="copyToClipboard"
-                  class="p-2 text-slate-400 hover:text-green-600 hover:bg-slate-100 rounded-lg transition-colors relative"
-                  title="Kopyala">
-                  <svg v-if="!copied" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                    stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                  </svg>
-                  <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-green-600" fill="none"
-                    viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
-                  </svg>
-                </button>
+            <div v-else class="space-y-3">
+              <div v-for="k in keys" :key="k.id" class="border border-slate-200 rounded-xl p-4">
+                <div class="flex flex-wrap items-center gap-3 justify-between">
+                  <div class="flex-1 min-w-[240px]">
+                    <input v-model="k.name" class="w-full px-3 py-2 border rounded-lg text-sm" />
+                    <div class="mt-1 text-xs text-slate-500 font-mono">{{ k.key.substring(0, 16) + '...' }}</div>
+                  </div>
+                  <div class="flex items-center gap-3">
+                    <label class="text-xs font-bold text-slate-600">Aktif</label>
+                    <button @click="toggleActive(k)" :class="k.isActive ? 'bg-green-600' : 'bg-slate-300'"
+                      class="relative inline-flex h-6 w-11 rounded-full transition-colors">
+                      <span :class="k.isActive ? 'translate-x-5' : 'translate-x-0'"
+                        class="inline-block h-5 w-5 transform rounded-full bg-white shadow transition" />
+                    </button>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <button @click="copy(k.key)" class="px-2 py-1 text-xs bg-slate-100 border rounded">Kopyala</button>
+                    <button @click="save(k)" class="px-3 py-1 text-xs bg-indigo-600 text-white rounded">Kaydet</button>
+                    <button @click="remove(k)" class="px-3 py-1 text-xs bg-red-600 text-white rounded">Sil</button>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-
-          <div class="bg-slate-50 border-t border-slate-200 p-4 px-6">
-            <p class="text-xs font-bold text-slate-500 uppercase mb-2">Örnek Kullanım (Header)</p>
-            <div class="bg-slate-800 rounded-lg p-3 overflow-x-auto group relative">
-              <code class="text-xs font-mono text-green-400">
-                Authorization: Bearer <span class="text-white">{{ apiKey ? apiKey.substring(0, 10) + '...' : '••••••••' }}</span>
-              </code>
-            </div>
-          </div>
-        </div>
-
-        <div class="border border-red-200 rounded-2xl p-6 bg-red-50/50">
-          <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h3 class="text-base font-bold text-red-700">Anahtarı Yenile</h3>
-              <p class="text-sm text-red-600/80 mt-1 max-w-xl">
-                API anahtarını yenilediğinizde, eski anahtarı kullanan tüm uygulamaların (mobil app, web sitesi vb.)
-                erişimi anında kesilecektir.
-              </p>
-            </div>
-            <button @click="confirmRegenerate"
-              class="shrink-0 px-4 py-2 bg-white border border-red-200 text-red-600 text-sm font-bold rounded-lg hover:bg-red-600 hover:text-white transition-all shadow-sm flex items-center gap-2">
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                  d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              Anahtarı Yenile
-            </button>
           </div>
         </div>
 
@@ -104,6 +64,7 @@ import { useRoute } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from '../../../store/modules/auth';
 import { companyService } from '../../../services/companyService';
+import type { ApiKeyDto, CompanyDto } from '../dto/company.dto';
 
 const route = useRoute();
 const toast = useToast();
@@ -111,76 +72,91 @@ const authStore = useAuthStore();
 
 // STATE
 const loading = ref(true);
-const apiKey = ref('');
-const showKey = ref(false);
-const copied = ref(false);
-
-// Eğer route'da ID varsa, Super Admin bir şirketi görüntülüyordur.
-// Yoksa, kullanıcı kendi şirketini görüntülüyordur.
+const keys = ref<ApiKeyDto[]>([]);
+const maxApiKeys = ref<number | null>(null);
 const targetCompanyId = computed(() => route.params.id ? Number(route.params.id) : null);
 const isSuperAdmin = computed(() => authStore.user?.role === 'SUPER_ADMIN');
 
-// 1. VERİ YÜKLEME
-async function loadApiKey() {
+const canCreate = computed(() => {
+  if (maxApiKeys.value == null) return true;
+  return keys.value.length < maxApiKeys.value;
+});
+const maxApiKeysDisplay = computed(() => maxApiKeys.value ?? 'Sınırsız');
+
+async function load() {
   loading.value = true;
   try {
-    let companyData;
-
+    let company: CompanyDto;
     if (isSuperAdmin.value && targetCompanyId.value) {
-      // SENARYO 1: Super Admin -> Belirli Bir Şirket
-      companyData = await companyService.getCompanyById(targetCompanyId.value);
+      company = await companyService.getCompanyById(targetCompanyId.value);
+      maxApiKeys.value = company.maxApiKeys ?? null;
+      keys.value = await companyService.listCompanyApiKeys(targetCompanyId.value);
     } else {
-      // SENARYO 2: Company Admin -> Kendi Şirketi
-      companyData = await companyService.getMyCompany();
+      company = await companyService.getMyCompany();
+      maxApiKeys.value = company.maxApiKeys ?? null;
+      keys.value = await companyService.listMyApiKeys();
     }
-
-    apiKey.value = companyData.apiKey || '';
-
-  } catch (error) {
-    console.error(error);
-    toast.error("API bilgileri yüklenemedi.");
+  } catch (e: any) {
+    toast.error(e.response?.data?.message || 'API anahtarları yüklenemedi.');
   } finally {
     loading.value = false;
   }
 }
 
-// 2. KOPYALAMA
-async function copyToClipboard() {
-  if (!apiKey.value) return;
+async function createKey() {
   try {
-    await navigator.clipboard.writeText(apiKey.value);
-    copied.value = true;
-    toast.info("API Anahtarı kopyalandı");
-    setTimeout(() => { copied.value = false; }, 2000);
-  } catch (err) {
-    toast.error("Kopyalama başarısız oldu");
+    if (!canCreate.value) return;
+    const body = { name: 'API Key' } as Partial<ApiKeyDto>;
+    const created = isSuperAdmin.value && targetCompanyId.value
+      ? await companyService.createCompanyApiKey(targetCompanyId.value, body)
+      : await companyService.createMyApiKey(body);
+    keys.value.unshift(created);
+    toast.success('API anahtarı oluşturuldu.');
+  } catch (e: any) {
+    toast.error(e.response?.data?.message || 'Anahtar oluşturulamadı.');
   }
 }
 
-// 3. YENİLEME (REGENERATE)
-async function confirmRegenerate() {
-  if (!confirm("DİKKAT: API anahtarını yenilemek mevcut tüm entegrasyonları bozacaktır. Devam etmek istiyor musunuz?")) return;
-
+async function save(k: ApiKeyDto) {
   try {
-    let res;
+    const body = { name: k.name, isActive: k.isActive } as Partial<ApiKeyDto>;
+    const updated = isSuperAdmin.value && targetCompanyId.value
+      ? await companyService.updateApiKey(k.id, body)
+      : await companyService.updateMyApiKey(k.id, body);
+    Object.assign(k, updated);
+    toast.success('Anahtar güncellendi.');
+  } catch (e: any) {
+    toast.error(e.response?.data?.message || 'Güncelleme başarısız oldu.');
+  }
+}
 
+function toggleActive(k: ApiKeyDto) {
+  k.isActive = !k.isActive;
+}
+
+async function remove(k: ApiKeyDto) {
+  if (!confirm('Bu API anahtarını silmek istiyor musunuz?')) return;
+  try {
     if (isSuperAdmin.value && targetCompanyId.value) {
-      // Admin, başkasının anahtarını yeniliyor
-      res = await companyService.regenerateCompanyApiKey(targetCompanyId.value);
+      await companyService.deleteApiKey(k.id);
     } else {
-      // Kullanıcı kendi anahtarını yeniliyor
-      res = await companyService.regenerateApiKey();
+      await companyService.deleteMyApiKey(k.id);
     }
-
-    apiKey.value = res.apiKey;
-    showKey.value = true; // Yenilenen anahtarı göster
-    toast.success('API Key başarıyla yenilendi.');
-
-  } catch (error) {
-    console.error(error);
-    toast.error("Yenileme işlemi başarısız oldu.");
+    keys.value = keys.value.filter(x => x.id !== k.id);
+    toast.success('Anahtar silindi.');
+  } catch (e: any) {
+    toast.error(e.response?.data?.message || 'Silme başarısız oldu.');
   }
 }
 
-onMounted(loadApiKey);
+async function copy(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    toast.info('Kopyalandı');
+  } catch {
+    toast.error('Kopyalama başarısız');
+  }
+}
+
+onMounted(load);
 </script>

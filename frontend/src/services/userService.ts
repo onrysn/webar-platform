@@ -4,9 +4,14 @@ export interface UpdateUserPayload {
   name?: string;
   email?: string;
   password?: string;
+  role?: 'MEMBER' | 'EDITOR' | 'COMPANY_ADMIN' | 'SUPER_ADMIN';
 }
 
 export const userService = {
+  async listUsers(companyId?: number) {
+    const res = await apiService.get('/users', { params: companyId ? { companyId } : undefined });
+    return res.data;
+  },
   async updateUser(userId: number, data: UpdateUserPayload) {
     const res = await apiService.patch(`/users/${userId}`, data);
     return res.data;

@@ -41,7 +41,14 @@ export class AuthService {
         data: {
           name: companyName || `${name}'s Company`, // DTO'da yoksa varsayılan isim
           domain: '', // İleride doldurulabilir
-          apiKey: uuidv4(), // Benzersiz API Key
+          // Create initial API key linked to the company
+          apiKeys: {
+            create: {
+              key: uuidv4(),
+              name: 'Default API Key',
+              isActive: true,
+            },
+          },
         }
       });
 

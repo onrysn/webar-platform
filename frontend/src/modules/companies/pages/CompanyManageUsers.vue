@@ -29,11 +29,52 @@
               tanımlayın.</p>
           </div>
 
+
+            <!-- Edit Modal -->
+            <template v-if="editingUser">
+              <div class="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+                <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl p-6 border border-slate-200">
+                  <h3 class="text-lg font-bold text-slate-900 mb-4">Kullanıcıyı Düzenle</h3>
+                  <div class="space-y-4">
+                    <div>
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Ad Soyad</label>
+                      <input v-model="editingUser.name" type="text" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">E-posta</label>
+                      <input v-model="editingUser.email" type="email" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none" />
+                    </div>
+                    <div>
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Rol</label>
+                      <select v-model="editingUser.role" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none">
+                        <option value="MEMBER">Üye</option>
+                        <option value="EDITOR">Editör</option>
+                        <option value="COMPANY_ADMIN" v-if="isSuperAdmin">Yönetici</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Yeni Şifre (opsiyonel)</label>
+                      <input v-model="editingUser.password" type="text" minlength="6" placeholder="En az 6 karakter" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none" />
+                    </div>
+                  </div>
+                  <div class="flex items-center justify-end gap-3 mt-6">
+                    <button @click="cancelEdit" class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">İptal</button>
+                    <button @click="saveEdit" :disabled="isUpdating" class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 disabled:opacity-50">
+                      <svg v-if="isUpdating" class="animate-spin h-4 w-4 inline mr-2" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Kaydet
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </template>
           <div v-else class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
               <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wider">Ekip Listesi</h3>
               <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded-md">
-                {{ company.users.length }} Kişi
+                {{ company.users ? company.users.length : 0 }} Kişi
               </span>
             </div>
 
@@ -57,16 +98,25 @@
                     {{ getRoleLabel(user.role) }}
                   </span>
                 </div>
-
-                <button @click="removeUser(user.id)"
-                  class="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100"
-                  title="Kullanıcıyı Çıkar">
-                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd"
-                      d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
-                      clip-rule="evenodd" />
-                  </svg>
-                </button>
+                <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 focus:opacity-100">
+                  <button @click="openEdit(user)"
+                    class="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-all"
+                    title="Kullanıcıyı Düzenle">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
+                      <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h6a1 1 0 110 2H4v10h10v-6a1 1 0 112 0v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
+                    </svg>
+                  </button>
+                  <button @click="removeUser(user.id)"
+                    class="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all"
+                    title="Kullanıcıyı Çıkar">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                      <path fill-rule="evenodd"
+                        d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
+                        clip-rule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
               </li>
             </ul>
           </div>
@@ -148,6 +198,7 @@ import { useRoute } from 'vue-router';
 import { useToast } from 'vue-toastification';
 import { useAuthStore } from '../../../store/modules/auth'; // Auth Store
 import { companyService } from '../../../services/companyService';
+import { userService } from '../../../services/userService';
 import { useCompanyStore } from '../../../store/modules/company';
 import type { CompanyDto } from '../dto/company.dto';
 
@@ -159,7 +210,9 @@ const companyStore = useCompanyStore();
 // STATE
 const loading = ref(true);
 const isAdding = ref(false);
-const company = ref<CompanyDto>({ id: 0, name: '', domain: '', apiKey: '', users: [] });
+const company = ref<CompanyDto>({ id: 0, name: '', domain: '', users: [] });
+const editingUser = ref<{ id: number; name: string; email: string; role: 'MEMBER' | 'EDITOR' | 'COMPANY_ADMIN' | 'SUPER_ADMIN'; password?: string } | null>(null);
+const isUpdating = ref(false);
 
 // FORM
 const form = reactive({
@@ -192,12 +245,15 @@ async function loadCompany() {
       if (!id) throw new Error("Şirket ID bulunamadı.");
       // Store veya Service kullanılabilir
       company.value = await companyStore.fetchCompanyById(id);
+      // Kullanıcıları ayrı endpointten çek
+      const users = await userService.listUsers(id);
+      company.value.users = users;
     } else {
       // Company Admin: Kendi şirketini çek
       company.value = await companyStore.fetchMyCompany();
-
-      // NOT: Eğer fetchMyCompany() userları getirmiyorsa ayrıca çek:
-      // company.value.users = await companyService.getMyCompanyUsers();
+      // Kendi şirket kullanıcılarını çek
+      const users = await companyService.getMyCompanyUsers();
+      company.value.users = users;
     }
 
   } catch (error) {
@@ -273,6 +329,37 @@ async function removeUser(userId: number) {
     toast.error('Kullanıcı silinemedi');
   }
 }
+
+// 4. KULLANICI GÜNCELLE
+function openEdit(user: { id: number; name: string; email: string; role: any }) {
+  editingUser.value = { id: user.id, name: user.name, email: user.email, role: user.role };
+}
+
+async function saveEdit() {
+  if (!editingUser.value) return;
+  isUpdating.value = true;
+  try {
+    const payload: any = {
+      name: editingUser.value.name,
+      email: editingUser.value.email,
+      role: editingUser.value.role,
+    };
+    if (editingUser.value.password && editingUser.value.password.length >= 6) {
+      payload.password = editingUser.value.password;
+    }
+    await userService.updateUser(editingUser.value.id, payload);
+    toast.success('Kullanıcı güncellendi');
+    await loadCompany();
+    editingUser.value = null;
+  } catch (err: any) {
+    console.error(err);
+    toast.error(err.response?.data?.message || 'Kullanıcı güncellenemedi');
+  } finally {
+    isUpdating.value = false;
+  }
+}
+
+function cancelEdit() { editingUser.value = null; }
 
 // YARDIMCILAR
 const getInitials = (name: string) => {

@@ -41,16 +41,26 @@ export const useCompanyStore = defineStore('company', {
       }
     },
 
-    async regenerateApiKey() {
+    // API Key Management (Company Admin)
+    async listMyApiKeys() {
       try {
-        const result = await companyService.regenerateApiKey(); // { apiKey: '...' } döner
-        if (this.currentCompany) {
-          this.currentCompany.apiKey = result.apiKey;
-        }
-        return result;
-      } catch (error) {
-        throw error;
-      }
+        return await companyService.listMyApiKeys();
+      } catch (error) { throw error; }
+    },
+    async createMyApiKey(body?: any) {
+      try {
+        return await companyService.createMyApiKey(body);
+      } catch (error) { throw error; }
+    },
+    async updateMyApiKey(keyId: number, body: any) {
+      try {
+        return await companyService.updateMyApiKey(keyId, body);
+      } catch (error) { throw error; }
+    },
+    async deleteMyApiKey(keyId: number) {
+      try {
+        return await companyService.deleteMyApiKey(keyId);
+      } catch (error) { throw error; }
     },
 
     async fetchMyTeam() {
@@ -115,6 +125,13 @@ export const useCompanyStore = defineStore('company', {
     async fetchCompanyById(id: number) {
       const company = await companyService.getCompanyById(id);
       return company;
+    },
+
+    // SUPER ADMIN: Company Limits
+    async updateCompanyLimits(companyId: number, body: { maxApiKeys?: number | null; maxStorage?: number | null }) {
+      try {
+        return await companyService.updateCompanyLimits(companyId, body);
+      } catch (error) { throw error; }
     }
   },
 });

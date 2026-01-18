@@ -18,12 +18,10 @@ export class CompanyService {
 
   // 1. Şirket Oluşturma (Sadece Super Admin)
   async createCompany(user: CurrentUser, data: CreateCompanyDto) {
-    const apiKey = uuidv4();
     const company = await this.prisma.company.create({
       data: {
         name: data.name,
         domain: data.domain,
-        apiKey
       },
     });
 
@@ -195,27 +193,141 @@ export class CompanyService {
     return this.prisma.company.findMany({
       orderBy: { createdAt: 'desc' },
       include: {
-        _count: { select: { users: true, scenes: true } }
+        _count: { select: { users: true, scenes: true, apiKeys: true } }
       }
     });
   }
 
-  // 9. API Key Yenileme
-  async regenerateApiKey(user: CurrentUser, companyId: number) {
-    const newApiKey = uuidv4();
-    const company = await this.prisma.company.update({
-      where: { id: companyId },
-      data: { apiKey: newApiKey },
+  // 9. API Key Yönetimi (ApiKey tablosu)
+  async listApiKeys(companyId: number) {
+    return this.prisma.apiKey.findMany({
+      where: { companyId },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async createApiKey(
+    user: CurrentUser,
+    companyId: number,
+    body: {
+      name?: string;
+      description?: string;
+      allowedOrigins?: string[];
+      allowedDomains?: string[];
+      permissions?: any;
+      rateLimit?: number | null;
+      rateLimitWindow?: number | null;
+      expiresAt?: Date | null;
+    }
+  ) {
+    const company = await this.prisma.company.findUnique({ where: { id: companyId } });
+    if (!company) throw new NotFoundException('Şirket bulunamadı');
+
+    // maxApiKeys kontrolü
+    const currentCount = await this.prisma.apiKey.count({ where: { companyId } });
+    if (company.maxApiKeys != null && currentCount >= company.maxApiKeys) {
+      throw new BadRequestException('Maksimum API anahtarı limitine ulaşıldı.');
+    }
+
+    const created = await this.prisma.apiKey.create({
+      data: {
+        companyId,
+        name: body.name || 'API Key',
+        description: body.description,
+        allowedOrigins: body.allowedOrigins || [],
+        allowedDomains: body.allowedDomains || [],
+        permissions: body.permissions || {},
+        rateLimit: body.rateLimit ?? null,
+        rateLimitWindow: body.rateLimitWindow ?? 3600,
+        expiresAt: body.expiresAt ?? null,
+      },
     });
 
     await this.activityLogger.log(
       user.id,
-      company.id,
-      'REGENERATE_KEY',
-      `API Anahtarı yenilendi.`,
-      { companyId }
+      companyId,
+      'CREATE_API_KEY',
+      `Yeni API anahtarı oluşturuldu.`,
+      { apiKeyId: created.id }
     );
 
-    return company;
+    return created;
+  }
+
+  async deleteApiKey(user: CurrentUser, keyId: number) {
+    const existing = await this.prisma.apiKey.findUnique({ where: { id: keyId } });
+    if (!existing) throw new NotFoundException('API anahtarı bulunamadı');
+    const deleted = await this.prisma.apiKey.delete({ where: { id: keyId } });
+    await this.activityLogger.log(
+      user.id,
+      deleted.companyId,
+      'DELETE_API_KEY',
+      `API anahtarı silindi.`,
+      { apiKeyId: deleted.id }
+    );
+    return { message: 'API anahtarı silindi.' };
+  }
+
+  async updateApiKey(
+    user: CurrentUser,
+    keyId: number,
+    body: {
+      name?: string;
+      description?: string;
+      allowedOrigins?: string[];
+      allowedDomains?: string[];
+      permissions?: any;
+      rateLimit?: number | null;
+      rateLimitWindow?: number | null;
+      isActive?: boolean;
+      expiresAt?: Date | null;
+    }
+  ) {
+    const existing = await this.prisma.apiKey.findUnique({ where: { id: keyId } });
+    if (!existing) throw new NotFoundException('API anahtarı bulunamadı');
+    const updated = await this.prisma.apiKey.update({
+      where: { id: keyId },
+      data: {
+        name: body.name,
+        description: body.description,
+        allowedOrigins: body.allowedOrigins,
+        allowedDomains: body.allowedDomains,
+        permissions: body.permissions,
+        rateLimit: body.rateLimit,
+        rateLimitWindow: body.rateLimitWindow,
+        isActive: body.isActive,
+        expiresAt: body.expiresAt,
+      },
+    });
+    await this.activityLogger.log(
+      user.id,
+      updated.companyId,
+      'UPDATE_API_KEY',
+      `API anahtarı güncellendi.`,
+      { apiKeyId: updated.id }
+    );
+    return updated;
+  }
+
+  async updateCompanyLimits(
+    user: CurrentUser,
+    companyId: number,
+    body: { maxApiKeys?: number | null; maxStorage?: number | null }
+  ) {
+    const updated = await this.prisma.company.update({
+      where: { id: companyId },
+      data: {
+        maxApiKeys: body.maxApiKeys ?? undefined,
+        maxStorage: body.maxStorage ?? undefined,
+      },
+    });
+    await this.activityLogger.log(
+      user.id,
+      companyId,
+      'UPDATE_COMPANY_LIMITS',
+      `Şirket limitleri güncellendi.`,
+      { maxApiKeys: updated.maxApiKeys, maxStorage: updated.maxStorage }
+    );
+    return updated;
   }
 }

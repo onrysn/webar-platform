@@ -249,15 +249,32 @@ export class ARModelService {
             throw new BadRequestException('Both GLB and USDZ must be present to finalize.');
         }
 
-        // 1. Şifreleme
+        // 1. Şifreleme (dosyaları yazmadan önce limit kontrolü için boyutları hesapla)
         const glbBuffer = fs.readFileSync(path.join(tempDir, glbFile));
         const { encrypted: glbEncrypted, iv: glbIv, authTag: glbAuth } = this.encrypt(glbBuffer);
+        const usdzBuffer = fs.readFileSync(path.join(tempDir, usdzFile));
+        const { encrypted: usdzEncrypted, iv: usdzIv, authTag: usdzAuth } = this.encrypt(usdzBuffer);
+
+        // 1b. maxStorage kontrolü (MB cinsinden)
+        const company = await this.prisma.company.findUnique({ where: { id: companyId } });
+        if (!company) throw new BadRequestException('Şirket bulunamadı');
+        if (company.maxStorage != null) {
+            const agg = await this.prisma.aRModel.aggregate({
+                where: { companyId },
+                _sum: { fileSize: true, usdzFileSize: true }
+            });
+            const currentBytes = (agg._sum?.fileSize ?? 0) + (agg._sum?.usdzFileSize ?? 0);
+            const newTotalBytes = currentBytes + glbEncrypted.length + usdzEncrypted.length;
+            const newTotalMB = newTotalBytes / (1024 * 1024);
+            if (newTotalMB > company.maxStorage) {
+                throw new BadRequestException(`Depolama kotası aşılıyor: ${newTotalMB.toFixed(2)}MB / ${company.maxStorage}MB`);
+            }
+        }
+
+        // 1c. Dosyaları yaz
         const glbFinalName = `${Date.now()}-${uuidv4()}-${glbFile}.enc`;
         const glbFinalPath = path.join(this.FINAL_ROOT, glbFinalName);
         fs.writeFileSync(glbFinalPath, glbEncrypted);
-
-        const usdzBuffer = fs.readFileSync(path.join(tempDir, usdzFile));
-        const { encrypted: usdzEncrypted, iv: usdzIv, authTag: usdzAuth } = this.encrypt(usdzBuffer);
         const usdzFinalName = `${Date.now()}-${uuidv4()}-${usdzFile}.enc`;
         const usdzFinalPath = path.join(this.FINAL_ROOT, usdzFinalName);
         fs.writeFileSync(usdzFinalPath, usdzEncrypted);

@@ -5,7 +5,8 @@ import type {
   CreateCompanyDto,
   UpdateCompanyDto,
   AddUserToCompanyDto,
-  CompanyUserDto
+  CompanyUserDto,
+  ApiKeyDto
 } from "../modules/companies/dto/company.dto";
 import { apiService } from "./httpService/apiService";
 
@@ -27,10 +28,27 @@ export const companyService = {
     return res.data;
   },
 
-  /** Kendi şirketinin API key'ini yenile */
-  async regenerateApiKey(): Promise<{ apiKey: string }> {
-    const res = await apiService.post<{ apiKey: string }>('/companies/my-company/regenerate-api-key');
+  /** Kendi şirketi için yeni API key oluştur */
+  async createMyApiKey(body: Partial<ApiKeyDto> = {}): Promise<ApiKeyDto> {
+    const res = await apiService.post<ApiKeyDto>('/companies/my-company/api-keys', body);
     return res.data;
+  },
+
+  /** Kendi şirketinin API anahtarlarını listeler */
+  async listMyApiKeys(): Promise<ApiKeyDto[]> {
+    const res = await apiService.get<ApiKeyDto[]>('/companies/my-company/api-keys');
+    return res.data;
+  },
+
+  /** Kendi şirketinin API anahtarını günceller */
+  async updateMyApiKey(keyId: number, body: Partial<ApiKeyDto>): Promise<ApiKeyDto> {
+    const res = await apiService.put<ApiKeyDto>(`/companies/my-company/api-keys/${keyId}`, body);
+    return res.data;
+  },
+
+  /** Kendi şirketinin API anahtarını siler */
+  async deleteMyApiKey(keyId: number): Promise<void> {
+    await apiService.delete(`/companies/my-company/api-keys/${keyId}`);
   },
 
   /** Kendi şirketindeki kullanıcıları listele */
@@ -82,9 +100,32 @@ export const companyService = {
     return res.data;
   },
 
-  /** Başka bir şirketin API key'ini yenile (Super Admin) */
-  async regenerateCompanyApiKey(companyId: number): Promise<{ apiKey: string }> {
-    const res = await apiService.post<{ apiKey: string }>(`/companies/${companyId}/regenerate-api-key`);
+  /** SUPER ADMIN: Şirket için API anahtarlarını listeler */
+  async listCompanyApiKeys(companyId: number): Promise<ApiKeyDto[]> {
+    const res = await apiService.get<ApiKeyDto[]>(`/companies/${companyId}/api-keys`);
+    return res.data;
+  },
+
+  /** SUPER ADMIN: Şirket için API key oluşturur */
+  async createCompanyApiKey(companyId: number, body: Partial<ApiKeyDto> = {}): Promise<ApiKeyDto> {
+    const res = await apiService.post<ApiKeyDto>(`/companies/${companyId}/api-keys`, body);
+    return res.data;
+  },
+
+  /** SUPER ADMIN: API key günceller */
+  async updateApiKey(keyId: number, body: Partial<ApiKeyDto>): Promise<ApiKeyDto> {
+    const res = await apiService.put<ApiKeyDto>(`/companies/api-keys/${keyId}`, body);
+    return res.data;
+  },
+
+  /** SUPER ADMIN: API key siler */
+  async deleteApiKey(keyId: number): Promise<void> {
+    await apiService.delete(`/companies/api-keys/${keyId}`);
+  },
+
+  /** SUPER ADMIN: Şirket limitlerini günceller */
+  async updateCompanyLimits(companyId: number, body: { maxApiKeys?: number | null; maxStorage?: number | null }): Promise<CompanyDto> {
+    const res = await apiService.put<CompanyDto>(`/companies/${companyId}/limits`, body);
     return res.data;
   },
 
