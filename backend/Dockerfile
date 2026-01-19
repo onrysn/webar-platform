@@ -47,6 +47,15 @@ RUN wget https://download.blender.org/release/Blender4.0/blender-4.0.2-linux-x64
 # Blender'ı PATH'e ekle
 ENV PATH="/opt/blender:$PATH"
 
+RUN npm install -g @gltf-transform/cli
+
+# Kurulum doğrulama
+RUN echo "🔍 Kurulum kontrolü..." && \
+    blender --version && \
+    python3 --version && \
+    gltf-transform --version && \
+    echo "✅ Tüm araçlar hazır!"
+
 # Uygulama dizinine dön
 WORKDIR /app
 

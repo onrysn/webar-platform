@@ -1,6 +1,8 @@
 import sys
 import os
 import time
+import subprocess
+import shutil
 
 # --- AYARLAR ---
 POSSIBLE_PATHS = [
@@ -85,27 +87,82 @@ def calculate_adaptive_deflection(shape, global_max_dim, is_shell=False):
         
         if max_dim < 100:
             # Küçük parçalar (Vida, somun vs): Orta hassasiyet
-            # Önceki: 0.01 idi -> Şimdi: 0.03
             return max(0.03, max_dim * 0.002) * factor
             
         elif max_dim < 1000:
             # Orta boy parçalar:
-            # Önceki: 0.05 idi -> Şimdi: 0.1
             return max(0.1, max_dim * 0.002) * factor
             
         else:
             # Büyük parçalar (Çatı, Kaydırak):
-            # Burası kritik. Çatıdaki delikleri kapatmak için "min" değerini (Limit)
-            # 2.0mm yerine 4.0mm yaptık ama oranı yumuşattık.
-            # 2000mm bir obje için: 2000 * 0.0025 = 5mm (Limit 4mm devreye girer)
             return min(max_dim * 0.0025, 4.0) * factor
     except:
         return 1.0
 
 
+def compress_with_draco(input_glb, output_glb):
+    """
+    gltf-transform ile Draco compression uygula
+    %80-90 boyut azaltma sağlar
+    """
+    try:
+        print(f"[SCRIPT] 🗜️  Draco sıkıştırması başlıyor...", flush=True)
+        
+        # gltf-transform draco komutu
+        compress_cmd = [
+            'gltf-transform',
+            'draco',
+            input_glb,
+            output_glb,
+            '--method', 'edgebreaker',      # Daha iyi sıkıştırma
+            '--encode-speed', '5',           # 0-10 (5 = dengeli)
+            '--decode-speed', '5',           # 0-10 (5 = dengeli)
+            '--quantize-position', '14',     # 14 bit (iyi kalite)
+            '--quantize-normal', '10',       # 10 bit
+            '--quantize-texcoord', '12',     # 12 bit
+            '--quantize-color', '10',        # 10 bit
+            '--quantize-generic', '12'       # 12 bit
+        ]
+        
+        result = subprocess.run(
+            compress_cmd,
+            capture_output=True,
+            text=True,
+            timeout=600  # 10 dakika timeout
+        )
+        
+        if result.returncode != 0:
+            raise Exception(f"gltf-transform error: {result.stderr}")
+        
+        # Başarı mesajı
+        original_size_mb = os.path.getsize(input_glb) / (1024 * 1024)
+        compressed_size_mb = os.path.getsize(output_glb) / (1024 * 1024)
+        savings = (1 - compressed_size_mb / original_size_mb) * 100
+        
+        print(f"[SCRIPT] ✅ Draco sıkıştırma başarılı!", flush=True)
+        print(f"[SCRIPT]    📊 Öncesi: {original_size_mb:.2f} MB", flush=True)
+        print(f"[SCRIPT]    📊 Sonrası: {compressed_size_mb:.2f} MB", flush=True)
+        print(f"[SCRIPT]    💾 Tasarruf: {savings:.1f}%", flush=True)
+        
+        return True
+        
+    except subprocess.TimeoutExpired:
+        print(f"[UYARI] ⏱️  Sıkıştırma timeout (10dk aşıldı)", flush=True)
+        return False
+        
+    except FileNotFoundError:
+        print(f"[UYARI] ❌ gltf-transform bulunamadı. Draco sıkıştırması yapılamayacak.", flush=True)
+        print(f"[UYARI] 💡 Docker'a 'npm install -g @gltf-transform/cli' eklemeyi unutmayın.", flush=True)
+        return False
+        
+    except Exception as e:
+        print(f"[UYARI] ❌ Draco sıkıştırma hatası: {e}", flush=True)
+        return False
+
+
 def convert(input_path, output_path):
     start_time = time.time()
-    print(f"[SCRIPT] İşleniyor: {input_path}", flush=True)
+    print(f"[SCRIPT] 🚀 İşleniyor: {input_path}", flush=True)
 
     try:
         shape = Part.Shape()
@@ -113,14 +170,14 @@ def convert(input_path, output_path):
         
         sub_shapes, shape_types = get_all_processable_shapes(shape)
         
-        print(f"[SCRIPT] Tespit edilen Parça Sayısı: {len(sub_shapes)}", flush=True)
+        print(f"[SCRIPT] 📦 Tespit edilen Parça Sayısı: {len(sub_shapes)}", flush=True)
         
         solid_count = shape_types.count("Solid")
         shell_count = shape_types.count("Shell")
         face_count = shape_types.count("Face")
         
         if solid_count > 0: print(f"[SCRIPT]   → {solid_count} Solid", flush=True)
-        if shell_count > 0: print(f"[SCRIPT]   → {shell_count} Shell (Double-Sided & Medium Precision)", flush=True)
+        if shell_count > 0: print(f"[SCRIPT]   → {shell_count} Shell (Double-Sided)", flush=True)
         if face_count > 0:  print(f"[SCRIPT]   → {face_count} Face", flush=True)
 
         bbox = shape.BoundBox
@@ -143,16 +200,12 @@ def convert(input_path, output_path):
                 l_deflection = calculate_adaptive_deflection(sub_shape, global_max_dim, is_shell=is_shell_or_face)
                 
                 if i % 20 == 0:
-                    print(f"[SCRIPT] İşleniyor: {i}/{len(sub_shapes)}...", flush=True)
+                    print(f"[SCRIPT] ⚙️  İşleniyor: {i}/{len(sub_shapes)}...", flush=True)
 
                 # --- MESH OLUŞTURMA ---
                 mesh = MeshPart.meshFromShape(
                     Shape=sub_shape,
                     LinearDeflection=l_deflection,
-                    # [KRİTİK GÜNCELLEME] AngularDeflection
-                    # 0.1 -> Çok pürüzsüz ama çok büyük dosya (487MB sebebi)
-                    # 0.5 -> Çok köşeli (FreeCAD varsayılanı)
-                    # 0.25 -> ORTA YOL (Yuvarlaklar yeterince iyi, dosya boyutu makul)
                     AngularDeflection=0.25, 
                     Relative=False
                 )
@@ -177,7 +230,7 @@ def convert(input_path, output_path):
 
                         try:
                             pbr_material = trimesh.visual.material.PBRMaterial(
-                                doubleSided=True, # Görünmezlik sorununu çözer
+                                doubleSided=True,
                                 main_color=[200, 200, 200, 255],
                                 metallicFactor=0.1,
                                 roughnessFactor=0.5
@@ -213,19 +266,38 @@ def convert(input_path, output_path):
             raise Exception("Hiçbir parça meshlenemedi.")
 
         if failed_parts:
-            print(f"\n[UYARI] {len(failed_parts)} parça başarısız.", flush=True)
+            print(f"\n[UYARI] ⚠️  {len(failed_parts)} parça başarısız.", flush=True)
 
-        scene.export(output_path, file_type="glb")
+        # --- ÖNCE SIKIŞTIRILMAMIŞ GLB OLUŞTUR ---
+        temp_glb = f"{output_path}.temp.glb"
+        print(f"[SCRIPT] 💾 Geçici GLB oluşturuluyor...", flush=True)
+        scene.export(temp_glb, file_type="glb")
+        
+        temp_size_mb = os.path.getsize(temp_glb) / (1024 * 1024)
+        print(f"[SCRIPT] 📏 Sıkıştırılmamış GLB: {temp_size_mb:.2f} MB", flush=True)
 
+        # --- DRACO SIKIŞTIRMASI ---
+        compression_success = compress_with_draco(temp_glb, output_path)
+        
+        if compression_success:
+            # Başarılı, temp dosyayı sil
+            os.remove(temp_glb)
+        else:
+            # Başarısız, temp dosyayı final olarak kullan
+            print(f"[SCRIPT] ⚠️  Draco sıkıştırması yapılamadı, düz GLB kullanılıyor", flush=True)
+            shutil.move(temp_glb, output_path)
+
+        # --- SONUÇ ---
         total_time = time.time() - start_time
-        size_mb = os.path.getsize(output_path) / (1024 * 1024)
+        final_size_mb = os.path.getsize(output_path) / (1024 * 1024)
 
-        print(f"\n[SCRIPT] BAŞARILI!", flush=True)
-        print(f"[SCRIPT] İşlenen: {processed_count}/{len(sub_shapes)} parça", flush=True)
-        print(f"[SCRIPT] Süre: {total_time:.2f}s | Boyut: {size_mb:.2f} MB", flush=True)
+        print(f"\n[SCRIPT] ✅ BAŞARILI!", flush=True)
+        print(f"[SCRIPT] 📦 İşlenen: {processed_count}/{len(sub_shapes)} parça", flush=True)
+        print(f"[SCRIPT] ⏱️  Toplam Süre: {total_time:.2f}s", flush=True)
+        print(f"[SCRIPT] 📊 Final Boyut: {final_size_mb:.2f} MB", flush=True)
 
     except Exception as e:
-        print(f"[SCRIPT] KRİTİK HATA: {e}", flush=True)
+        print(f"[SCRIPT] ❌ KRİTİK HATA: {e}", flush=True)
         import traceback
         traceback.print_exc()
         sys.exit(1)

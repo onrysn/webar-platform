@@ -360,6 +360,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
 import { TextureLoader } from 'three';
@@ -1128,6 +1129,12 @@ const animate = () => {
 const loadSceneObjects = async () => {
     if (!sceneData.value) return;
     const loader = new GLTFLoader();
+    
+    // Draco decoder yapılandırması
+    const dracoLoader = new DRACOLoader();
+    dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+    dracoLoader.setDecoderConfig({ type: 'js' });
+    loader.setDRACOLoader(dracoLoader);
 
     for (const item of sceneData.value.items) {
         try {
@@ -1189,6 +1196,9 @@ const loadSceneObjects = async () => {
             console.error(`Item ${item.id} yüklenemedi:`, err);
         }
     }
+    
+    // Draco loader'ı temizle
+    dracoLoader.dispose();
 };
 
 const addModelToScene = async (arModel: ARModelDto) => {
@@ -1199,10 +1209,20 @@ const addModelToScene = async (arModel: ARModelDto) => {
 
     try {
         const loader = new GLTFLoader();
+        
+        // Draco decoder yapılandırması
+        const dracoLoader = new DRACOLoader();
+        dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+        dracoLoader.setDecoderConfig({ type: 'js' });
+        loader.setDRACOLoader(dracoLoader);
+        
         const blob = await arModelService.getModelFileBlob(arModel.id, 'glb', 'view');
         const url = URL.createObjectURL(blob);
         const gltf = await loader.loadAsync(url);
         const model = gltf.scene;
+        
+        // Draco loader'ı temizle
+        dracoLoader.dispose();
 
         model.position.set(0, 0, 0);
         model.rotation.set(0, 0, 0);

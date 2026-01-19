@@ -27,6 +27,7 @@ import { ref, onMounted, onBeforeUnmount, watch, nextTick } from 'vue';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { USDZLoader } from 'three/examples/jsm/loaders/USDZLoader.js';
 
@@ -171,8 +172,18 @@ const loadModel = async () => {
 
     if (ext === 'glb' || ext === 'gltf') {
       const loader = new GLTFLoader();
+      
+      // Draco decoder yapılandırması
+      const dracoLoader = new DRACOLoader();
+      dracoLoader.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.6/');
+      dracoLoader.setDecoderConfig({ type: 'js' });
+      loader.setDRACOLoader(dracoLoader);
+      
       const gltf = await loader.loadAsync(url);
       object = gltf.scene;
+      
+      // Temizlik
+      dracoLoader.dispose();
     } 
     else if (ext === 'fbx') {
       const loader = new FBXLoader();
