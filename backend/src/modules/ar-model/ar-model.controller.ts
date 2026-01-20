@@ -18,6 +18,7 @@ import type { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { Role } from '@prisma/client';
 import { CompanyActiveGuard } from 'src/common/guards/company-active.guard';
 import { ApiResponse } from '@nestjs/swagger';
+import { InitiateChunkedUploadDto, UploadChunkDto, CompleteChunkedUploadDto } from './dto/chunked-upload.dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard, CompanyActiveGuard) // 1. Rol korumasını ekledik
 @ApiBearerAuth('access-token')
@@ -208,52 +209,92 @@ export class ARModelController {
     // 3. YÜKLEME VE DÖNÜŞTÜRME (Sadece EDITOR ve Üstü)
     // ----------------------------------------------------------------
     
-    @Post('upload-fbx')
-    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR) // MEMBER yükleyemez
-    @UseInterceptors(FileInterceptor('file', modelUploadConfig))
-    @ApiConsumes('multipart/form-data')
-    @ApiOperation({ summary: 'FBX dosyasını yükler ve GLB/USDZ formatına çevirir' })
-    @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
-    async uploadFbx(@UploadedFile() file: MulterFile, @User() user: CurrentUser, @Body('companyId') companyId?: string) {
-        if (!file) throw new BadRequestException('File is required');
-        let targetCompanyId: number | undefined = user.companyId ?? undefined;
-        if (user.role === Role.SUPER_ADMIN && companyId) targetCompanyId = Number(companyId);
-        return this.arModelService.convertFbxToTemp(file, user.id, targetCompanyId);
-    }
-
-    @Post('upload-step')
+    // ==================== CHUNKED UPLOAD (YENİ) ====================
+    @Post('initiate-chunked-upload')
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
-    @UseInterceptors(FileInterceptor('file', modelUploadConfig))
-    @ApiConsumes('multipart/form-data')
-    @ApiOperation({ summary: 'STEP/STP dosyasını yükler ve GLB/USDZ formatına çevirir' })
-    @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' } } } })
-    async uploadStep(@UploadedFile() file: MulterFile, @User() user: CurrentUser, @Body('companyId') companyId?: string) {
-        if (!file) throw new BadRequestException('File is required');
-        let targetCompanyId: number | undefined = user.companyId ?? undefined;
-        if (user.role === Role.SUPER_ADMIN && companyId) targetCompanyId = Number(companyId);
-        return this.arModelService.convertStepToTemp(file, user.id, targetCompanyId);
+    @ApiOperation({ summary: 'Parçalı upload session başlatır' })
+    @ApiBody({ type: InitiateChunkedUploadDto })
+    async initiateChunkedUpload(
+        @Body() dto: InitiateChunkedUploadDto,
+        @User() user: CurrentUser
+    ) {
+        let targetCompanyId = user.companyId ?? undefined;
+        if (user.role === Role.SUPER_ADMIN && dto.companyId) {
+            targetCompanyId = dto.companyId;
+        }
+        return this.arModelService.initiateChunkedUpload(dto, user.id, targetCompanyId);
     }
 
-    @Post('upload-glb')
+    @Post('upload-chunk')
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
-    @UseInterceptors(FileInterceptor('file', modelUploadConfig))
+    @UseInterceptors(FileInterceptor('chunk'))
     @ApiConsumes('multipart/form-data')
-    @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' }, tempId: { type: 'string', nullable: true } } } })
-    async uploadGlb(@UploadedFile() file: MulterFile, @Body('tempId') tempId: string | undefined, @User() user: CurrentUser) {
-        if (!file) throw new BadRequestException('File is required');
-        return this.arModelService.saveTempUploadedModel(file, 'glb', tempId, user.id);
+    @ApiOperation({ summary: 'Tek bir chunk yükler' })
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                uploadId: { type: 'string' },
+                chunkIndex: { type: 'number' },
+                chunkHash: { type: 'string', nullable: true },
+                chunk: { type: 'string', format: 'binary' }
+            }
+        }
+    })
+    async uploadChunk(
+        @UploadedFile() file: MulterFile,
+        @Body() body: any, // FormData string olarak gelir
+        @User() user: CurrentUser
+    ) {
+        if (!file) throw new BadRequestException('Chunk dosyası gerekli');
+        
+        // FormData'dan gelen değerleri parse et
+        const dto: UploadChunkDto = {
+            uploadId: body.uploadId,
+            chunkIndex: parseInt(body.chunkIndex, 10),
+            chunkHash: body.chunkHash || undefined
+        };
+
+        // Validation
+        if (!dto.uploadId) throw new BadRequestException('uploadId gerekli');
+        if (isNaN(dto.chunkIndex)) throw new BadRequestException('chunkIndex geçerli bir sayı olmalı');
+        if (dto.chunkIndex < 0) throw new BadRequestException('chunkIndex 0 veya daha büyük olmalı');
+
+        return this.arModelService.uploadChunk(dto, file, user.id);
     }
 
-    @Post('upload-usdz')
+    @Post('complete-chunked-upload')
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
-    @UseInterceptors(FileInterceptor('file', modelUploadConfig))
-    @ApiConsumes('multipart/form-data')
-    @ApiBody({ schema: { type: 'object', properties: { file: { type: 'string', format: 'binary' }, tempId: { type: 'string', nullable: true } } } })
-    async uploadUsdz(@UploadedFile() file: MulterFile, @Body('tempId') tempId: string | undefined, @User() user: CurrentUser) {
-        if (!file) throw new BadRequestException('File is required');
-        return this.arModelService.saveTempUploadedModel(file, 'usdz', tempId, user.id);
+    @ApiOperation({ summary: 'Parçalı upload tamamlar ve dosyayı birleştirir' })
+    @ApiBody({ type: CompleteChunkedUploadDto })
+    async completeChunkedUpload(
+        @Body() dto: CompleteChunkedUploadDto,
+        @User() user: CurrentUser
+    ) {
+        return this.arModelService.completeChunkedUpload(dto, user.id);
     }
 
+    @Get('chunked-upload-status/:uploadId')
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
+    @ApiOperation({ summary: 'Parçalı upload durumunu getirir (resume için)' })
+    async getChunkedUploadStatus(
+        @Param('uploadId') uploadId: string,
+        @User() user: CurrentUser
+    ) {
+        return this.arModelService.getChunkedUploadStatus(uploadId, user.id);
+    }
+
+    @Post('cancel-chunked-upload/:uploadId')
+    @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR)
+    @ApiOperation({ summary: 'Parçalı upload iptal eder' })
+    async cancelChunkedUpload(
+        @Param('uploadId') uploadId: string,
+        @User() user: CurrentUser
+    ) {
+        return this.arModelService.cancelChunkedUpload(uploadId, user.id);
+    }
+    // ==================== CHUNKED UPLOAD END ====================
+    
     @Post('convert-glb-to-usdz')
     @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN, Role.EDITOR, Role.MEMBER)
     @ApiOperation({ summary: 'GLB yükler, converter servisi ile USDZ oluşturur.' })
@@ -337,9 +378,8 @@ export class ARModelController {
         );
     }
 
-
     // ----------------------------------------------------------------
-    // 5. YÖNETİM VE PAYLAŞIM (YENİ)
+    // 5. YÖNETİM VE PAYLAŞIM
     // ----------------------------------------------------------------
 
     @Post(':id/update') // veya PATCH ':id'

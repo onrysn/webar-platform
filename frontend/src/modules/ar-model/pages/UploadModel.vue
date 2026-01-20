@@ -72,7 +72,9 @@
         <div class="flex justify-between items-end mb-2 relative z-10">
           <div>
             <span class="text-lg font-bold text-gray-900 block">Dosya Yükleniyor</span>
-            <span class="text-sm text-gray-500">{{ progress === 100 ? 'İşleniyor, lütfen bekleyin...' : 'Sunucuya aktarılıyor...' }}</span>
+            <span class="text-sm text-gray-500">
+              {{ progress === 100 ? 'İşleniyor, lütfen bekleyin...' : `${uploadedChunks}/${totalChunks} parça yüklendi` }}
+            </span>
           </div>
           <span class="text-2xl font-black text-blue-600">{{ progress }}%</span>
         </div>
@@ -81,6 +83,41 @@
             class="bg-gradient-to-r from-blue-500 to-blue-600 h-full rounded-full transition-all duration-300 ease-out shadow-[0_0_10px_rgba(37,99,235,0.5)]"
             :style="{ width: progress + '%' }"></div>
         </div>
+        
+        <!-- Pause/Resume/Cancel Buttons -->
+        <div class="flex gap-3 mt-4 relative z-10">
+          <button 
+            v-if="uploadStatus === 'uploading'"
+            @click="pauseUpload"
+            class="flex-1 py-2 px-4 rounded-lg font-semibold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-colors flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Duraklat
+          </button>
+          
+          <button 
+            v-if="uploadStatus === 'paused'"
+            @click="resumeUpload"
+            class="flex-1 py-2 px-4 rounded-lg font-semibold text-green-700 bg-green-50 border border-green-200 hover:bg-green-100 transition-colors flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Devam Et
+          </button>
+          
+          <button 
+            @click="cancelUpload"
+            :disabled="uploadStatus === 'completed'"
+            class="flex-1 py-2 px-4 rounded-lg font-semibold text-red-700 bg-red-50 border border-red-200 hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+            İptal
+          </button>
+        </div>
+        
         <div class="absolute -right-10 -top-10 w-32 h-32 bg-blue-50 rounded-full blur-2xl opacity-50"></div>
       </div>
 
@@ -225,6 +262,7 @@ import { companyService } from "../../../services/companyService";
 import { useAuthStore } from "../../../store/modules/auth"; // Auth Store
 import { categoryService, type CategoryDto } from "../../../services/categoryService";
 import { seriesService, type SeriesDto } from "../../../services/seriesService";
+import { ChunkUploader } from "../../../utils/ChunkUploader";
 
 const route = useRoute();
 const router = useRouter();
@@ -246,6 +284,20 @@ const modelName = ref("");
 const tempData = ref<TempModelResponse | null>(null);
 const queueStatus = ref<{ status?: string; progress?: number; message?: string } | null>(null);
 let statusTimer: number | null = null;
+
+// [YENİ] Chunked Upload State
+let currentUploader: ChunkUploader | null = null;
+const uploadStatus = ref<'idle' | 'preparing' | 'uploading' | 'paused' | 'completed' | 'error' | 'cancelled'>('idle');
+const uploadedChunks = ref(0);
+const totalChunks = ref(0);
+const currentUploadId = ref<string | null>(null);
+
+// ChunkUploader state değişikliklerini izle ve uploadStatus'u senkronize et
+watch(() => currentUploader?.state.value.status, (newStatus) => {
+  if (newStatus) {
+    uploadStatus.value = newStatus;
+  }
+}, { deep: true });
 
 // [YENİ] Şirket Seçimi İçin State
 const companiesList = ref<CompanyDto[]>([]);
@@ -352,17 +404,18 @@ const handleDrop = (event: DragEvent, type: 'auto' | 'glb' | 'usdz') => {
   if (file) processUpload(file, type);
 };
 
-const processUpload = async (file: File, type: 'auto' | 'glb' | 'usdz') => {
+const processUpload = async (file: File, _type: 'auto' | 'glb' | 'usdz') => {
   // [YENİ] Validasyon: Eğer Super Admin ise ve şirket seçmediyse işlem yapma
   if (isSuperAdmin.value && !targetCompanyId.value && !selectedCompanyId.value) {
     toast.warning("Lütfen önce yükleme yapılacak şirketi seçiniz.");
-    // Dropdown'a scroll yap veya highlight et (opsiyonel)
     return;
   }
 
   error.value = null;
   uploading.value = true;
   progress.value = 0;
+  uploadedChunks.value = 0;
+  totalChunks.value = 0;
 
   if (!modelName.value) {
     modelName.value = file.name.replace(/\.[^/.]+$/, "");
@@ -370,62 +423,132 @@ const processUpload = async (file: File, type: 'auto' | 'glb' | 'usdz') => {
 
   try {
     const ext = file.name.split('.').pop()?.toLowerCase();
-    let res: any = null;
     const currentTempId = tempData.value?.tempId;
 
-    if (ext === 'fbx') {
-      if (type !== 'auto') throw new Error("FBX dosyaları sadece ana ekrandan yüklenebilir.");
-      res = await arModelService.uploadFbx(file, activeCompanyContext.value, (p) => progress.value = p);
-      tempData.value = res;
-      startStatusPolling();
-    }
-    else if (ext === 'step' || ext === 'stp') {
-      if (type !== 'auto') throw new Error("STEP dosyaları sadece ana ekrandan yüklenebilir.");
-      res = await arModelService.uploadStep(file, activeCompanyContext.value, (p) => progress.value = p);
-      tempData.value = res;
-      startStatusPolling();
-    }
-    else if (ext === 'glb' || ext === 'gltf') {
-      if (type === 'usdz') throw new Error("Lütfen buraya USDZ dosyası yükleyin.");
-      res = await arModelService.uploadGlb(file, currentTempId, (p) => progress.value = p);
-      tempData.value = {
-        ...tempData.value!,
-        tempId: res.tempId || tempData.value?.tempId,
-        previewUrl: res.previewUrl,
-        glb: {
-          filename: res.filename,
-          url: res.previewUrl,
-          size: res.size,
-          path: res.path
-        }
-      };
-    }
-    else if (ext === 'usdz') {
-      if (type === 'glb') throw new Error("Lütfen buraya GLB dosyası yükleyin.");
-      res = await arModelService.uploadUsdz(file, currentTempId, (p) => progress.value = p);
-      tempData.value = {
-        ...tempData.value!,
-        tempId: res.tempId || tempData.value?.tempId,
-        usdz: {
-          filename: res.filename,
-          url: res.previewUrl,
-          size: res.size,
-          path: res.path
-        }
-      };
-    } else {
+    // Dosya tipi belirleme
+    let fileType: 'glb' | 'usdz' | 'fbx' | 'step' = 'glb';
+    if (ext === 'fbx') fileType = 'fbx';
+    else if (ext === 'step' || ext === 'stp') fileType = 'step';
+    else if (ext === 'usdz') fileType = 'usdz';
+    else if (ext === 'glb' || ext === 'gltf') fileType = 'glb';
+    else {
       throw new Error("Desteklenmeyen dosya formatı.");
     }
+
+    // Chunk uploader oluştur
+    currentUploader = new ChunkUploader({
+      file,
+      fileType,
+      chunkSize: 5 * 1024 * 1024, // 5MB
+      tempId: currentTempId,
+      companyId: activeCompanyContext.value,
+      onProgress: (p) => {
+        progress.value = Math.round(p);
+      },
+      onChunkComplete: (chunkIndex, total) => {
+        uploadedChunks.value = chunkIndex + 1;
+        totalChunks.value = total;
+        uploadStatus.value = 'uploading'; // Chunk yüklenirken status güncelle
+      },
+      onComplete: async (result) => {
+        uploading.value = false;
+        uploadStatus.value = 'completed';
+        
+        // Sonucu işle
+        if (result.tempId) {
+          if (fileType === 'fbx' || fileType === 'step') {
+            tempData.value = result;
+            startStatusPolling();
+          } else if (fileType === 'glb') {
+            tempData.value = {
+              ...tempData.value!,
+              tempId: result.tempId || tempData.value?.tempId,
+              previewUrl: result.previewUrl,
+              glb: {
+                filename: result.filename,
+                url: result.previewUrl,
+                size: result.size,
+                path: result.path
+              }
+            };
+          } else if (fileType === 'usdz') {
+            tempData.value = {
+              ...tempData.value!,
+              tempId: result.tempId || tempData.value?.tempId,
+              usdz: {
+                filename: result.filename,
+                url: result.previewUrl,
+                size: result.size,
+                path: result.path
+              }
+            };
+          }
+          toast.success('Dosya başarıyla yüklendi!');
+        }
+      },
+      onError: (err) => {
+        uploading.value = false;
+        uploadStatus.value = 'error';
+        error.value = err.message;
+        toast.error(err.message);
+      }
+    });
+
+    // Upload'u başlat
+    uploadStatus.value = 'preparing';
+    totalChunks.value = currentUploader.state.value.totalChunks;
+    currentUploadId.value = null;
+    
+    await currentUploader.start();
+    
+    // Start tamamlandığında status'u güncelle
+    uploadStatus.value = currentUploader.state.value.status;
+
   } catch (err: any) {
     console.error(err);
     const msg = err.response?.data?.message || err.message || "Yükleme hatası";
     error.value = msg;
+    uploading.value = false;
+    uploadStatus.value = 'error';
     try { toast.error(msg); } catch (_) {}
   } finally {
-    uploading.value = false;
     if (mainInput.value) mainInput.value.value = "";
     if (glbInput.value) glbInput.value.value = "";
     if (usdzInput.value) usdzInput.value.value = "";
+  }
+};
+
+const pauseUpload = () => {
+  if (currentUploader) {
+    currentUploader.pause();
+    uploadStatus.value = 'paused';
+    currentUploadId.value = currentUploader.state.value.uploadId;
+    toast.info('Upload duraklatıldı. İstediğiniz zaman devam ettirebilirsiniz.');
+  }
+};
+
+const resumeUpload = async () => {
+  if (currentUploader && currentUploadId.value) {
+    try {
+      uploadStatus.value = 'preparing';
+      uploading.value = true;
+      await currentUploader.resume(currentUploadId.value);
+    } catch (err: any) {
+      error.value = err.message;
+      toast.error('Devam ettirme hatası: ' + err.message);
+    }
+  }
+};
+
+const cancelUpload = async () => {
+  if (currentUploader && confirm('Upload iptal edilecek, emin misiniz?')) {
+    await currentUploader.cancel();
+    uploading.value = false;
+    uploadStatus.value = 'cancelled';
+    currentUploadId.value = null;
+    progress.value = 0;
+    uploadedChunks.value = 0;
+    toast.warning('Upload iptal edildi.');
   }
 };
 

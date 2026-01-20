@@ -12,6 +12,13 @@ import { ActivityLogService } from '../activity-log/activity-log.service';
 import { Role } from '@prisma/client'; // Role enum'ını ekledik
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
+import { 
+    InitiateChunkedUploadDto, 
+    UploadChunkDto, 
+    CompleteChunkedUploadDto,
+    ChunkedUploadSession,
+    ChunkUploadProgress
+} from './dto/chunked-upload.dto';
 
 @Injectable()
 export class ARModelService {
@@ -19,6 +26,10 @@ export class ARModelService {
     private converterUrl = process.env.CONVERTER_URL || 'http://converter:3001';
     private TEMP_ROOT = path.join(process.cwd(), 'uploads', 'temp');
     private FINAL_ROOT = path.join(process.cwd(), 'uploads', 'models');
+    private CHUNKS_ROOT = path.join(process.cwd(), 'uploads', 'chunks');
+    
+    // In-memory storage for upload sessions (production'da Redis kullanılmalı)
+    private uploadSessions: Map<string, ChunkedUploadSession> = new Map();
 
     constructor(
         private prisma: PrismaService,
@@ -33,6 +44,10 @@ export class ARModelService {
 
         if (!fs.existsSync(this.TEMP_ROOT)) fs.mkdirSync(this.TEMP_ROOT, { recursive: true });
         if (!fs.existsSync(this.FINAL_ROOT)) fs.mkdirSync(this.FINAL_ROOT, { recursive: true });
+        if (!fs.existsSync(this.CHUNKS_ROOT)) fs.mkdirSync(this.CHUNKS_ROOT, { recursive: true });
+
+        // Expired sessions temizleme (her 1 saatte bir)
+        setInterval(() => this.cleanExpiredSessions(), 60 * 60 * 1000);
     }
 
     // --- ENCRYPTION HELPERS ---
@@ -581,5 +596,314 @@ export class ARModelService {
         );
 
         return { success: true, message: 'Paylaşım bağlantısı iptal edildi.' };
+    }
+
+    // ==================== CHUNKED UPLOAD METHODS ====================
+    
+    /**
+     * Parçalı upload session başlatır
+     */
+    async initiateChunkedUpload(
+        dto: InitiateChunkedUploadDto,
+        userId: number,
+        companyId?: number
+    ): Promise<{ uploadId: string; chunkSize: number }> {
+        const uploadId = `upload_${Date.now()}_${uuidv4()}`;
+        const chunkSize = dto.chunkSize || 5 * 1024 * 1024; // Default 5MB
+        
+        // Upload directory oluştur
+        const uploadDir = path.join(this.CHUNKS_ROOT, uploadId);
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+
+        const session: ChunkedUploadSession = {
+            uploadId,
+            userId,
+            companyId,
+            fileName: dto.fileName,
+            fileSize: dto.fileSize,
+            fileType: dto.fileType,
+            chunkSize,
+            totalChunks: dto.totalChunks,
+            uploadedChunks: [],
+            tempId: dto.tempId,
+            fileHash: dto.fileHash,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 saat
+            status: 'PENDING'
+        };
+
+        this.uploadSessions.set(uploadId, session);
+
+        return { uploadId, chunkSize };
+    }
+
+    /**
+     * Tek bir chunk yükler
+     */
+    async uploadChunk(
+        dto: UploadChunkDto,
+        file: MulterFile,
+        userId: number
+    ): Promise<ChunkUploadProgress> {
+        const session = this.uploadSessions.get(dto.uploadId);
+        
+        if (!session) {
+            throw new NotFoundException('Upload session bulunamadı veya süresi dolmuş');
+        }
+
+        if (session.userId !== userId) {
+            throw new ForbiddenException('Bu upload session size ait değil');
+        }
+
+        if (session.status === 'COMPLETED') {
+            throw new BadRequestException('Bu upload zaten tamamlanmış');
+        }
+
+        if (session.status === 'CANCELLED') {
+            throw new BadRequestException('Bu upload iptal edilmiş');
+        }
+
+        // Chunk index validasyonu
+        if (dto.chunkIndex < 0 || dto.chunkIndex >= session.totalChunks) {
+            throw new BadRequestException('Geçersiz chunk index');
+        }
+
+        // Chunk zaten yüklenmiş mi kontrol et
+        if (session.uploadedChunks.includes(dto.chunkIndex)) {
+            // İdempotent: Zaten yüklenmiş, başarılı dön
+            return this.getChunkedUploadProgress(session);
+        }
+
+        const uploadDir = path.join(this.CHUNKS_ROOT, dto.uploadId);
+        const chunkPath = path.join(uploadDir, `chunk_${dto.chunkIndex}`);
+
+        // Chunk dosyasını kaydet
+        let buffer: Buffer;
+        if (file.buffer) {
+            buffer = file.buffer;
+        } else if (file.path && fs.existsSync(file.path)) {
+            buffer = fs.readFileSync(file.path);
+            fs.unlinkSync(file.path); // Temp dosyayı sil
+        } else {
+            throw new InternalServerErrorException('Chunk dosyası okunamadı');
+        }
+
+        // Hash doğrulama (opsiyonel)
+        if (dto.chunkHash) {
+            const hash = crypto.createHash('md5').update(buffer).digest('hex');
+            if (hash !== dto.chunkHash) {
+                throw new BadRequestException('Chunk hash doğrulaması başarısız');
+            }
+        }
+
+        fs.writeFileSync(chunkPath, buffer);
+
+        // Session güncelle
+        session.uploadedChunks.push(dto.chunkIndex);
+        session.uploadedChunks.sort((a, b) => a - b); // Sıralı tut
+        session.updatedAt = new Date();
+        session.status = 'UPLOADING';
+
+        this.uploadSessions.set(dto.uploadId, session);
+
+        return this.getChunkedUploadProgress(session);
+    }
+
+    /**
+     * Upload tamamlar ve chunk'ları birleştirir
+     */
+    async completeChunkedUpload(
+        dto: CompleteChunkedUploadDto,
+        userId: number
+    ): Promise<any> {
+        const session = this.uploadSessions.get(dto.uploadId);
+        
+        if (!session) {
+            throw new NotFoundException('Upload session bulunamadı');
+        }
+
+        if (session.userId !== userId) {
+            throw new ForbiddenException('Bu upload session size ait değil');
+        }
+
+        if (session.status === 'COMPLETED') {
+            throw new BadRequestException('Bu upload zaten tamamlanmış');
+        }
+
+        // Tüm chunk'lar yüklenmiş mi?
+        if (session.uploadedChunks.length !== session.totalChunks) {
+            throw new BadRequestException(
+                `Eksik chunk var. ${session.uploadedChunks.length}/${session.totalChunks} yüklendi`
+            );
+        }
+
+        const uploadDir = path.join(this.CHUNKS_ROOT, dto.uploadId);
+        
+        // Chunk'ları birleştir
+        const combinedPath = path.join(uploadDir, session.fileName);
+        const writeStream = fs.createWriteStream(combinedPath);
+
+        for (let i = 0; i < session.totalChunks; i++) {
+            const chunkPath = path.join(uploadDir, `chunk_${i}`);
+            if (!fs.existsSync(chunkPath)) {
+                throw new InternalServerErrorException(`Chunk ${i} bulunamadı`);
+            }
+            const chunkBuffer = fs.readFileSync(chunkPath);
+            writeStream.write(chunkBuffer);
+        }
+
+        writeStream.end();
+
+        await new Promise<void>((resolve, reject) => {
+            writeStream.on('finish', () => resolve());
+            writeStream.on('error', reject);
+        });
+
+        // Hash doğrulama (opsiyonel)
+        if (dto.fileHash) {
+            const fileBuffer = fs.readFileSync(combinedPath);
+            const fileHash = crypto.createHash('md5').update(fileBuffer).digest('hex');
+            if (fileHash !== dto.fileHash) {
+                throw new BadRequestException('Dosya hash doğrulaması başarısız');
+            }
+        }
+
+        // Session tamamlandı olarak işaretle
+        session.status = 'COMPLETED';
+        session.updatedAt = new Date();
+        this.uploadSessions.set(dto.uploadId, session);
+
+        // Birleştirilmiş dosyayı uygun handler'a gönder
+        const file: MulterFile = {
+            fieldname: 'file',
+            originalname: session.fileName,
+            encoding: '7bit',
+            mimetype: this.getMimeType(session.fileType),
+            size: session.fileSize,
+            buffer: fs.readFileSync(combinedPath),
+            stream: null,
+            destination: uploadDir,
+            filename: session.fileName,
+            path: combinedPath
+        };
+
+        let result: any;
+
+        try {
+            // Dosya tipine göre işlem yap
+            if (session.fileType === 'fbx') {
+                result = await this.convertFbxToTemp(file, session.userId, session.companyId);
+            } else if (session.fileType === 'step') {
+                result = await this.convertStepToTemp(file, session.userId, session.companyId);
+            } else if (session.fileType === 'glb') {
+                result = await this.saveTempUploadedModel(file, 'glb', session.tempId, session.userId);
+            } else if (session.fileType === 'usdz') {
+                result = await this.saveTempUploadedModel(file, 'usdz', session.tempId, session.userId);
+            } else {
+                throw new BadRequestException('Desteklenmeyen dosya tipi');
+            }
+        } finally {
+            // Chunk'ları ve geçici dosyaları temizle
+            this.cleanupChunks(dto.uploadId);
+        }
+
+        return {
+            ...result,
+            uploadId: dto.uploadId,
+            message: 'Upload başarıyla tamamlandı'
+        };
+    }
+
+    /**
+     * Upload durumunu getirir (resume için)
+     */
+    async getChunkedUploadStatus(uploadId: string, userId: number): Promise<ChunkUploadProgress> {
+        const session = this.uploadSessions.get(uploadId);
+        
+        if (!session) {
+            throw new NotFoundException('Upload session bulunamadı');
+        }
+
+        if (session.userId !== userId) {
+            throw new ForbiddenException('Bu upload session size ait değil');
+        }
+
+        return this.getChunkedUploadProgress(session);
+    }
+
+    /**
+     * Upload iptal eder
+     */
+    async cancelChunkedUpload(uploadId: string, userId: number): Promise<{ success: boolean }> {
+        const session = this.uploadSessions.get(uploadId);
+        
+        if (!session) {
+            throw new NotFoundException('Upload session bulunamadı');
+        }
+
+        if (session.userId !== userId) {
+            throw new ForbiddenException('Bu upload session size ait değil');
+        }
+
+        session.status = 'CANCELLED';
+        session.updatedAt = new Date();
+        this.uploadSessions.set(uploadId, session);
+
+        // Chunk'ları temizle
+        this.cleanupChunks(uploadId);
+
+        return { success: true };
+    }
+
+    // ==================== PRIVATE HELPERS ====================
+
+    private getChunkedUploadProgress(session: ChunkedUploadSession): ChunkUploadProgress {
+        const progress = (session.uploadedChunks.length / session.totalChunks) * 100;
+        
+        return {
+            uploadId: session.uploadId,
+            fileName: session.fileName,
+            fileSize: session.fileSize,
+            totalChunks: session.totalChunks,
+            uploadedChunks: session.uploadedChunks,
+            progress: Math.round(progress * 100) / 100,
+            status: session.status,
+            canResume: session.status === 'PENDING' || session.status === 'UPLOADING',
+            error: session.error
+        };
+    }
+
+    private cleanupChunks(uploadId: string) {
+        const uploadDir = path.join(this.CHUNKS_ROOT, uploadId);
+        if (fs.existsSync(uploadDir)) {
+            try {
+                fs.rmSync(uploadDir, { recursive: true, force: true });
+            } catch (error) {
+                console.error(`Chunk cleanup hatası (${uploadId}):`, error);
+            }
+        }
+        this.uploadSessions.delete(uploadId);
+    }
+
+    private cleanExpiredSessions() {
+        const now = new Date();
+        for (const [uploadId, session] of this.uploadSessions.entries()) {
+            if (session.expiresAt < now) {
+                this.cleanupChunks(uploadId);
+            }
+        }
+    }
+
+    private getMimeType(fileType: string): string {
+        const mimeTypes: Record<string, string> = {
+            'glb': 'model/gltf-binary',
+            'usdz': 'model/vnd.usdz+zip',
+            'fbx': 'application/octet-stream',
+            'step': 'application/step'
+        };
+        return mimeTypes[fileType] || 'application/octet-stream';
     }
 }

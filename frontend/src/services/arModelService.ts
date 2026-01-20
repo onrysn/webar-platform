@@ -1,7 +1,6 @@
 // src/services/arModelService.ts
 import type { ARModelDto, TempModelResponse, FinalizeModelDto, ModelDetailDto, UpdateModelDto, ShareTokenResponse, UploadStatusResponse, UploadJobDto } from "../modules/ar-model/dto/arModel.dto";
 import { apiService } from "./httpService/apiService"; // Axios instance
-import type { AxiosProgressEvent } from "axios";
 
 // Statik dosyalar (temp klasörü) genellikle API prefix'i olmadan sunulur.
 // Nginx proxy ayarına göre burası dinamik çalışır.
@@ -21,63 +20,7 @@ export const arModelService = {
   },
 
   // ----------------------------------------------------------------
-  // 2. YÜKLEME İŞLEMLERİ (TEMP)
-  // ----------------------------------------------------------------
-  
-  // FBX Yükleme
-  async uploadFbx(file: File, companyId?: number, onProgress?: (percent: number) => void): Promise<TempModelResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (companyId) formData.append('companyId', String(companyId));
-
-    const res = await apiService.post<TempModelResponse>('/ar-model/upload-fbx', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (e) => handleProgress(e, onProgress),
-    });
-    return res.data;
-  },
-
-  // STEP Yükleme
-  async uploadStep(file: File, companyId?: number, onProgress?: (percent: number) => void): Promise<TempModelResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (companyId) formData.append('companyId', String(companyId));
-
-    const res = await apiService.post<TempModelResponse>('/ar-model/upload-step', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (e) => handleProgress(e, onProgress),
-    });
-    return res.data;
-  },
-
-  // GLB Yükleme
-  async uploadGlb(file: File, tempId?: string, onProgress?: (percent: number) => void): Promise<TempModelResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (tempId) formData.append('tempId', tempId);
-
-    const res = await apiService.post<TempModelResponse>('/ar-model/upload-glb', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (e) => handleProgress(e, onProgress),
-    });
-    return res.data;
-  },
-
-  // USDZ Yükleme
-  async uploadUsdz(file: File, tempId?: string, onProgress?: (percent: number) => void): Promise<TempModelResponse> {
-    const formData = new FormData();
-    formData.append('file', file);
-    if (tempId) formData.append('tempId', tempId);
-
-    const res = await apiService.post<TempModelResponse>('/ar-model/upload-usdz', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-      onUploadProgress: (e) => handleProgress(e, onProgress),
-    });
-    return res.data;
-  },
-
-  // ----------------------------------------------------------------
-  // 3. KAYDETME (FINALIZE)
+  // 2. KAYDETME (FINALIZE)
   // ----------------------------------------------------------------
   async finalizeModel(data: FinalizeModelDto): Promise<ARModelDto> {
     const formData = new FormData();
@@ -116,7 +59,7 @@ export const arModelService = {
   },
 
   // ----------------------------------------------------------------
-  // 4. DETAY VE DOSYA İŞLEMLERİ (AUTH REQUIRED)
+  // 3. DETAY VE DOSYA İŞLEMLERİ (AUTH REQUIRED)
   // ----------------------------------------------------------------
   
   // Model Detaylarını Getir
@@ -135,7 +78,7 @@ export const arModelService = {
   },
 
   // ----------------------------------------------------------------
-  // 5. YÖNETİM VE PAYLAŞIM (YENİ)
+  // 4. YÖNETİM VE PAYLAŞIM
   // ----------------------------------------------------------------
 
   // Model Güncelleme (İsim, Gizlilik)
@@ -172,7 +115,7 @@ export const arModelService = {
   },
 
   // ----------------------------------------------------------------
-  // 6. PUBLIC ERİŞİM (LOGIN GEREKTİRMEZ) (YENİ)
+  // 5. PUBLIC ERİŞİM (LOGIN GEREKTİRMEZ)
   // ----------------------------------------------------------------
 
   // Token ile model detayını getir (Müşteri ekranı için)
@@ -202,7 +145,7 @@ export const arModelService = {
   },
 
   // ----------------------------------------------------------------
-  // 7. ARAÇLAR
+  // 6. ARAÇLAR
   // ----------------------------------------------------------------
 
   // GLB -> USDZ Çevirici
@@ -224,10 +167,3 @@ export const arModelService = {
     return `${BACKEND_URL}${path}`;
   }
 };
-
-// Progress Helper
-function handleProgress(event: AxiosProgressEvent, callback?: (percent: number) => void) {
-  if (event.total && event.loaded && callback) {
-    callback(Math.round((event.loaded * 100) / event.total));
-  }
-}
