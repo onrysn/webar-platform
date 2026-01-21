@@ -252,7 +252,7 @@
 
 <script lang="ts" setup>
 import { ref, computed, onMounted, watch, onBeforeUnmount } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { useRoute, useRouter, onBeforeRouteLeave } from "vue-router";
 import { useToast } from "vue-toastification";
 import ArPreview from "../components/ArPreview.vue";
 import type { TempModelResponse } from "../dto/arModel.dto";
@@ -315,6 +315,9 @@ const isSuperAdmin = computed(() => authStore.user?.role === 'SUPER_ADMIN');
 
 // [YENİ] Şirket Listesini Çek
 onMounted(async () => {
+  // beforeunload event'i ekle
+  window.addEventListener('beforeunload', handleBeforeUnload);
+  
   if (isSuperAdmin.value && !targetCompanyId.value) {
     try {
       companiesList.value = await companyService.getAllCompanies();
@@ -591,7 +594,47 @@ const stopStatusPolling = () => {
   }
 };
 
-onBeforeUnmount(() => stopStatusPolling());
+onBeforeUnmount(async () => {
+  // beforeunload event'ini kaldır
+  window.removeEventListener('beforeunload', handleBeforeUnload);
+  
+  stopStatusPolling();
+  // Upload devam ediyorsa iptal et
+  if (currentUploader && (uploadStatus.value === 'uploading' || uploadStatus.value === 'paused')) {
+    await currentUploader.cancel();
+  }
+});
+
+// Sayfa değişimini engelle ve upload'u iptal et
+onBeforeRouteLeave(async (_to, _from, next) => {
+  // Upload devam ediyorsa kullanıcıya sor
+  if (uploading.value && (uploadStatus.value === 'uploading' || uploadStatus.value === 'paused')) {
+    const confirmed = confirm('Model yükleme işlemi devam ediyor. Sayfadan ayrılırsanız yükleme iptal edilecek. Devam etmek istiyor musunuz?');
+    if (confirmed) {
+      // Upload'u iptal et ve temizle
+      if (currentUploader) {
+        await currentUploader.cancel();
+        currentUploader = null;
+      }
+      uploading.value = false;
+      uploadStatus.value = 'cancelled';
+      next();
+    } else {
+      next(false);
+    }
+  } else {
+    next();
+  }
+});
+
+// Sayfa yenileme/kapatma durumunu kontrol et
+const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+  if (uploading.value && (uploadStatus.value === 'uploading' || uploadStatus.value === 'paused')) {
+    e.preventDefault();
+    e.returnValue = 'Model yükleme işlemi devam ediyor. Sayfayı yenilerseniz yükleme iptal edilecek.';
+    return e.returnValue;
+  }
+};
 
 const finalizeUpload = async () => {
   if (!isReadyToFinalize.value || !tempData.value?.tempId) return;
@@ -643,13 +686,27 @@ const finalizeUpload = async () => {
   }
 };
 
-const cancelProcess = () => {
+const cancelProcess = async () => {
     if(confirm("Yükleme iptal edilecek, emin misiniz?")) {
+        // Aktif upload varsa iptal et
+        if (currentUploader && (uploadStatus.value === 'uploading' || uploadStatus.value === 'paused')) {
+            await currentUploader.cancel();
+            currentUploader = null;
+        }
+        
+        // Polling'i durdur
+        stopStatusPolling();
+        
+        // State'i temizle
         tempData.value = null;
         progress.value = 0;
         modelName.value = "";
         error.value = null;
         uploading.value = false;
+        uploadStatus.value = 'idle';
+        uploadedChunks.value = 0;
+        totalChunks.value = 0;
+        
         router.back();
     }
 };

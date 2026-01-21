@@ -306,14 +306,38 @@ export class ChunkUploader {
       this.abortController?.abort();
 
       if (this.state.value.uploadId) {
-        await apiService.post(`/ar-model/cancel-chunked-upload/${this.state.value.uploadId}`);
+        // Backend'e iptal isteği gönder
+        try {
+          await apiService.post(`/ar-model/cancel-chunked-upload/${this.state.value.uploadId}`);
+        } catch (error) {
+          // Backend isteği başarısız olsa bile devam et
+          console.warn('Backend cancel request failed:', error);
+        }
       }
 
       this.state.value.status = 'cancelled';
       this.state.value.canResume = false;
+      
+      // State'i temizle
+      this.cleanup();
     } catch (error: any) {
       console.error('Cancel error:', error);
     }
+  }
+
+  /**
+   * Cleanup - Tüm kaynakları temizle
+   */
+  cleanup(): void {
+    // Abort controller'ı temizle
+    if (this.abortController) {
+      this.abortController.abort();
+      this.abortController = null;
+    }
+    
+    // State'i sıfırla
+    this.isPaused = false;
+    this.fileHash = null;
   }
 
   /**
