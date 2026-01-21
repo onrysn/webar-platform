@@ -8,7 +8,8 @@ import {
     UpdateSceneDto,
     AddSceneItemDto,
     UpdateSceneItemDto,
-    CreateFloorTextureDto
+    CreateFloorTextureDto,
+    UpdateFloorTextureDto
 } from './dto/ar-scene.dto';
 
 @Injectable()
@@ -278,20 +279,136 @@ export class ARSceneService {
     }
 
     // =================================================================
-    // 3. DİĞER (TEXTURE, TOKEN, SHARED) - AYNI KALIYOR
+    // 3. TEXTURE YÖNETİMİ (PBR Destekli)
     // =================================================================
     
-    // Texture
-    async listFloorTextures() {
-        return this.prisma.floorTexture.findMany({ where: { isActive: true }, orderBy: { name: 'asc' } });
+    // Tüm texture'ları listele
+    async listFloorTextures(category?: string) {
+        const where: any = { isActive: true };
+        if (category) where.category = category;
+        
+        return this.prisma.floorTexture.findMany({ 
+            where, 
+            orderBy: [{ sortOrder: 'asc' }, { name: 'asc' }] 
+        });
     }
 
+    // Texture oluştur (PBR veya Simple)
     async createFloorTexture(userId: number, data: CreateFloorTextureDto) {
+        const textureData: any = {
+            name: data.name,
+            type: data.type || 'SIMPLE',
+            thumbnailUrl: data.thumbnailUrl || data.baseColorUrl || data.textureUrl || '',
+            isActive: data.isActive ?? true,
+            sortOrder: data.sortOrder ?? 0,
+        };
+
+        // Simple Texture
+        if (data.type === 'SIMPLE' || !data.type) {
+            textureData.textureUrl = data.textureUrl;
+        }
+
+        // PBR Texture
+        if (data.type === 'PBR') {
+            textureData.baseColorUrl = data.baseColorUrl;
+            textureData.normalUrl = data.normalUrl;
+            textureData.roughnessUrl = data.roughnessUrl;
+            textureData.metallicUrl = data.metallicUrl;
+            textureData.aoUrl = data.aoUrl;
+            textureData.defaultScale = data.defaultScale ?? 2.0;
+            textureData.roughnessValue = data.roughnessValue ?? 0.9;
+            textureData.metalnessValue = data.metalnessValue ?? 0.0;
+            textureData.aoIntensity = data.aoIntensity ?? 1.2;
+            textureData.normalScale = data.normalScale ?? 2.0;
+        }
+
+        // Kategori ve Etiketler
+        if (data.category) textureData.category = data.category;
+        if (data.tags) textureData.tags = data.tags;
+
         const texture = await this.prisma.floorTexture.create({
-            data: { ...data, thumbnailUrl: data.thumbnailUrl || data.textureUrl, isActive: data.isActive ?? true },
+            data: textureData,
         });
+
+        await this.activityLogger.log(
+            userId,
+            null,
+            'TEXTURE_CREATED',
+            `Yeni texture eklendi: ${data.name}`,
+            { textureId: texture.id, type: texture.type }
+        );
+
         return texture;
     }
+
+    // Texture güncelle
+    async updateFloorTexture(id: number, userId: number, data: UpdateFloorTextureDto) {
+        const existing = await this.prisma.floorTexture.findUnique({ where: { id } });
+        if (!existing) throw new NotFoundException('Texture bulunamadı');
+
+        const updateData: any = {};
+        if (data.name !== undefined) updateData.name = data.name;
+        if (data.type !== undefined) updateData.type = data.type;
+        if (data.thumbnailUrl !== undefined) updateData.thumbnailUrl = data.thumbnailUrl;
+        if (data.isActive !== undefined) updateData.isActive = data.isActive;
+        if (data.sortOrder !== undefined) updateData.sortOrder = data.sortOrder;
+
+        // Simple Texture
+        if (data.textureUrl !== undefined) updateData.textureUrl = data.textureUrl;
+
+        // PBR Texture
+        if (data.baseColorUrl !== undefined) updateData.baseColorUrl = data.baseColorUrl;
+        if (data.normalUrl !== undefined) updateData.normalUrl = data.normalUrl;
+        if (data.roughnessUrl !== undefined) updateData.roughnessUrl = data.roughnessUrl;
+        if (data.metallicUrl !== undefined) updateData.metallicUrl = data.metallicUrl;
+        if (data.aoUrl !== undefined) updateData.aoUrl = data.aoUrl;
+        if (data.defaultScale !== undefined) updateData.defaultScale = data.defaultScale;
+        if (data.roughnessValue !== undefined) updateData.roughnessValue = data.roughnessValue;
+        if (data.metalnessValue !== undefined) updateData.metalnessValue = data.metalnessValue;
+        if (data.aoIntensity !== undefined) updateData.aoIntensity = data.aoIntensity;
+        if (data.normalScale !== undefined) updateData.normalScale = data.normalScale;
+
+        // Kategori ve Etiketler
+        if (data.category !== undefined) updateData.category = data.category;
+        if (data.tags !== undefined) updateData.tags = data.tags;
+
+        const updated = await this.prisma.floorTexture.update({
+            where: { id },
+            data: updateData,
+        });
+
+        await this.activityLogger.log(
+            userId,
+            null,
+            'TEXTURE_UPDATED',
+            `Texture güncellendi: ${updated.name}`,
+            { textureId: id }
+        );
+
+        return updated;
+    }
+
+    // Texture sil
+    async deleteFloorTexture(id: number, userId: number) {
+        const texture = await this.prisma.floorTexture.findUnique({ where: { id } });
+        if (!texture) throw new NotFoundException('Texture bulunamadı');
+
+        await this.prisma.floorTexture.delete({ where: { id } });
+
+        await this.activityLogger.log(
+            userId,
+            null,
+            'TEXTURE_DELETED',
+            `Texture silindi: ${texture.name}`,
+            { textureId: id }
+        );
+
+        return { success: true };
+    }
+
+    // =================================================================
+    // 4. TOKEN & SHARED (Aynı Kalıyor)
+    // =================================================================
 
     // Token & Shared
     async generateShareToken(id: number, user: any) {

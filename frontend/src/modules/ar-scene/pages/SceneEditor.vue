@@ -564,6 +564,26 @@ const createGridTexture = () => {
 };
 
 const createPerimeterMaterial = async (layer: any) => {
+    // PBR Texture desteği
+    if (layer.textureId) {
+        try {
+            const { createPBRMaterialFromId } = await import('../utils/pbrTextureLoader');
+            const material = await createPBRMaterialFromId(
+                layer.textureId,
+                {
+                    textureScale: layer.textureScale || 1,
+                    roughnessValue: 0.9,
+                    metalnessValue: 0.1,
+                }
+            );
+            material.side = THREE.DoubleSide;
+            return material;
+        } catch (error) {
+            console.warn("PBR texture yüklenemedi:", error);
+        }
+    }
+    
+    // Legacy simple texture
     if (layer.textureUrl) {
         const loader = new TextureLoader();
         try {
@@ -584,20 +604,16 @@ const createPerimeterMaterial = async (layer: any) => {
             });
         } catch (error) {
             console.warn("Doku yüklenemedi, renk kullanılıyor:", error);
-            return new THREE.MeshStandardMaterial({
-                color: layer.color || '#94a3b8',
-                roughness: 0.8,
-                metalness: 0.1
-            });
         }
     }
-    else {
-        return new THREE.MeshStandardMaterial({
-            color: layer.color || '#94a3b8',
-            roughness: 0.8,
-            metalness: 0.1
-        });
-    }
+    
+    // Düz renk
+    return new THREE.MeshStandardMaterial({
+        color: layer.color || '#94a3b8',
+        roughness: 0.8,
+        metalness: 0.1,
+        side: THREE.DoubleSide
+    });
 };
 
 const buildPerimeterLayers = async (targetScene: THREE.Scene, settings: any) => {
@@ -642,6 +658,7 @@ const buildPerimeterLayers = async (targetScene: THREE.Scene, settings: any) => 
 
     for (let index = 0; index < layers.length; index++) {
         const layer = layers[index];
+        // Çevre katmanı sadece D IŞA DOĞRU büyüsün
         const currentOuterBoundary = offsetPolygon(currentInnerBoundary, Number(layer.width));
         if (!currentOuterBoundary || currentOuterBoundary.length < 3) continue;
 
@@ -679,6 +696,7 @@ const buildPerimeterLayers = async (targetScene: THREE.Scene, settings: any) => 
         mesh.receiveShadow = true;
 
         perimeterGroup.add(mesh);
+        // Sonraki katman için, outer boundary yeni inner boundary olur
         currentInnerBoundary = currentOuterBoundary;
     }
 
@@ -955,7 +973,29 @@ const initThreeJS = async () => {
     };
 
     let baseMaterial: THREE.MeshStandardMaterial;
-    if (floorTextureUrl) {
+    
+    // PBR Texture desteği
+    if (settings.floorTextureId) {
+        // PBR texture ID'si varsa backend'den texture bilgisini al ve PBR material oluştur
+        try {
+            const { createPBRMaterialFromId } = await import('../utils/pbrTextureLoader');
+            baseMaterial = await createPBRMaterialFromId(
+                settings.floorTextureId,
+                {
+                    textureScale: texScale,
+                    ...baseMaterialParams
+                }
+            );
+        } catch (error) {
+            console.error('PBR texture yükleme hatası:', error);
+            // Fallback: düz renk
+            baseMaterial = new THREE.MeshStandardMaterial({
+                color: floorColor,
+                ...baseMaterialParams
+            });
+        }
+    } else if (floorTextureUrl) {
+        // Legacy simple texture desteği
         const loader = new TextureLoader();
         const texture = loader.load(floorTextureUrl);
         texture.wrapS = THREE.RepeatWrapping;
@@ -969,6 +1009,7 @@ const initThreeJS = async () => {
             ...baseMaterialParams
         });
     } else {
+        // Renk bazlı material
         baseMaterial = new THREE.MeshStandardMaterial({
             color: floorColor,
             ...baseMaterialParams

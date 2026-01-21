@@ -140,17 +140,20 @@
                         </h4>
                         <div class="space-y-4">
                             <div class="grid grid-cols-4 gap-2">
-                                <button @click="selectedTexture = null"
+                                <button @click="clearTexture()"
                                     class="aspect-square rounded-xl border-2 flex items-center justify-center bg-white shadow-sm transition-all"
                                     :class="selectedTexture === null ? 'border-indigo-600 bg-indigo-50/50' : 'border-slate-100 hover:border-slate-200'">
                                     <span class="opacity-30 text-xl grayscale">🎨</span>
                                 </button>
                                 <button v-for="tex in textureList" :key="tex.id"
-                                    @click="selectedTexture = tex.textureUrl"
+                                    @click="selectTexture(tex)"
                                     class="aspect-square rounded-xl border-2 overflow-hidden transition-all shadow-sm group relative"
-                                    :class="selectedTexture === tex.textureUrl ? 'border-indigo-600 ring-2 ring-indigo-50 ring-offset-1' : 'border-transparent hover:border-slate-200'">
+                                    :class="(tex.type === 'PBR' ? selectedTexture === tex.id : selectedTexture === tex.textureUrl) ? 'border-indigo-600 ring-2 ring-indigo-50 ring-offset-1' : 'border-transparent hover:border-slate-200'">
                                     <img :src="tex.thumbnailUrl"
                                         class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                                    <div v-if="tex.type === 'PBR'" class="absolute bottom-0 right-0 bg-indigo-600 text-white text-[8px] font-bold px-1 rounded-tl">
+                                        PBR
+                                    </div>
                                 </button>
                             </div>
                             <div v-if="selectedTexture"
@@ -468,9 +471,11 @@
                                             <button
                                                 @click="activeTextureLayerIndex = (activeTextureLayerIndex === index ? null : index)"
                                                 class="w-full h-6 rounded border border-slate-200 flex items-center justify-center overflow-hidden transition-all"
-                                                :class="layer.textureUrl ? 'bg-white' : 'bg-white text-slate-300 hover:text-indigo-500'">
+                                                :class="(layer.textureUrl || layer.textureId) ? 'bg-white' : 'bg-white text-slate-300 hover:text-indigo-500'">
 
                                                 <img v-if="layer.textureUrl" :src="layer.textureUrl"
+                                                    class="w-full h-full object-cover">
+                                                <img v-else-if="layer.textureId" :src="getLayerTextureThumbnail(layer.textureId)"
                                                     class="w-full h-full object-cover">
                                                 <span v-else class="text-xs">Seç +</span>
                                             </button>
@@ -480,20 +485,21 @@
 
                                                 <div
                                                     class="grid grid-cols-4 gap-1 mb-2 max-h-32 overflow-y-auto custom-scrollbar">
-                                                    <button @click="layer.textureUrl = null"
+                                                    <button @click="layer.textureUrl = null; layer.textureId = undefined"
                                                         class="aspect-square rounded-md border flex items-center justify-center text-xs text-slate-400 hover:bg-slate-50"
-                                                        :class="layer.textureUrl === null ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200'">
+                                                        :class="!layer.textureUrl && !layer.textureId ? 'border-indigo-600 bg-indigo-50' : 'border-slate-200'">
                                                         🚫
                                                     </button>
                                                     <button v-for="tex in textureList" :key="tex.id"
-                                                        @click="layer.textureUrl = tex.textureUrl"
-                                                        class="aspect-square rounded-md border overflow-hidden hover:opacity-80"
-                                                        :class="layer.textureUrl === tex.textureUrl ? 'border-indigo-600 ring-1 ring-indigo-600' : 'border-slate-200'">
+                                                        @click="tex.type === 'PBR' ? (layer.textureId = tex.id, layer.textureUrl = null) : (layer.textureUrl = tex.textureUrl, layer.textureId = undefined)"
+                                                        class="aspect-square rounded-md border overflow-hidden hover:opacity-80 relative"
+                                                        :class="(tex.type === 'PBR' ? layer.textureId === tex.id : layer.textureUrl === tex.textureUrl) ? 'border-indigo-600 ring-1 ring-indigo-600' : 'border-slate-200'">
                                                         <img :src="tex.thumbnailUrl" class="w-full h-full object-cover">
+                                                        <div v-if="tex.type === 'PBR'" class="absolute bottom-0 right-0 bg-indigo-600 text-white text-[6px] font-bold px-0.5 rounded-tl">PBR</div>
                                                     </button>
                                                 </div>
 
-                                                <div v-if="layer.textureUrl" class="border-t border-slate-100 pt-2">
+                                                <div v-if="layer.textureUrl || layer.textureId" class="border-t border-slate-100 pt-2">
                                                     <label
                                                         class="text-[8px] font-bold text-slate-400 uppercase block mb-1">Ölçek:
                                                         {{ layer.textureScale }}x</label>
@@ -579,7 +585,14 @@
                                 </pattern>
                                 <pattern id="floorTexUI" patternUnits="userSpaceOnUse" :width="form.textureScale"
                                     :height="form.textureScale">
-                                    <image v-if="selectedTexture" :href="selectedTexture" :xlink:href="selectedTexture"
+                                    <image v-if="selectedTexture && selectedTextureData" 
+                                        :href="selectedTextureData.type === 'PBR' ? selectedTextureData.baseColorUrl : selectedTextureData.textureUrl" 
+                                        :xlink:href="selectedTextureData.type === 'PBR' ? selectedTextureData.baseColorUrl : selectedTextureData.textureUrl"
+                                        x="0" y="0" :width="form.textureScale" :height="form.textureScale"
+                                        preserveAspectRatio="xMidYMid slice" />
+                                    <image v-else-if="selectedTexture" 
+                                        :href="String(selectedTexture)" 
+                                        :xlink:href="String(selectedTexture)"
                                         x="0" y="0" :width="form.textureScale" :height="form.textureScale"
                                         preserveAspectRatio="xMidYMid slice" />
                                 </pattern>
@@ -590,13 +603,16 @@
                                     <image v-if="layer.textureUrl" :href="layer.textureUrl"
                                         :xlink:href="layer.textureUrl" x="0" y="0" :width="layer.textureScale"
                                         :height="layer.textureScale" preserveAspectRatio="xMidYMid slice" />
+                                    <image v-else-if="layer.textureId" :href="getLayerTextureUrl(layer.textureId)"
+                                        :xlink:href="getLayerTextureUrl(layer.textureId)" x="0" y="0" :width="layer.textureScale"
+                                        :height="layer.textureScale" preserveAspectRatio="xMidYMid slice" />
                                 </pattern>
                             </defs>
 
                             <rect x="-400" y="-400" width="800" height="800" fill="url(#gridMajor)" />
 
                             <path v-for="(layer, idx) in svgPerimeterPaths" :key="'p-layer-' + idx" :d="finalPath"
-                                fill="none" :stroke="layer.textureUrl ? `url(#tex-${layer.id})` : layer.color"
+                                fill="none" :stroke="(layer.textureUrl || layer.textureId) ? `url(#tex-${layer.id})` : layer.color"
                                 :stroke-width="layer.totalStrokeWidth" stroke-linejoin="round" stroke-linecap="round"
                                 class="transition-all duration-300" />
 
@@ -871,7 +887,8 @@ const form = reactive({
         color: string;
         elevation: number;
         // YENİ EKLENEN ALANLAR:
-        textureUrl: string | null;  // Doku görselinin URL'i
+        textureUrl: string | null;  // Doku görselinin URL'i (Legacy)
+        textureId?: number;         // PBR Texture ID
         textureScale: number;       // Doku sıklığı (1x, 2x...)
     }[]
 });
@@ -885,6 +902,7 @@ const addPerimeterLayer = (type: string) => {
         color: type === 'grass' ? '#4ade80' : '#94a3b8',
         elevation: 0,
         textureUrl: null,
+        textureId: undefined,
         textureScale: 1
     });
 };
@@ -920,7 +938,24 @@ const svgPerimeterPaths = computed(() => {
 });
 
 const textureList = ref<any[]>([]);
-const selectedTexture = ref<string | null>(null);
+const selectedTexture = ref<string | number | null>(null); // ID veya URL olabilir
+const selectedTextureData = ref<any | null>(null); // Seçili texture'ın tam data'sı
+
+// Helper: Perimeter layer texture ID'sinden thumbnail URL al
+const getLayerTextureThumbnail = (textureId?: number): string => {
+    if (!textureId) return '';
+    const texture = textureList.value.find((t: any) => t.id === textureId);
+    return texture?.thumbnailUrl || '';
+};
+
+// Helper: Perimeter layer texture ID'sinden gerçek texture URL al (SVG pattern için)
+const getLayerTextureUrl = (textureId?: number): string => {
+    if (!textureId) return '';
+    const texture = textureList.value.find((t: any) => t.id === textureId);
+    // PBR ise baseColor, simple ise textureUrl
+    return texture?.type === 'PBR' ? texture.baseColorUrl : texture.textureUrl || '';
+};
+
 const customPoints = ref<{ x: number, z: number }[]>([]);
 const mousePos = reactive({ x: 0, z: 0 });
 const viewPort = reactive({ x: -2, y: -2, zoom: 15, isDragging: false, lastMouseX: 0, lastMouseY: 0 });
@@ -950,6 +985,13 @@ watch(() => props.isOpen, (open) => {
         updateSheetMax();
         // set default sheet height when opening but only if it was previously closed
         sheetHeight.value = Math.round(Math.min(window.innerHeight * 0.45, sheetMaxHeight));
+        
+        // Eğer yeni sahne oluşturma modundaysa state'leri temizle
+        if (props.mode === 'create') {
+            selectedTexture.value = null;
+            selectedTextureData.value = null;
+        }
+        
         nextTick(() => {
             modalRoot.value?.focus();
             // animate in
@@ -1416,7 +1458,9 @@ const handleSave = () => {
             floorType: form.shapeType,
             floorPoints: pts,
             wallHeight: form.wallHeight,
-            floorTextureUrl: selectedTexture.value,
+            // PBR texture desteği
+            floorTextureId: typeof selectedTexture.value === 'number' ? selectedTexture.value : undefined,
+            floorTextureUrl: typeof selectedTexture.value === 'string' ? selectedTexture.value : undefined,
             textureScale: form.textureScale,
             backgroundColor: form.bgColor,
             floorColor: form.floorColor,
@@ -1429,10 +1473,65 @@ const handleSave = () => {
     });
 };
 
-onMounted(async () => {
-    try { textureList.value = await arSceneService.listFloorTextures(); }
-    catch (e) { console.error("Dokular yüklenemedi", e); }
+// Texture seçimi handler'ı
+const selectTexture = (texture: any) => {
+    if (texture.type === 'PBR') {
+        selectedTexture.value = texture.id; // PBR için ID
+        selectedTextureData.value = texture;
+    } else {
+        selectedTexture.value = texture.textureUrl; // Simple için URL
+        selectedTextureData.value = texture;
+    }
+    // Default scale'i uygula
+    if (texture.defaultScale) {
+        form.textureScale = texture.defaultScale;
+    }
+};
 
+// Texture seçimini temizle
+const clearTexture = () => {
+    selectedTexture.value = null;
+    selectedTextureData.value = null;
+};
+
+// Texture'ları yükle
+const loadTexturesFromProps = () => {
+    // Önce temizle
+    selectedTexture.value = null;
+    selectedTextureData.value = null;
+    
+    // Eğer props'tan texture bilgisi geldiyse yükle
+    if (props.initialData?.settings?.floorTextureId) {
+        const texture = textureList.value.find((t: any) => t.id === props.initialData.settings.floorTextureId);
+        if (texture) {
+            selectedTexture.value = texture.id;
+            selectedTextureData.value = texture;
+        }
+    } else if (props.initialData?.settings?.floorTextureUrl) {
+        // SIMPLE texture için URL'den texture data'sını bul
+        const texture = textureList.value.find((t: any) => t.textureUrl === props.initialData.settings.floorTextureUrl);
+        if (texture) {
+            selectedTexture.value = texture.textureUrl;
+            selectedTextureData.value = texture;
+        } else {
+            // Legacy texture için fake texture data oluştur
+            selectedTexture.value = props.initialData.settings.floorTextureUrl;
+            selectedTextureData.value = {
+                type: 'SIMPLE',
+                textureUrl: props.initialData.settings.floorTextureUrl,
+                name: 'Legacy Texture'
+            };
+        }
+    }
+};
+
+onMounted(async () => {
+    try { 
+        textureList.value = await arSceneService.listFloorTextures();
+        loadTexturesFromProps();
+    }
+    catch (e) { console.error("Dokular yüklenemedi", e); }
+    
     if (svgContainer.value) {
         resizeObserver = new ResizeObserver((entries) => {
             for (const entry of entries) {
@@ -1444,6 +1543,13 @@ onMounted(async () => {
     }
     window.addEventListener('mouseup', stopDrag);
 });
+
+// props.initialData değiştiğinde texture'ları yeniden yükle
+watch(() => props.initialData, () => {
+    if (textureList.value.length > 0) {
+        loadTexturesFromProps();
+    }
+}, { deep: true });
 
 onUnmounted(() => {
     if (resizeObserver) resizeObserver.disconnect();
@@ -1472,7 +1578,16 @@ watch(() => props.isOpen, (val) => {
                     }))
                     : []
             });
-            selectedTexture.value = s.floorTextureUrl;
+            // Texture yükle (PBR veya Simple)
+            if (s.floorTextureId) {
+                selectedTexture.value = s.floorTextureId;
+                const texture = textureList.value.find((t: any) => t.id === s.floorTextureId);
+                if (texture) {
+                    selectedTextureData.value = texture;
+                }
+            } else if (s.floorTextureUrl) {
+                selectedTexture.value = s.floorTextureUrl;
+            }
             if (s.floorPoints) {
                 customPoints.value = [...s.floorPoints];
                 if (form.shapeType === 'custom' && customPoints.value.length > 2) isClosed.value = true;

@@ -72,14 +72,24 @@ export const arSceneService = {
   // 3. DOKU (TEXTURE) İŞLEMLERİ
   // =================================================================
 
-  async listFloorTextures(): Promise<FloorTextureDto[]> {
-    const res = await apiService.get<FloorTextureDto[]>('/ar-scene/textures');
+  async listFloorTextures(category?: string): Promise<FloorTextureDto[]> {
+    const params = category ? { category } : {};
+    const res = await apiService.get<FloorTextureDto[]>('/ar-scene/textures', { params });
     return res.data;
   },
 
   async createFloorTexture(data: CreateFloorTextureDto): Promise<FloorTextureDto> {
     const res = await apiService.post<FloorTextureDto>('/ar-scene/textures', data);
     return res.data;
+  },
+
+  async updateFloorTexture(id: number, data: Partial<CreateFloorTextureDto>): Promise<FloorTextureDto> {
+    const res = await apiService.patch<FloorTextureDto>(`/ar-scene/textures/${id}`, data);
+    return res.data;
+  },
+
+  async deleteFloorTexture(id: number): Promise<void> {
+    await apiService.delete(`/ar-scene/textures/${id}`);
   },
 
   // =================================================================

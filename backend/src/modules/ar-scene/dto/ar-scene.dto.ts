@@ -44,10 +44,15 @@ export class PerimeterLayerDto {
   @IsNumber()
   elevation: number;
 
-  @ApiPropertyOptional({ description: 'Doku URL', example: '/textures/brick.jpg' })
+  @ApiPropertyOptional({ description: 'Doku URL (Legacy Simple Texture)', example: '/textures/brick.jpg' })
   @IsOptional()
   @IsString()
   textureUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Doku ID (PBR Texture)', example: 1 })
+  @IsOptional()
+  @IsNumber()
+  textureId?: number;
 
   @ApiPropertyOptional({ description: 'Doku Ölçeği', example: 1 })
   @IsOptional()
@@ -153,10 +158,15 @@ export class SceneSettingsDto {
   floorColor?: string; 
 
   // ---> YENİ EKLENEN ALAN <---
-  @ApiPropertyOptional({ example: '/textures/wood.jpg', description: 'Zemin dokusu URL' })
+  @ApiPropertyOptional({ example: '/textures/wood.jpg', description: 'Zemin dokusu URL (Legacy Simple Texture)' })
   @IsOptional()
   @IsString()
   floorTextureUrl?: string; 
+
+  @ApiPropertyOptional({ example: 1, description: 'Zemin dokusu ID (PBR Texture)' })
+  @IsOptional()
+  @IsNumber()
+  floorTextureId?: number;
 
   @ApiPropertyOptional({ description: 'Izgara görünsün mü?' })
   @IsOptional()
@@ -306,17 +316,187 @@ export class CreateFloorTextureDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ example: '/textures/wood.jpg' })
+  @ApiProperty({ enum: ['SIMPLE', 'PBR'], example: 'PBR', required: false })
+  @IsEnum(['SIMPLE', 'PBR'])
+  @IsOptional()
+  type?: 'SIMPLE' | 'PBR';
+
+  // Simple Texture için
+  @ApiProperty({ example: '/textures/wood.jpg', required: false })
   @IsString()
-  textureUrl: string;
+  @IsOptional()
+  textureUrl?: string;
+
+  // PBR Texture için
+  @ApiProperty({ example: '/textures/pbr/wood/baseColor.jpg', required: false })
+  @IsString()
+  @IsOptional()
+  baseColorUrl?: string;
+
+  @ApiProperty({ example: '/textures/pbr/wood/normal.jpg', required: false })
+  @IsString()
+  @IsOptional()
+  normalUrl?: string;
+
+  @ApiProperty({ example: '/textures/pbr/wood/roughness.jpg', required: false })
+  @IsString()
+  @IsOptional()
+  roughnessUrl?: string;
+
+  @ApiProperty({ example: '/textures/pbr/wood/metallic.jpg', required: false })
+  @IsString()
+  @IsOptional()
+  metallicUrl?: string;
+
+  @ApiProperty({ example: '/textures/pbr/wood/ao.jpg', required: false })
+  @IsString()
+  @IsOptional()
+  aoUrl?: string;
 
   @ApiProperty({ example: '/textures/wood-thumb.jpg', required: false })
   @IsString()
   @IsOptional()
   thumbnailUrl?: string;
 
+  // PBR Ayarları
+  @ApiProperty({ example: 2.0, required: false })
+  @IsNumber()
+  @IsOptional()
+  defaultScale?: number;
+
+  @ApiProperty({ example: 0.9, required: false })
+  @IsNumber()
+  @IsOptional()
+  roughnessValue?: number;
+
+  @ApiProperty({ example: 0.0, required: false })
+  @IsNumber()
+  @IsOptional()
+  metalnessValue?: number;
+
+  @ApiProperty({ example: 1.2, required: false })
+  @IsNumber()
+  @IsOptional()
+  aoIntensity?: number;
+
+  @ApiProperty({ example: 2.0, required: false })
+  @IsNumber()
+  @IsOptional()
+  normalScale?: number;
+
+  // Kategori ve Etiketler
+  @ApiProperty({ example: 'wood', required: false })
+  @IsString()
+  @IsOptional()
+  category?: string;
+
+  @ApiProperty({ example: ['natural', 'indoor'], required: false })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  tags?: string[];
+
   @ApiProperty({ example: true, required: false })
   @IsBoolean()
   @IsOptional()
   isActive?: boolean;
+
+  @ApiProperty({ example: 0, required: false })
+  @IsNumber()
+  @IsOptional()
+  sortOrder?: number;
+}
+
+// 6. Texture Güncelleme DTO
+export class UpdateFloorTextureDto {
+  @ApiProperty({ example: 'Ahşap Parke', required: false })
+  @IsString()
+  @IsOptional()
+  name?: string;
+
+  @ApiProperty({ enum: ['SIMPLE', 'PBR'], required: false })
+  @IsEnum(['SIMPLE', 'PBR'])
+  @IsOptional()
+  type?: 'SIMPLE' | 'PBR';
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  textureUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  baseColorUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  normalUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  roughnessUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  metallicUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  aoUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  thumbnailUrl?: string;
+
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  defaultScale?: number;
+
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  roughnessValue?: number;
+
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  metalnessValue?: number;
+
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  aoIntensity?: number;
+
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  normalScale?: number;
+
+  @ApiProperty({ required: false })
+  @IsString()
+  @IsOptional()
+  category?: string;
+
+  @ApiProperty({ required: false })
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  tags?: string[];
+
+  @ApiProperty({ required: false })
+  @IsBoolean()
+  @IsOptional()
+  isActive?: boolean;
+
+  @ApiProperty({ required: false })
+  @IsNumber()
+  @IsOptional()
+  sortOrder?: number;
 }

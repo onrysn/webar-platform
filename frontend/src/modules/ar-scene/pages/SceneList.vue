@@ -141,9 +141,9 @@
               </div>
 
               <div class="absolute inset-0 flex items-center justify-center">
-                <div v-if="scene.settings?.floorTextureUrl"
+                <div v-if="scene.settings?.floorTextureUrl || scene.settings?.floorTextureId"
                   class="w-24 h-24 shadow-2xl transform rotate-45 border-4 border-white/30 bg-cover bg-center rounded-xl transition-transform group-hover:scale-110 duration-500"
-                  :style="{ backgroundImage: `url(${scene.settings.floorTextureUrl})` }"></div>
+                  :style="{ backgroundImage: scene.settings.floorTextureUrl ? `url(${scene.settings.floorTextureUrl})` : (getTextureThumbnail(scene.settings.floorTextureId) ? `url(${getTextureThumbnail(scene.settings.floorTextureId)})` : 'none') }"></div>
                 <div v-else-if="scene.settings?.floorColor"
                   class="w-24 h-24 shadow-2xl transform rotate-45 border-4 border-white/30 rounded-xl transition-transform group-hover:scale-110 duration-500"
                   :style="{ backgroundColor: scene.settings.floorColor }"></div>
@@ -196,6 +196,12 @@ const scenes = ref<ARSceneDto[]>([]);
 const loading = ref(true);
 const companiesList = ref<CompanyDto[]>([]);
 const selectedFilterCompanyId = ref<number | null>(null);
+const textureCache = ref<Map<number, string>>(new Map());
+
+const getTextureThumbnail = (textureId?: number): string | null => {
+  if (!textureId) return null;
+  return textureCache.value.get(textureId) || null;
+};
 
 const modal = reactive({
   isOpen: false,
@@ -299,9 +305,18 @@ const goBackToCompany = () => {
 };
 
 // LIFECYCLE
-onMounted(() => {
+onMounted(async () => {
   fetchCompanies();
-  fetchScenes();
+  await fetchScenes();
+  // Texture'ları cache'le
+  try {
+    const textures = await arSceneService.listFloorTextures();
+    textures.forEach(tex => {
+      textureCache.value.set(tex.id, tex.thumbnailUrl);
+    });
+  } catch (e) {
+    console.error('Texture cache hatası:', e);
+  }
 });
 
 watch(() => route.params.companyId, () => {

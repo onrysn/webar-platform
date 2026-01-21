@@ -11,6 +11,7 @@ export interface PerimeterLayer {
   color: string;
   elevation: number;
   textureUrl?: string | null;
+  textureId?: number; // PBR texture ID
   textureScale?: number;
 }
 
@@ -47,7 +48,8 @@ export interface SceneSettings {
   backgroundColor?: string;
   gridVisible?: boolean;
   floorColor?: string;
-  floorTextureUrl?: string;
+  floorTextureUrl?: string; // Legacy simple texture
+  floorTextureId?: number;  // PBR texture ID
   wallHeight?: number;
   textureScale?: number;
   floorLayers?: FloorLayer[];
@@ -56,19 +58,76 @@ export interface SceneSettings {
 
 // --- DOKU (TEXTURE) TİPLERİ ---
 
+export type TextureType = 'SIMPLE' | 'PBR';
+
+export interface PBRTextureMaps {
+  baseColorUrl?: string;
+  normalUrl?: string;
+  roughnessUrl?: string;
+  metallicUrl?: string;
+  aoUrl?: string;
+}
+
 export interface FloorTextureDto {
   id: number;
   name: string;
   thumbnailUrl: string;
-  textureUrl: string;
+  type: TextureType;
+  
+  // Simple Texture
+  textureUrl?: string;
+  
+  // PBR Texture Maps
+  baseColorUrl?: string;
+  normalUrl?: string;
+  roughnessUrl?: string;
+  metallicUrl?: string;
+  aoUrl?: string;
+  
+  // PBR Ayarları
+  defaultScale?: number;
+  roughnessValue?: number;
+  metalnessValue?: number;
+  aoIntensity?: number;
+  normalScale?: number;
+  
+  // Kategori ve Etiketler
+  category?: string;
+  tags?: string[];
+  
   isActive: boolean;
+  sortOrder?: number;
 }
 
 export interface CreateFloorTextureDto {
   name: string;
+  type?: TextureType;
+  
+  // Simple Texture
+  textureUrl?: string;
+  
+  // PBR Texture Maps
+  baseColorUrl?: string;
+  normalUrl?: string;
+  roughnessUrl?: string;
+  metallicUrl?: string;
+  aoUrl?: string;
+  
   thumbnailUrl?: string;
-  textureUrl: string;
+  
+  // PBR Ayarları
+  defaultScale?: number;
+  roughnessValue?: number;
+  metalnessValue?: number;
+  aoIntensity?: number;
+  normalScale?: number;
+  
+  // Kategori ve Etiketler
+  category?: string;
+  tags?: string[];
+  
   isActive?: boolean;
+  sortOrder?: number;
 }
 
 // --- ANA VERİ MODELLERİ (Response Types) ---

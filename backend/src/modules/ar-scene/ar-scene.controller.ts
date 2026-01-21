@@ -5,7 +5,8 @@ import {
   UpdateSceneDto,
   AddSceneItemDto,
   UpdateSceneItemDto,
-  CreateFloorTextureDto
+  CreateFloorTextureDto,
+  UpdateFloorTextureDto
 } from './dto/ar-scene.dto';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -30,18 +31,48 @@ export class ARSceneController {
   // 1. ÖZEL ENDPOINTLER (STATIC ROUTES)
   // =================================================================
 
+  // =================================================================
+  // 1. TEXTURE YÖNETİMİ (PBR Destekli)
+  // =================================================================
+
   @Get('textures')
   @ApiOperation({ summary: 'Kullanılabilir zemin dokularını listeler' })
-  listTextures() {
-    return this.arSceneService.listFloorTextures();
+  @ApiQuery({ name: 'category', type: String, required: false, description: 'Kategori filtresi (wood, stone, concrete vb.)' })
+  listTextures(@Query('category') category?: string) {
+    return this.arSceneService.listFloorTextures(category);
   }
 
   @Post('textures')
-  @Roles(Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Yeni zemin dokusu tanımlar (Sadece Super Admin)' })
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Yeni zemin dokusu ekler (PBR veya Simple)' })
   createTexture(@User() user: CurrentUser, @Body() dto: CreateFloorTextureDto) {
     return this.arSceneService.createFloorTexture(user.id, dto);
   }
+
+  @Patch('textures/:id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Zemin dokusunu günceller' })
+  updateTexture(
+    @User() user: CurrentUser,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateFloorTextureDto
+  ) {
+    return this.arSceneService.updateFloorTexture(id, user.id, dto);
+  }
+
+  @Delete('textures/:id')
+  @Roles(Role.SUPER_ADMIN, Role.COMPANY_ADMIN)
+  @ApiOperation({ summary: 'Zemin dokusunu siler' })
+  deleteTexture(
+    @User() user: CurrentUser,
+    @Param('id', ParseIntPipe) id: number
+  ) {
+    return this.arSceneService.deleteFloorTexture(id, user.id);
+  }
+
+  // =================================================================
+  // 2. SCENE LİSTELEME
+  // =================================================================
 
   @Get('list')
   @ApiOperation({ summary: 'Şirkete ait sahneleri listeler' })
@@ -66,7 +97,7 @@ export class ARSceneController {
   }
 
   // =================================================================
-  // 2. ITEM (OBJE) ENDPOINTLERİ
+  // 3. ITEM (OBJE) ENDPOINTLERİ
   // =================================================================
 
   @Post('item')
@@ -130,7 +161,7 @@ export class ARSceneController {
   }
 
   // =================================================================
-  // 4. PAYLAŞIM VE TOKEN (YENİ)
+  // 5. PAYLAŞIM VE TOKEN
   // =================================================================
 
   @Post(':id/share-token')

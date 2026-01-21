@@ -22,6 +22,7 @@ npx prisma migrate deploy
 
 # 4️⃣4️⃣ Prisma seed çalıştır
 npx ts-node prisma/seed.ts
+npx ts-node prisma/seed-pbr-textures.ts
 
 # 5️⃣ (Opsiyonel) Prisma Studio ile veritabanını gör
 npx prisma studio
