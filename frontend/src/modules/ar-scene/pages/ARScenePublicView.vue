@@ -1,16 +1,19 @@
 <template>
     <div class="mobile-vh w-full bg-gray-900 flex flex-col relative overflow-hidden font-sans select-none">
 
-        <div v-if="isLoading"
+        <div v-if="isLoading || isExporting"
             class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-900 text-white">
             <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mb-4"></div>
-            <p class="text-white font-medium tracking-wide animate-pulse">{{ loadingMessage }}</p>
-            <div v-if="loadingProgress > 0" class="mt-4 w-64">
+            <p class="text-white font-medium tracking-wide animate-pulse">{{ currentLoadingMessage }}</p>
+            <div v-if="currentProgress > 0" class="mt-4 w-64">
                 <div class="bg-gray-700 rounded-full h-2 overflow-hidden">
-                    <div class="bg-indigo-500 h-full transition-all duration-300" :style="{ width: loadingProgress + '%' }"></div>
+                    <div class="bg-indigo-500 h-full transition-all duration-300" :style="{ width: currentProgress + '%' }"></div>
                 </div>
-                <p class="text-xs text-gray-400 mt-2 text-center">{{ Math.round(loadingProgress) }}%</p>
+                <p class="text-xs text-gray-400 mt-2 text-center">{{ Math.round(currentProgress) }}%</p>
             </div>
+            <p v-if="isExporting" class="text-xs text-gray-400 mt-4 text-center max-w-xs">
+                AR hazırlığı devam ediyor. Sahneyi gezmeye devam edebilirsiniz.
+            </p>
         </div>
 
         <div class="absolute inset-0 z-0 touch-none bg-gradient-to-br from-gray-800 to-gray-900">
@@ -83,13 +86,12 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
-import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
 import { TextureLoader } from 'three';
+import { useARExport } from '../composables/useARExport';
 
 // Service Imports
 import { arSceneService } from '../../../services/arSceneService';
-import { arModelService } from '../../../services/arModelService';
 
 // DTO Imports
 import type { ARSceneDto, SceneItemDto } from '../dto/arScene.dto';
@@ -107,9 +109,33 @@ const shareToken = route.params.token as string;
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 
 const isLoading = ref(true);
-const isExporting = ref(false);
 const loadingMessage = ref('Sahne Yükleniyor...');
 const loadingProgress = ref(0);
+
+// AR Export Composable
+const { 
+    exportProgress, 
+    isExporting, 
+    exportSceneToGLB, 
+    convertToUSDZ, 
+    startARView,
+    resetExport 
+} = useARExport();
+
+// Loading state - hem initial load hem de export için
+const currentLoadingMessage = computed(() => {
+    if (isExporting.value) {
+        return exportProgress.value.message || 'AR hazırlanıyor...';
+    }
+    return loadingMessage.value;
+});
+
+const currentProgress = computed(() => {
+    if (isExporting.value) {
+        return exportProgress.value.progress;
+    }
+    return loadingProgress.value;
+});
 
 const showSidebar = ref(true);
 
@@ -393,127 +419,6 @@ const buildPerimeterLayers = async (targetScene: THREE.Scene, settings: any) => 
 // =======================================================
 // EXPORT & CONVERT (Viewers can also export usually)
 // =======================================================
-const getSceneAsBlob = async (): Promise<Blob> => {
-    if (!scene) throw new Error("Sahne bulunamadı");
-
-    // Mobil cihaz kontrolü
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const maxTextureSize = isMobile ? 512 : 1024; // Mobilde daha küçük
-    
-    console.log(`📦 Export başlatılıyor... (Mobil: ${isMobile}, Max Texture: ${maxTextureSize})`);
-    
-    const exporter = new GLTFExporter();
-    const settings = sceneData.value?.settings || {};
-
-    // Sahneyi export için hazırla
-    const controlsObj = transformControl as unknown as THREE.Object3D;
-    const originalControlsVisible = controlsObj.visible;
-    controlsObj.visible = false;
-
-    const gridMesh = scene.getObjectByName("GridMesh");
-    const originalGridVisible = gridMesh?.visible;
-    if (gridMesh) gridMesh.visible = false;
-
-    const baseFloor = scene.getObjectByName("BaseFloor");
-    const floorGroup = baseFloor?.parent;
-    const childrenOriginalZ: Map<THREE.Object3D, number> = new Map();
-    
-    if (floorGroup) {
-        floorGroup.children.forEach((child) => {
-            if (child.name !== "BaseFloor" && child.name !== "GridMesh") {
-                childrenOriginalZ.set(child, child.position.z);
-                child.position.z = -child.position.z;
-            }
-        });
-    }
-
-    // Perimeter layers ekle
-    await buildPerimeterLayers(scene, settings);
-
-    const options = {
-        binary: true,
-        onlyVisible: true,
-        maxTextureSize: maxTextureSize,
-        embedImages: true // Texture'ları GLB içine göm
-    };
-
-    return new Promise((resolve, reject) => {
-        // Timeout ekle - mobilde 30 saniye, desktop'ta 60 saniye
-        const timeout = setTimeout(() => {
-            reject(new Error("Export işlemi zaman aşımına uğradı. Sahne çok karmaşık olabilir."));
-        }, isMobile ? 30000 : 60000);
-        
-        try {
-            exporter.parse(
-                scene,
-                (gltf) => {
-                    clearTimeout(timeout);
-                    const blob = new Blob([gltf as ArrayBuffer], { type: 'model/gltf-binary' });
-                    console.log(`✅ Export başarılı! Boyut: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
-                    
-                    // Sahneyi geri yükle (YENİDEN OLUŞTURMA YOK!)
-                    restoreSceneState(controlsObj, originalControlsVisible, gridMesh, originalGridVisible, childrenOriginalZ);
-                    resolve(blob);
-                },
-                (error) => {
-                    clearTimeout(timeout);
-                    console.error("❌ Export hatası:", error);
-                    restoreSceneState(controlsObj, originalControlsVisible, gridMesh, originalGridVisible, childrenOriginalZ);
-                    reject(error);
-                },
-                options
-            );
-        } catch (err) {
-            clearTimeout(timeout);
-            restoreSceneState(controlsObj, originalControlsVisible, gridMesh, originalGridVisible, childrenOriginalZ);
-            reject(err);
-        }
-    });
-};
-
-const restoreSceneState = (
-    controls: THREE.Object3D,
-    originalControlsVisible: boolean,
-    grid: THREE.Object3D | undefined | null,
-    originalGridVisible: boolean | undefined,
-    childrenOriginalZ: Map<THREE.Object3D, number>
-) => {
-    // Controls visibility'i geri yükle
-    controls.visible = originalControlsVisible;
-    
-    // Grid visibility'i geri yükle
-    if (grid && originalGridVisible !== undefined) {
-        grid.visible = originalGridVisible;
-    }
-
-    // Generated perimeter'ı temizle
-    const generatedPerimeter = scene.getObjectByName("GeneratedPerimeterGroup");
-    if (generatedPerimeter) {
-        scene.remove(generatedPerimeter);
-        
-        // Memory cleanup
-        generatedPerimeter.traverse((child) => {
-            if ((child as THREE.Mesh).isMesh) {
-                const mesh = child as THREE.Mesh;
-                mesh.geometry?.dispose();
-                
-                // Material cleanup
-                if (Array.isArray(mesh.material)) {
-                    mesh.material.forEach(mat => mat.dispose());
-                } else if (mesh.material) {
-                    mesh.material.dispose();
-                }
-            }
-        });
-    }
-
-    // Children'ın Z pozisyonlarını geri yükle
-    childrenOriginalZ.forEach((originalZ, child) => {
-        child.position.z = originalZ;
-    });
-    
-    console.log("\ud83d\udd04 Sahne durumu geri y\u00fcklendi (yeniden olu\u015fturma YOK)");
-};
 
 const handleViewInAR = async () => {
     const isIOS = isIOSDevice();
@@ -525,61 +430,49 @@ const handleViewInAR = async () => {
     }
 
     if (isExporting.value) return;
-    isExporting.value = true;
 
     try {
-        const glbBlob = await getSceneAsBlob();
+        // Scene'i GLB olarak export et
+        const glbBlob = await exportSceneToGLB(
+            scene,
+            sceneData.value?.settings,
+            {
+                buildPerimeterLayers,
+                isMobile: true
+            }
+        );
+
         const fileName = sceneData.value?.name || 'sahne';
         const safeFileName = fileName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
 
+        let usdzUrl: string | undefined;
+        
+        // iOS için USDZ'ye çevir
         if (isIOS) {
             console.log("🍏 iOS Cihazı Algılandı - USDZ dönüşümü başlatılıyor...");
-            await convertAndDownloadUsdz(glbBlob, safeFileName);
+            usdzUrl = await convertToUSDZ(glbBlob, `${safeFileName}.glb`);
         }
-        else if (isAndroid) {
-            console.log("🤖 Android Cihazı Algılandı - GLB indiriliyor...");
-            triggerDownload(glbBlob, `${safeFileName}.glb`);
-        }
+
+        // AR görüntülemeyi başlat
+        await startARView({
+            glbBlob,
+            usdzUrl,
+            fileName: safeFileName
+        });
+
+        console.log("✅ AR görüntüleme başlatıldı!");
+        
+        // Export state'i sıfırla
+        setTimeout(() => {
+            resetExport();
+        }, 1000);
 
     } catch (error) {
         console.error("AR Export hatası:", error);
-        alert("AR Görüntüleme başlatılamadı: " + error);
-    } finally {
-        isExporting.value = false;
+        alert("AR Görüntüleme başlatılamadı: " + (error instanceof Error ? error.message : String(error)));
+        resetExport();
     }
 };
-
-const convertAndDownloadUsdz = async (glbBlob: Blob, baseName: string) => {
-    const data = await arModelService.convertSharedGlbToUsdz(glbBlob, `${baseName}.glb`);
-
-    if (data.usdz && data.usdz.url) {
-        const downloadUrl = arModelService.getPreviewUrl(data.usdz.url);
-
-        const link = document.createElement('a');
-        link.setAttribute('rel', 'ar');
-        link.href = downloadUrl;
-        link.download = `${baseName}.usdz`;
-
-        document.body.appendChild(link);
-
-        const img = document.createElement('img');
-        link.appendChild(img);
-
-        link.click();
-        document.body.removeChild(link);
-    } else {
-        throw new Error("Sunucudan USDZ linki alınamadı.");
-    }
-};
-
-const triggerDownload = (blob: Blob, filename: string) => {
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(link.href);
-};
-
 
 // =======================================================
 // THREE.JS INIT

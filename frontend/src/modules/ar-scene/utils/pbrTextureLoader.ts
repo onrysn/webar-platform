@@ -143,8 +143,61 @@ export async function loadPBRTextures(
 }
 
 /**
+ * Mobil cihaz kontrolü
+ */
+function isMobileDevice(): boolean {
+  return /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+}
+
+/**
+ * Texture'ı mobil cihazlar için optimize et
+ * Büyük texture'ları downscale eder
+ */
+function optimizeTextureForMobile(texture: THREE.Texture): THREE.Texture {
+  if (!isMobileDevice()) return texture;
+
+  const image = texture.image as HTMLImageElement;
+  if (!image || !image.width || !image.height) return texture;
+
+  const MAX_SIZE = 512; // Mobil için max texture boyutu
+  
+  // Eğer texture zaten küçükse dokunma
+  if (image.width <= MAX_SIZE && image.height <= MAX_SIZE) {
+    return texture;
+  }
+
+  console.log(`📱 Texture optimize ediliyor: ${image.width}x${image.height} -> ${MAX_SIZE}x${MAX_SIZE}`);
+
+  // Canvas ile resize
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return texture;
+
+  // Aspect ratio'yu koru
+  const scale = Math.min(MAX_SIZE / image.width, MAX_SIZE / image.height);
+  canvas.width = Math.floor(image.width * scale);
+  canvas.height = Math.floor(image.height * scale);
+
+  ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  // Yeni texture oluştur
+  const optimizedTexture = new THREE.CanvasTexture(canvas);
+  optimizedTexture.wrapS = texture.wrapS;
+  optimizedTexture.wrapT = texture.wrapT;
+  optimizedTexture.repeat.copy(texture.repeat);
+  optimizedTexture.colorSpace = texture.colorSpace;
+  optimizedTexture.needsUpdate = true;
+
+  // Orijinal texture'ı dispose et
+  texture.dispose();
+
+  return optimizedTexture;
+}
+
+/**
  * Tek bir texture'ı yükler ve yapılandırır
  * Cache desteği ve progress callback ile
+ * Mobil cihazlarda otomatik optimizasyon
  */
 function loadTexture(
   loader: THREE.TextureLoader,
@@ -169,10 +222,15 @@ function loadTexture(
         texture.repeat.set(repeatValue, repeatValue);
         texture.colorSpace = colorSpace;
         texture.needsUpdate = true;
-        texture.anisotropy = 16; // Texture kalitesini artır
+        
+        // Mobil cihazlarda anisotropy'yi azalt, desktop'ta artır
+        texture.anisotropy = isMobileDevice() ? 4 : 16;
+        
+        // Mobil için texture optimizasyonu
+        const optimizedTexture = optimizeTextureForMobile(texture);
         
         // Cache'e ekle
-        textureCache.set(url, texture);
+        textureCache.set(url, optimizedTexture);
         
         // Progress callback
         if (globalLoadingCallback) {
@@ -180,7 +238,7 @@ function loadTexture(
           globalLoadingCallback(1, 1, fileName);
         }
         
-        resolve(texture);
+        resolve(optimizedTexture);
       },
       (progress) => {
         // Loading progress callback
