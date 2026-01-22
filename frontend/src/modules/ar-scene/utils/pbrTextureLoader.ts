@@ -7,6 +7,18 @@ import * as THREE from 'three';
 import type { PBRTextureSet, PBRTextureMaps } from '../config/pbrTextures';
 import { arSceneService } from '../../../services/arSceneService';
 
+// Texture cache - Aynı texture'ı tekrar yüklememek için
+const textureCache = new Map<string, THREE.Texture>();
+const materialCache = new Map<string, THREE.MeshStandardMaterial>();
+
+// Loading callbacks
+type LoadingCallback = (progress: number, total: number, item: string) => void;
+let globalLoadingCallback: LoadingCallback | null = null;
+
+export function setTextureLoadingCallback(callback: LoadingCallback | null) {
+  globalLoadingCallback = callback;
+}
+
 export interface PBRMaterialOptions {
   textureScale?: number;
   roughnessValue?: number;
@@ -14,6 +26,7 @@ export interface PBRMaterialOptions {
   aoIntensity?: number;
   normalScale?: number;
   color?: string | number;
+  useProgressiveLoading?: boolean; // Önce thumbnail sonra full resolution
   // Three.js material parameters ekstra (stencil, polygon offset vb.)
   [key: string]: any;
 }
@@ -26,6 +39,13 @@ export async function createPBRMaterialFromId(
   options: PBRMaterialOptions = {}
 ): Promise<THREE.MeshStandardMaterial> {
   try {
+    // Cache kontrolü
+    const cacheKey = `pbr_${textureId}_${JSON.stringify(options)}`;
+    if (materialCache.has(cacheKey)) {
+      console.log(`Material cache'den alındı: ${textureId}`);
+      return materialCache.get(cacheKey)!.clone();
+    }
+
     // Backend'den tüm texture'ları al (cache'leme için)
     const textures = await arSceneService.listFloorTextures();
     const texture = textures.find(t => t.id === textureId);
@@ -61,14 +81,19 @@ export async function createPBRMaterialFromId(
         aoIntensity: options.aoIntensity ?? texture.aoIntensity ?? 1.2,
         normalScale: options.normalScale ?? texture.normalScale ?? 2.0,
         color: options.color,
+        useProgressiveLoading: options.useProgressiveLoading ?? true,
       };
 
-      return await createPBRMaterial(textureSet, materialOptions);
+      const material = await createPBRMaterial(textureSet, materialOptions);
+      materialCache.set(cacheKey, material);
+      return material;
     }
 
     // Simple texture ise basit material
     if (texture.textureUrl) {
-      return await createSimpleMaterial(texture.textureUrl, options);
+      const material = await createSimpleMaterial(texture.textureUrl, options);
+      materialCache.set(cacheKey, material);
+      return material;
     }
 
     // Hiçbiri yoksa düz renk
@@ -119,6 +144,7 @@ export async function loadPBRTextures(
 
 /**
  * Tek bir texture'ı yükler ve yapılandırır
+ * Cache desteği ve progress callback ile
  */
 function loadTexture(
   loader: THREE.TextureLoader,
@@ -126,6 +152,12 @@ function loadTexture(
   scale: number,
   colorSpace: THREE.ColorSpace
 ): Promise<THREE.Texture> {
+  // Cache kontrolü
+  if (textureCache.has(url)) {
+    console.log(`Texture cache'den alındı: ${url.split('/').pop()}`);
+    return Promise.resolve(textureCache.get(url)!.clone());
+  }
+
   return new Promise((resolve, reject) => {
     loader.load(
       url,
@@ -138,9 +170,25 @@ function loadTexture(
         texture.colorSpace = colorSpace;
         texture.needsUpdate = true;
         texture.anisotropy = 16; // Texture kalitesini artır
+        
+        // Cache'e ekle
+        textureCache.set(url, texture);
+        
+        // Progress callback
+        if (globalLoadingCallback) {
+          const fileName = url.split('/').pop() || 'texture';
+          globalLoadingCallback(1, 1, fileName);
+        }
+        
         resolve(texture);
       },
-      undefined,
+      (progress) => {
+        // Loading progress callback
+        if (globalLoadingCallback && progress.total > 0) {
+          const fileName = url.split('/').pop() || 'texture';
+          globalLoadingCallback(progress.loaded, progress.total, fileName);
+        }
+      },
       (error) => {
         console.warn(`Texture yükleme hatası: ${url}`, error);
         reject(error);
@@ -267,4 +315,27 @@ export function disposePBRMaterial(material: THREE.MeshStandardMaterial): void {
   if (material.metalnessMap) material.metalnessMap.dispose();
   if (material.aoMap) material.aoMap.dispose();
   material.dispose();
+}
+
+/**
+ * Texture cache'ini temizler
+ */
+export function clearTextureCache(): void {
+  console.log(`Texture cache temizleniyor: ${textureCache.size} texture`);
+  textureCache.forEach(texture => texture.dispose());
+  textureCache.clear();
+  
+  console.log(`Material cache temizleniyor: ${materialCache.size} material`);
+  materialCache.forEach(material => disposePBRMaterial(material));
+  materialCache.clear();
+}
+
+/**
+ * Cache istatistiklerini döndürür
+ */
+export function getCacheStats(): { textures: number; materials: number } {
+  return {
+    textures: textureCache.size,
+    materials: materialCache.size
+  };
 }

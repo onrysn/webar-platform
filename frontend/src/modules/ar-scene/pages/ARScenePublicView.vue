@@ -4,7 +4,13 @@
         <div v-if="isLoading"
             class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-900 text-white">
             <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mb-4"></div>
-            <p class="text-white font-medium tracking-wide animate-pulse">Sahne Yükleniyor...</p>
+            <p class="text-white font-medium tracking-wide animate-pulse">{{ loadingMessage }}</p>
+            <div v-if="loadingProgress > 0" class="mt-4 w-64">
+                <div class="bg-gray-700 rounded-full h-2 overflow-hidden">
+                    <div class="bg-indigo-500 h-full transition-all duration-300" :style="{ width: loadingProgress + '%' }"></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-2 text-center">{{ Math.round(loadingProgress) }}%</p>
+            </div>
         </div>
 
         <div class="absolute inset-0 z-0 touch-none bg-gradient-to-br from-gray-800 to-gray-900">
@@ -102,6 +108,8 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 
 const isLoading = ref(true);
 const isExporting = ref(false);
+const loadingMessage = ref('Sahne Yükleniyor...');
+const loadingProgress = ref(0);
 
 const showSidebar = ref(true);
 
@@ -145,8 +153,26 @@ const itemsMap = new Map<number, THREE.Object3D>();
 
 // --- LIFECYCLE ---
 onMounted(async () => {
-        // Load dynamic shapes for floor marks
-        try { await shapesStore.fetch(undefined, true); } catch {}
+    // Texture loading callback'i ayarla
+    const { setTextureLoadingCallback } = await import('../utils/pbrTextureLoader');
+    let totalTextures = 0;
+    let loadedTextures = 0;
+    
+    setTextureLoadingCallback((_loaded, total, item) => {
+        if (total > 0) {
+            totalTextures++;
+            loadedTextures++;
+            loadingProgress.value = (loadedTextures / Math.max(totalTextures, 5)) * 100;
+            loadingMessage.value = `Texture yükleniyor: ${item}`;
+        }
+    });
+
+    // Load dynamic shapes for floor marks
+    try { 
+        loadingMessage.value = 'Şekil kütüphanesi yükleniyor...';
+        await shapesStore.fetch(undefined, true); 
+    } catch {}
+    
     setViewportHeight();
     window.addEventListener('resize', setViewportHeight);
     window.addEventListener('orientationchange', setViewportHeight);
@@ -166,10 +192,20 @@ onMounted(async () => {
     }
 
     try {
+        loadingMessage.value = 'Sahne bilgileri yükleniyor...';
+        loadingProgress.value = 10;
         await loadSceneData();
+        
+        loadingMessage.value = '3D sahne oluşturuluyor...';
+        loadingProgress.value = 30;
         await nextTick();
         initThreeJS();
+        
+        loadingMessage.value = 'Modeller yükleniyor...';
+        loadingProgress.value = 50;
         await loadSceneObjects();
+        
+        loadingProgress.value = 100;
     } catch (error) {
         console.error("Başlatma hatası:", error);
     } finally {
@@ -360,74 +396,123 @@ const buildPerimeterLayers = async (targetScene: THREE.Scene, settings: any) => 
 const getSceneAsBlob = async (): Promise<Blob> => {
     if (!scene) throw new Error("Sahne bulunamadı");
 
+    // Mobil cihaz kontrolü
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const maxTextureSize = isMobile ? 512 : 1024; // Mobilde daha küçük
+    
+    console.log(`📦 Export başlatılıyor... (Mobil: ${isMobile}, Max Texture: ${maxTextureSize})`);
+    
     const exporter = new GLTFExporter();
     const settings = sceneData.value?.settings || {};
 
+    // Sahneyi export için hazırla
     const controlsObj = transformControl as unknown as THREE.Object3D;
+    const originalControlsVisible = controlsObj.visible;
     controlsObj.visible = false;
 
     const gridMesh = scene.getObjectByName("GridMesh");
+    const originalGridVisible = gridMesh?.visible;
     if (gridMesh) gridMesh.visible = false;
 
     const baseFloor = scene.getObjectByName("BaseFloor");
     const floorGroup = baseFloor?.parent;
+    const childrenOriginalZ: Map<THREE.Object3D, number> = new Map();
+    
     if (floorGroup) {
         floorGroup.children.forEach((child) => {
             if (child.name !== "BaseFloor" && child.name !== "GridMesh") {
+                childrenOriginalZ.set(child, child.position.z);
                 child.position.z = -child.position.z;
             }
         });
     }
 
+    // Perimeter layers ekle
     await buildPerimeterLayers(scene, settings);
 
     const options = {
         binary: true,
         onlyVisible: true,
-        maxTextureSize: 1024
+        maxTextureSize: maxTextureSize,
+        embedImages: true // Texture'ları GLB içine göm
     };
 
     return new Promise((resolve, reject) => {
-        exporter.parse(
-            scene,
-            (gltf) => {
-                const blob = new Blob([gltf as ArrayBuffer], { type: 'model/gltf-binary' });
-                restoreSceneState(controlsObj, gridMesh, floorGroup);
-                resolve(blob);
-            },
-            (error) => {
-                restoreSceneState(controlsObj, gridMesh, floorGroup);
-                reject(error);
-            },
-            options
-        );
+        // Timeout ekle - mobilde 30 saniye, desktop'ta 60 saniye
+        const timeout = setTimeout(() => {
+            reject(new Error("Export işlemi zaman aşımına uğradı. Sahne çok karmaşık olabilir."));
+        }, isMobile ? 30000 : 60000);
+        
+        try {
+            exporter.parse(
+                scene,
+                (gltf) => {
+                    clearTimeout(timeout);
+                    const blob = new Blob([gltf as ArrayBuffer], { type: 'model/gltf-binary' });
+                    console.log(`✅ Export başarılı! Boyut: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+                    
+                    // Sahneyi geri yükle (YENİDEN OLUŞTURMA YOK!)
+                    restoreSceneState(controlsObj, originalControlsVisible, gridMesh, originalGridVisible, childrenOriginalZ);
+                    resolve(blob);
+                },
+                (error) => {
+                    clearTimeout(timeout);
+                    console.error("❌ Export hatası:", error);
+                    restoreSceneState(controlsObj, originalControlsVisible, gridMesh, originalGridVisible, childrenOriginalZ);
+                    reject(error);
+                },
+                options
+            );
+        } catch (err) {
+            clearTimeout(timeout);
+            restoreSceneState(controlsObj, originalControlsVisible, gridMesh, originalGridVisible, childrenOriginalZ);
+            reject(err);
+        }
     });
 };
 
 const restoreSceneState = (
     controls: THREE.Object3D,
+    originalControlsVisible: boolean,
     grid: THREE.Object3D | undefined | null,
-    floorGroup: THREE.Object3D | undefined | null
+    originalGridVisible: boolean | undefined,
+    childrenOriginalZ: Map<THREE.Object3D, number>
 ) => {
-    controls.visible = true;
-    if (grid) grid.visible = true;
+    // Controls visibility'i geri yükle
+    controls.visible = originalControlsVisible;
+    
+    // Grid visibility'i geri yükle
+    if (grid && originalGridVisible !== undefined) {
+        grid.visible = originalGridVisible;
+    }
 
+    // Generated perimeter'ı temizle
     const generatedPerimeter = scene.getObjectByName("GeneratedPerimeterGroup");
     if (generatedPerimeter) {
         scene.remove(generatedPerimeter);
+        
+        // Memory cleanup
         generatedPerimeter.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
-                (child as THREE.Mesh).geometry.dispose();
+                const mesh = child as THREE.Mesh;
+                mesh.geometry?.dispose();
+                
+                // Material cleanup
+                if (Array.isArray(mesh.material)) {
+                    mesh.material.forEach(mat => mat.dispose());
+                } else if (mesh.material) {
+                    mesh.material.dispose();
+                }
             }
         });
     }
 
-    if (floorGroup) {
-        scene.remove(floorGroup);
-    }
-
-    initThreeJS();
-    loadSceneObjects();
+    // Children'ın Z pozisyonlarını geri yükle
+    childrenOriginalZ.forEach((originalZ, child) => {
+        child.position.z = originalZ;
+    });
+    
+    console.log("\ud83d\udd04 Sahne durumu geri y\u00fcklendi (yeniden olu\u015fturma YOK)");
 };
 
 const handleViewInAR = async () => {

@@ -8,7 +8,13 @@
         <div v-if="isLoading"
             class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-900/90 backdrop-blur-md">
             <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-500 border-t-transparent mb-4"></div>
-            <p class="text-white font-medium tracking-wide animate-pulse">3D Sahne Hazırlanıyor...</p>
+            <p class="text-white font-medium tracking-wide animate-pulse">{{ loadingMessage }}</p>
+            <div v-if="loadingProgress > 0" class="mt-4 w-64">
+                <div class="bg-gray-700 rounded-full h-2 overflow-hidden">
+                    <div class="bg-blue-500 h-full transition-all duration-300" :style="{ width: loadingProgress + '%' }"></div>
+                </div>
+                <p class="text-xs text-gray-400 mt-2 text-center">{{ Math.round(loadingProgress) }}%</p>
+            </div>
         </div>
 
         <div v-if="canEdit"
@@ -390,6 +396,8 @@ const canvasRef = ref<HTMLCanvasElement | null>(null);
 
 const isLoading = ref(true);
 const isExporting = ref(false);
+const loadingMessage = ref('3D Sahne Hazırlanıyor...');
+const loadingProgress = ref(0);
 
 // [YENİ] UI Durumları
 const showSidebar = ref(true);
@@ -430,8 +438,26 @@ const itemsMap = new Map<number, THREE.Object3D>();
 
 // --- LIFECYCLE ---
 onMounted(async () => {
-        // Load dynamic shapes for floor marks
-        try { await shapesStore.fetch(undefined, true); } catch {}
+    // Texture loading callback'i ayarla
+    const { setTextureLoadingCallback } = await import('../utils/pbrTextureLoader');
+    let totalTextures = 0;
+    let loadedTextures = 0;
+    
+    setTextureLoadingCallback((_loaded, total, item) => {
+        if (total > 0) {
+            totalTextures++;
+            loadedTextures++;
+            loadingProgress.value = (loadedTextures / Math.max(totalTextures, 5)) * 100;
+            loadingMessage.value = `Texture yükleniyor: ${item}`;
+        }
+    });
+
+    // Load dynamic shapes for floor marks
+    try { 
+        loadingMessage.value = 'Şekil kütüphanesi yükleniyor...';
+        await shapesStore.fetch(undefined, true); 
+    } catch {}
+    
     // [YENİ] Mobilde sidebar'ı varsayılan olarak kapalı başlat
     if (window.innerWidth < 768) {
         showSidebar.value = false;
@@ -440,13 +466,25 @@ onMounted(async () => {
     if (!sceneId) return;
 
     try {
+        loadingMessage.value = 'Sahne bilgileri yükleniyor...';
+        loadingProgress.value = 10;
         await loadSceneData();
+        
+        loadingMessage.value = 'Modeller listeleniyor...';
+        loadingProgress.value = 20;
         const ownerCompanyId = sceneData.value?.companyId;
         availableModels.value = await arModelService.listModels(ownerCompanyId);
 
+        loadingMessage.value = '3D sahne oluşturuluyor...';
+        loadingProgress.value = 40;
         await nextTick();
         initThreeJS();
+        
+        loadingMessage.value = 'Modeller yükleniyor...';
+        loadingProgress.value = 60;
         await loadSceneObjects();
+        
+        loadingProgress.value = 100;
     } catch (error) {
         console.error("Başlatma hatası:", error);
     } finally {
@@ -709,96 +747,170 @@ const buildPerimeterLayers = async (targetScene: THREE.Scene, settings: any) => 
 const getSceneAsBlob = async (): Promise<Blob> => {
     if (!scene) throw new Error("Sahne bulunamadı");
 
+    // Mobil cihaz kontrolü
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const maxTextureSize = isMobile ? 512 : 1024; // Mobilde daha küçük
+    
+    console.log(`📦 Export başlatılıyor... (Mobil: ${isMobile}, Max Texture: ${maxTextureSize})`);
+    
     const exporter = new GLTFExporter();
     const settings = sceneData.value?.settings || {};
 
+    // Sahneyi export için hazırla
     const controlsObj = transformControl as unknown as THREE.Object3D;
+    const originalControlsVisible = controlsObj.visible;
     controlsObj.visible = false;
 
     const gridMesh = scene.getObjectByName("GridMesh");
+    const originalGridVisible = gridMesh?.visible;
     if (gridMesh) gridMesh.visible = false;
 
     const baseFloor = scene.getObjectByName("BaseFloor");
     const floorGroup = baseFloor?.parent;
+    const childrenOriginalZ: Map<THREE.Object3D, number> = new Map();
+    
     if (floorGroup) {
         floorGroup.children.forEach((child) => {
             if (child.name !== "BaseFloor" && child.name !== "GridMesh") {
+                childrenOriginalZ.set(child, child.position.z);
                 child.position.z = -child.position.z;
             }
         });
     }
 
+    // Perimeter layers ekle
     await buildPerimeterLayers(scene, settings);
 
     const options = {
         binary: true,
         onlyVisible: true,
-        maxTextureSize: 1024
+        maxTextureSize: maxTextureSize,
+        embedImages: true // Texture'ları GLB içine göm
     };
 
     return new Promise((resolve, reject) => {
-        exporter.parse(
-            scene,
-            (gltf) => {
-                const blob = new Blob([gltf as ArrayBuffer], { type: 'model/gltf-binary' });
-                restoreSceneState(controlsObj, gridMesh, floorGroup);
-                resolve(blob);
-            },
-            (error) => {
-                restoreSceneState(controlsObj, gridMesh, floorGroup);
-                reject(error);
-            },
-            options
-        );
+        // Timeout ekle - mobilde 30 saniye, desktop'ta 60 saniye
+        const timeout = setTimeout(() => {
+            reject(new Error("Export işlemi zaman aşımına uğradı. Sahne çok karmaşık olabilir."));
+        }, isMobile ? 30000 : 60000);
+        
+        try {
+            exporter.parse(
+                scene,
+                (gltf) => {
+                    clearTimeout(timeout);
+                    const blob = new Blob([gltf as ArrayBuffer], { type: 'model/gltf-binary' });
+                    console.log(`✅ Export başarılı! Boyut: ${(blob.size / 1024 / 1024).toFixed(2)} MB`);
+                    
+                    // Sahneyi geri yükle (YENİDEN OLUŞTURMA YOK!)
+                    restoreSceneState(controlsObj, originalControlsVisible, gridMesh, originalGridVisible, childrenOriginalZ);
+                    resolve(blob);
+                },
+                (error) => {
+                    clearTimeout(timeout);
+                    console.error("❌ Export hatası:", error);
+                    restoreSceneState(controlsObj, originalControlsVisible, gridMesh, originalGridVisible, childrenOriginalZ);
+                    reject(error);
+                },
+                options
+            );
+        } catch (err) {
+            clearTimeout(timeout);
+            restoreSceneState(controlsObj, originalControlsVisible, gridMesh, originalGridVisible, childrenOriginalZ);
+            reject(err);
+        }
     });
 };
 
 const restoreSceneState = (
     controls: THREE.Object3D,
+    originalControlsVisible: boolean,
     grid: THREE.Object3D | undefined | null,
-    floorGroup: THREE.Object3D | undefined | null
+    originalGridVisible: boolean | undefined,
+    childrenOriginalZ: Map<THREE.Object3D, number>
 ) => {
-    controls.visible = true;
-    if (grid) grid.visible = true;
+    // Controls visibility'i geri yükle
+    controls.visible = originalControlsVisible;
+    
+    // Grid visibility'i geri yükle
+    if (grid && originalGridVisible !== undefined) {
+        grid.visible = originalGridVisible;
+    }
 
+    // Generated perimeter'ı temizle
     const generatedPerimeter = scene.getObjectByName("GeneratedPerimeterGroup");
     if (generatedPerimeter) {
         scene.remove(generatedPerimeter);
+        
+        // Memory cleanup
         generatedPerimeter.traverse((child) => {
             if ((child as THREE.Mesh).isMesh) {
-                (child as THREE.Mesh).geometry.dispose();
+                const mesh = child as THREE.Mesh;
+                mesh.geometry?.dispose();
+                
+                // Material cleanup
+                if (Array.isArray(mesh.material)) {
+                    mesh.material.forEach(mat => mat.dispose());
+                } else if (mesh.material) {
+                    mesh.material.dispose();
+                }
             }
         });
     }
 
-    if (floorGroup) {
-        scene.remove(floorGroup);
-    }
-
-    initThreeJS();
-    loadSceneObjects();
+    // Children'ın Z pozisyonlarını geri yükle
+    childrenOriginalZ.forEach((originalZ, child) => {
+        child.position.z = originalZ;
+    });
+    
+    console.log("🔄 Sahne durumu geri yüklendi (yeniden oluşturma YOK)");
 };
 
 const handleExport = async (format: 'glb' | 'usdz') => {
     if (isExporting.value) return;
     showDownloadMenu.value = false;
     isExporting.value = true;
+    
+    // Loading mesajını güncelle
+    loadingMessage.value = format === 'glb' ? 'GLB hazırlanıyor...' : 'USDZ dönüştürülüyor...';
+    loadingProgress.value = 0;
 
     try {
+        loadingProgress.value = 20;
         const glbBlob = await getSceneAsBlob();
+        
+        loadingProgress.value = 60;
         const fileName = sceneData.value?.name || 'sahne';
 
         if (format === 'glb') {
+            loadingProgress.value = 90;
             triggerDownload(glbBlob, `${fileName}.glb`);
         } else {
+            loadingMessage.value = 'iOS için dönüştürülüyor...';
             await convertAndDownloadUsdz(glbBlob, fileName);
         }
+        
+        loadingProgress.value = 100;
+        
+        // Memory cleanup - blob'u serbest bırak
+        setTimeout(() => {
+            URL.revokeObjectURL(URL.createObjectURL(glbBlob));
+        }, 1000);
 
     } catch (error) {
         console.error("Export hatası:", error);
-        alert("Export sırasında bir hata oluştu: " + error);
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        
+        if (errorMsg.includes('zaman aşımı')) {
+            alert("⏱️ İşlem çok uzun sürdü. Sahne çok karmaşık olabilir. Lütfen daha az obje ile tekrar deneyin.");
+        } else if (errorMsg.includes('memory') || errorMsg.includes('bellek')) {
+            alert("📊 Yetersiz bellek. Lütfen sayfayı yenileyip tekrar deneyin.");
+        } else {
+            alert("Export sırasında bir hata oluştu: " + errorMsg);
+        }
     } finally {
         isExporting.value = false;
+        loadingProgress.value = 0;
     }
 };
 
