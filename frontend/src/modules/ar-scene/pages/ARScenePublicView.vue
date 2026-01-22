@@ -226,9 +226,9 @@ const createPerimeterMaterial = async (layer: any) => {
                     textureScale: layer.textureScale || 1,
                     roughnessValue: 0.9,
                     metalnessValue: 0.1,
+                    side: THREE.DoubleSide
                 }
             );
-            material.side = THREE.DoubleSide;
             return material;
         } catch (error) {
             console.warn("PBR texture yüklenemedi:", error);
@@ -592,6 +592,8 @@ const initThreeJS = async () => {
                 settings.floorTextureId,
                 {
                     textureScale: texScale,
+                    roughnessValue: 0.8,
+                    metalnessValue: 0.1,
                     ...baseMaterialParams
                 }
             );

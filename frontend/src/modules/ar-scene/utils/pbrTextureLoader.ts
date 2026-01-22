@@ -14,6 +14,8 @@ export interface PBRMaterialOptions {
   aoIntensity?: number;
   normalScale?: number;
   color?: string | number;
+  // Three.js material parameters ekstra (stencil, polygon offset vb.)
+  [key: string]: any;
 }
 
 /**
@@ -158,34 +160,48 @@ export async function createPBRMaterial(
   
   const textures = await loadPBRTextures(textureSet.maps, { ...options, textureScale: scale });
 
+  // Options'dan özel parametreleri çıkar
+  const { 
+    textureScale, 
+    roughnessValue, 
+    metalnessValue, 
+    aoIntensity, 
+    normalScale, 
+    color,
+    ...extraParams 
+  } = options;
+
   const material = new THREE.MeshStandardMaterial({
     // Base Color
     map: textures.baseColorMap,
-    color: options.color !== undefined ? new THREE.Color(options.color) : 0xffffff,
+    color: color !== undefined ? new THREE.Color(color) : 0xffffff,
     
     // Normal Map - 3D derinlik hissi için kritik
     normalMap: textures.normalMap,
     normalScale: new THREE.Vector2(
-      options.normalScale || 2.0,
-      options.normalScale || 2.0
+      normalScale || 2.0,
+      normalScale || 2.0
     ),
     
     // Roughness - Yüzey pürüzlülüğü
     roughnessMap: textures.roughnessMap,
-    roughness: options.roughnessValue !== undefined ? options.roughnessValue : 0.9,
+    roughness: roughnessValue !== undefined ? roughnessValue : 0.9,
     
     // Metalness - Metalik yüzeyler için (çoğu zemin 0)
     metalnessMap: textures.metalnessMap,
-    metalness: options.metalnessValue !== undefined ? options.metalnessValue : 0.0,
+    metalness: metalnessValue !== undefined ? metalnessValue : 0.0,
     
     // Ambient Occlusion - Gölge detayları
     aoMap: textures.aoMap,
-    aoMapIntensity: options.aoIntensity !== undefined ? options.aoIntensity : 1.2,
+    aoMapIntensity: aoIntensity !== undefined ? aoIntensity : 1.2,
     
     // Render settings
     side: THREE.DoubleSide,
     // Işık etkileşimini artır
     envMapIntensity: 1.0,
+
+    // Ekstra parametreleri ekle (stencil, polygonOffset vb.)
+    ...extraParams
   });
 
   return material;
@@ -201,6 +217,17 @@ export async function createSimpleMaterial(
   const textureLoader = new THREE.TextureLoader();
   const scale = options.textureScale || 1.0;
 
+  // Options'dan özel parametreleri çıkar
+  const { 
+    textureScale, 
+    roughnessValue, 
+    metalnessValue, 
+    aoIntensity, 
+    normalScale, 
+    color,
+    ...extraParams 
+  } = options;
+
   return new Promise((resolve, reject) => {
     textureLoader.load(
       textureUrl,
@@ -212,9 +239,11 @@ export async function createSimpleMaterial(
 
         const material = new THREE.MeshStandardMaterial({
           map: texture,
-          roughness: options.roughnessValue !== undefined ? options.roughnessValue : 0.8,
-          metalness: options.metalnessValue !== undefined ? options.metalnessValue : 0.1,
+          roughness: roughnessValue !== undefined ? roughnessValue : 0.8,
+          metalness: metalnessValue !== undefined ? metalnessValue : 0.1,
           side: THREE.DoubleSide,
+          // Ekstra parametreleri ekle
+          ...extraParams
         });
 
         resolve(material);
