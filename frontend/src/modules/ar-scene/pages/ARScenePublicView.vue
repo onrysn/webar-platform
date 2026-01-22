@@ -572,13 +572,8 @@ const initThreeJS = async () => {
         metalness: 0.1,
         side: THREE.DoubleSide,
         polygonOffset: true,
-        polygonOffsetFactor: 2,
-        polygonOffsetUnits: 2,
-        depthWrite: true,
-        stencilWrite: true,
-        stencilRef: 1,
-        stencilFunc: THREE.AlwaysStencilFunc,
-        stencilZPass: THREE.ReplaceStencilOp
+        polygonOffsetFactor: 1,
+        polygonOffsetUnits: 1
     };
 
     let baseMaterial: THREE.MeshStandardMaterial;
@@ -653,6 +648,9 @@ const initThreeJS = async () => {
     floorGroup.add(baseMesh);
     floorGroup.add(gridMesh);
 
+    console.log('Floor layers sayısı:', floorLayers.length, 'Layers:', floorLayers);
+    console.log('Shape library:', shapeLibrary.value);
+
     if (floorLayers.length > 0) {
         const sortedLayers = [...floorLayers].sort((a, b) => a.zIndex - b.zIndex);
         const svgLoader = new SVGLoader();
@@ -680,24 +678,33 @@ const initThreeJS = async () => {
 
             const layerMat = new THREE.MeshBasicMaterial({
                 color: layer.color,
-                transparent: true,
+                transparent: layer.opacity !== undefined && layer.opacity < 1,
                 opacity: layer.opacity !== undefined ? layer.opacity : 1,
                 side: THREE.DoubleSide,
-                depthWrite: true,
-                depthTest: true,
-                stencilWrite: false,
-                stencilRef: 1,
-                stencilFunc: THREE.EqualStencilFunc,
+                polygonOffset: true,
+                polygonOffsetFactor: -1 - index,
+                polygonOffsetUnits: -1 - index,
+                depthTest: true
             });
-
-            const layerMesh = new THREE.Mesh(layerGeo, layerMat);
-            layerMesh.scale.set(layer.width, layer.height, 1);
+            
             const correctedX = layer.x - centerOffset.x;
             const correctedZ = layer.z - centerOffset.y;
-            const zFightOffset = 0.005 * (index + 1);
+            const zFightOffset = 0.001 * (index + 1);
+            
+            console.log('Floor layer oluşturuldu:', { 
+                shapeId: layer.shapeId, 
+                color: layer.color, 
+                position: [correctedX, correctedZ, zFightOffset],
+                scale: [layer.width, layer.height, 1],
+                opacity: layer.opacity
+            });
+            
+            const layerMesh = new THREE.Mesh(layerGeo, layerMat);
+            layerMesh.scale.set(layer.width, layer.height, 1);
             layerMesh.position.set(correctedX, correctedZ, zFightOffset);
-            layerMesh.renderOrder = layer.zIndex;
+            layerMesh.renderOrder = 100 + layer.zIndex;
             layerMesh.rotation.z = -layer.rotation;
+            layerMesh.name = `FloorLayer_${layer.shapeId}_${index}`;
             floorGroup.add(layerMesh);
         });
     }
