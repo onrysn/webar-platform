@@ -414,6 +414,12 @@ const processUpload = async (file: File, _type: 'auto' | 'glb' | 'usdz') => {
     return;
   }
 
+  // [YENİ] Dosya boyutu kontrolü (500MB = 524288000 byte)
+  if (file.size > 524288000) {
+    toast.error("Dosya boyutu 500MB'dan büyük olamaz. Lütfen modelinizin kalitesini düşürerek tekrar yükleyiniz.");
+    return;
+  }
+
   error.value = null;
   uploading.value = true;
   progress.value = 0;
