@@ -24,15 +24,9 @@ COPY . .
 # Backend/Frontend portu 3000 olacak şekilde EXPOSE
 EXPOSE 3001
 
-# Bağımlılıkları yükle
-RUN bun install
-
-# Client build
-WORKDIR ${APP_DIR}/client
-RUN bun run build
-
-# Server dizinine dön
+# Server dizinine geç ve bağımlılıkları yükle
 WORKDIR ${APP_DIR}/server
+RUN bun install
 
 # Container başlatma komutu
 ENTRYPOINT ["bun", "run", "start"]

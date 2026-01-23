@@ -1,8 +1,9 @@
 {
-  "name": "gltf2usdz.online",
+  "name": "gltf2usdz-converter",
+  "version": "2.0.0",
   "private": true,
+  "description": "High-performance GLTF to USDZ converter (API only)",
   "workspaces": [
-    "client",
     "server"
   ]
 }

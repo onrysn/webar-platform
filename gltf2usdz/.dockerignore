@@ -1,0 +1,18 @@
+# Exclude client (no UI needed)
+client/
+
+# Development files
+node_modules/
+*.log
+.git/
+.gitignore
+README.md
+LICENSE
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
