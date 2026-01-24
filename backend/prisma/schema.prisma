@@ -78,6 +78,7 @@ model Company {
   apiKeys    ApiKey[]
   activities ActivityLog[]  
   uploadJobs ModelUploadJob[]
+  quoteRequests QuoteRequest[]
 }
 
 model ApiKey {
@@ -145,6 +146,7 @@ model ARModel {
   company       Company  @relation(fields: [companyId], references: [id])
   user          User     @relation(fields: [uploadedBy], references: [id])
   sceneItems    SceneItem[]
+  quoteRequestItems QuoteRequestItem[]
 
   @@index([shareToken])
 }
@@ -165,6 +167,7 @@ model ARScene {
   shareToken    String?  @unique
 
   company   Company  @relation(fields: [companyId], references: [id])
+  quoteRequests QuoteRequest[]
   items     SceneItem[]
 
   @@index([shareToken])
@@ -356,4 +359,47 @@ model ModelUploadJob {
 
   @@index([tempId])
   @@index([status, createdAt])
+}
+
+enum QuoteStatus {
+  NEW
+  IN_PROGRESS
+  QUOTE_SENT
+  CANCELLED
+  SALE_COMPLETED
+}
+
+model QuoteRequest {
+  id            Int      @id @default(autoincrement())
+  sceneId       Int
+  companyId     Int
+  
+  customerName  String
+  customerEmail String
+  customerPhone String?
+  notes         String?  @db.Text
+  
+  status        QuoteStatus @default(NEW)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  scene         ARScene  @relation(fields: [sceneId], references: [id])
+  company       Company  @relation(fields: [companyId], references: [id])
+  items         QuoteRequestItem[]
+  
+  @@index([companyId, status])
+  @@index([createdAt])
+}
+
+model QuoteRequestItem {
+  id             Int      @id @default(autoincrement())
+  quoteRequestId Int
+  modelId        Int
+  quantity       Int      @default(1)
+  
+  quoteRequest   QuoteRequest @relation(fields: [quoteRequestId], references: [id], onDelete: Cascade)
+  model          ARModel      @relation(fields: [modelId], references: [id])
+  
+  @@index([quoteRequestId])
 }

@@ -36,6 +36,9 @@ import CategoryList from '../modules/category/pages/CategoryList.vue';
 import SeriesList from '../modules/series/pages/SeriesList.vue';
 import ShapeList from '../modules/shape/pages/ShapeList.vue';
 
+// --- QUOTE REQUEST PAGES ---
+import QuoteRequestList from '../modules/quote-request/pages/QuoteRequestList.vue';
+
 // --- ROL SABİTLERİ ---
 const ROLES = {
   SUPER_ADMIN: 'SUPER_ADMIN',
@@ -188,6 +191,14 @@ const routes: RouteRecordRaw[] = [
         name: 'ShapeList',
         component: ShapeList,
         meta: { roles: [ROLES.SUPER_ADMIN] }
+      },
+
+      // 7. Quote Requests (Teklif Talepleri)
+      {
+        path: 'quote-requests',
+        name: 'QuoteRequestList',
+        component: QuoteRequestList,
+        meta: { roles: ADMINS_AND_EDITORS }
       },
     ],
   },

@@ -99,6 +99,15 @@
                     </svg>
                     Paylaş
                 </button>
+                <button @click="showQuoteModal = true"
+                    class="flex items-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl shadow-lg font-bold text-sm transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Teklif İste
+                </button>
                 <div class="relative">
                     <button @click="showDownloadMenu = !showDownloadMenu" :disabled="isExporting"
                         class="flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
@@ -369,6 +378,14 @@
     </div>
     <MaterialEditor v-if="canEdit && isPaintMode && selectedSubMesh" :selectedMesh="selectedSubMesh"
         @close="selectedSubMesh = null" @update="handleMaterialUpdate" />
+    
+    <!-- Teklif İsteme Modalı -->
+    <QuoteRequestModal 
+        v-if="showQuoteModal" 
+        :sceneId="sceneId" 
+        @close="showQuoteModal = false" 
+        @success="showQuoteModal = false" 
+    />
 </template>
 
 <script setup lang="ts">
@@ -392,6 +409,7 @@ import type { ARSceneDto, SceneItemDto } from '../dto/arScene.dto';
 import type { ARModelDto } from '../../ar-model/dto/arModel.dto';
 import { offsetPolygon } from '../../../utils/mathUtils';
 import MaterialEditor from '../components/MaterialEditor.vue';
+import QuoteRequestModal from '../../quote-request/components/QuoteRequestModal.vue';
 import { useAuthStore } from '../../../store/modules/auth';
 import { shapesStore } from '../../../store/modules/shapes';
 
@@ -427,6 +445,7 @@ const currentExportProgress = computed(() => exportProgress.value.progress);
 const showSidebar = ref(true);
 const showModelSelector = ref(false);
 const showDownloadMenu = ref(false);
+const showQuoteModal = ref(false);
 const currentTransformMode = ref<'translate' | 'rotate' | 'scale'>('translate');
 
 const sceneData = ref<ARSceneDto | null>(null);

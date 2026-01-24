@@ -77,10 +77,26 @@
                     </svg>
                     <span class="font-bold text-sm">Ekran Görüntüsü Al</span>
                 </button>
+                <!-- Teklif İste Butonu -->
+                <button @click="showQuoteModal = true"
+                    class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-3.5 rounded-full shadow-lg shadow-green-900/40 transition-all transform hover:scale-105 active:scale-95">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    <span class="font-bold text-sm">Teklif İste</span>
+                </button>
             </div>
         </div>
 
     </div>
+    
+    <!-- Teklif İsteme Modalı -->
+    <QuoteRequestModal 
+        v-if="showQuoteModal && sceneData" 
+        :sceneId="sceneData.id" 
+        @close="showQuoteModal = false" 
+        @success="showQuoteModal = false" 
+    />
 </template>
 
 <script setup lang="ts">
@@ -94,6 +110,7 @@ import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
 import { TextureLoader } from 'three';
 import { useARExport } from '../composables/useARExport';
+import QuoteRequestModal from '../../quote-request/components/QuoteRequestModal.vue';
 
 // Service Imports
 import { arSceneService } from '../../../services/arSceneService';
@@ -143,6 +160,7 @@ const currentProgress = computed(() => {
 });
 
 const showSidebar = ref(true);
+const showQuoteModal = ref(false);
 
 const sceneData = ref<ARSceneDto | null>(null);
 const sceneItems = ref<SceneItemDto[]>([]);

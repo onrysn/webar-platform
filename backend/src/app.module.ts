@@ -15,6 +15,7 @@ import { CategoryModule } from './modules/category/category.module';
 import { ProductSeriesModule } from './modules/product-series/product-series.module';
 import { ShapeModule } from './modules/shape/shape.module';
 import { UploadQueueModule } from './modules/upload-queue/upload-queue.module';
+import { QuoteRequestModule } from './modules/quote-request/quote-request.module';
 
 @Module({
   imports: [
@@ -39,7 +40,8 @@ import { UploadQueueModule } from './modules/upload-queue/upload-queue.module';
     CategoryModule,
     ProductSeriesModule,
     ShapeModule,
-    UploadQueueModule
+    UploadQueueModule,
+    QuoteRequestModule
   ],
   // --- 3. PROVIDERS KISMI EKLENDİ ---
   providers: [
