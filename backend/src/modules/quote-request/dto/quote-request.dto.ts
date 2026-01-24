@@ -52,24 +52,31 @@ export class FilterQuoteRequestDto {
   @IsOptional()
   status?: QuoteStatusType;
 
+  @ApiPropertyOptional({ description: 'Sayfa numarası', default: 1 })
   @Type(() => Number)
   @IsInt()
   @Min(1)
   @IsOptional()
   page?: number = 1;
 
-  @ApiPropertyOptional({ description: 'Jumlah item per halaman', default: 10 })
-  @Type(() => Number
-  @ApiPropertyOptional({ description: 'Jumlah item per halaman', default: 10 })
+  @ApiPropertyOptional({ description: 'Sayfa başına öğe sayısı', default: 10 })
+  @Type(() => Number)
   @IsInt()
   @Min(1)
   @IsOptional()
   limit?: number = 10;
+
+  @ApiPropertyOptional({ description: 'Şirket ID (sadece super admin için)' })
+  @Type(() => Number)
+  @IsInt()
+  @IsOptional()
+  companyId?: number;
 }
 
 export class QuoteRequestItemDto {
   modelId: number;
   modelName: string;
+  modelThumbnail?: string;
   quantity: number;
 }
 

@@ -27,11 +27,13 @@ export interface FilterQuoteRequestDto {
   status?: QuoteStatusType;
   page?: number;
   limit?: number;
+  companyId?: number;
 }
 
 export interface QuoteRequestItem {
   modelId: number;
   modelName: string;
+  modelThumbnail?: string;
   quantity: number;
 }
 

@@ -64,13 +64,13 @@ export class QuoteRequestService {
   }
 
   async getQuoteRequestsForCompany(
-    companyId: number,
+    companyId: number | undefined,
     filter: FilterQuoteRequestDto,
   ): Promise<{ data: QuoteRequestResponseDto[]; total: number; page: number; limit: number }> {
     const { status, page = 1, limit = 10 } = filter;
     const skip = (page - 1) * limit;
 
-    const where: any = { companyId };
+    const where: any = companyId ? { companyId } : {};
     if (status) {
       where.status = status;
     }
@@ -194,7 +194,7 @@ export class QuoteRequestService {
     );
   }
 
-  async exportToExcel(companyId: number, filter: FilterQuoteRequestDto): Promise<string> {
+  async exportToExcel(companyId: number | undefined, filter: FilterQuoteRequestDto): Promise<string> {
     const { data } = await this.getQuoteRequestsForCompany(companyId, { ...filter, limit: 10000 });
 
     // Generate CSV with UTF-8 BOM for Turkish characters
@@ -262,6 +262,7 @@ export class QuoteRequestService {
       items: quoteRequest.items.map((item: any) => ({
         modelId: item.modelId,
         modelName: item.model.fileName,
+        modelThumbnail: item.model.thumbnailPath,
         quantity: item.quantity,
       })),
       createdAt: quoteRequest.createdAt,

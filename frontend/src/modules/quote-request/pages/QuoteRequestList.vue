@@ -10,6 +10,19 @@
       <!-- Filters & Actions -->
       <div class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-4 items-center justify-between">
         <div class="flex gap-3 flex-wrap items-center">
+          <!-- Company Filter (Super Admin Only) -->
+          <select
+            v-if="authStore.isSuperAdmin"
+            v-model.number="filter.companyId"
+            @change="loadQuoteRequests"
+            class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          >
+            <option :value="undefined">Tüm Şirketler</option>
+            <option v-for="company in companies" :key="company.id" :value="company.id">
+              {{ company.name }}
+            </option>
+          </select>
+
           <!-- Status Filter -->
           <select
             v-model="filter.status"
@@ -131,15 +144,32 @@
 
           <!-- Items -->
           <div v-if="quote.items.length" class="mt-4 pt-4 border-t">
-            <h4 class="text-sm font-semibold text-gray-700 mb-2">Ürünler ({{ quote.items.length }})</h4>
-            <div class="flex flex-wrap gap-2">
-              <span
-                v-for="item in quote.items"
+            <h4 class="text-sm font-semibold text-gray-700 mb-3">Ürünler ({{ getTotalQuantity(quote.items) }} adet)</h4>
+            <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+              <div
+                v-for="item in groupItems(quote.items)"
                 :key="item.modelId"
-                class="px-3 py-1 bg-gray-100 rounded-lg text-xs text-gray-700"
+                class="flex flex-col items-center p-3 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
               >
-                {{ item.modelName }} ({{ item.quantity }}x)
-              </span>
+                <div class="w-16 h-16 mb-2 bg-white rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
+                  <img
+                    v-if="item.modelThumbnail"
+                    :src="arModelService.getPreviewUrl(item.modelThumbnail)"
+                    :alt="item.modelName"
+                    class="w-full h-full object-contain"
+                    @error="(e) => (e.target as HTMLImageElement).src = 'https://via.placeholder.com/64x64?text=No+Image'"
+                  />
+                  <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                </div>
+                <span class="text-xs text-gray-700 font-medium text-center truncate w-full" :title="item.modelName">
+                  {{ item.modelName }}
+                </span>
+                <span class="text-xs text-blue-600 font-semibold mt-1">
+                  {{ item.quantity }}x
+                </span>
+              </div>
             </div>
           </div>
 
@@ -183,9 +213,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { quoteRequestService, type QuoteRequest, type QuoteStatusType, QuoteStatus } from '../../../services/quoteRequestService';
+import { companyService } from '../../../services/companyService';
+import { arModelService } from '../../../services/arModelService';
+import type { CompanyDto } from '../../companies/dto/company.dto';
+import { useAuthStore } from '../../../store/modules/auth';
 import QuoteStatusModal from '../components/QuoteStatusModal.vue';
 
+const authStore = useAuthStore();
 const quoteRequests = ref<QuoteRequest[]>([]);
+const companies = ref<CompanyDto[]>([]);
 const loading = ref(false);
 const currentPage = ref(1);
 const totalItems = ref(0);
@@ -194,6 +230,7 @@ const selectedQuote = ref<QuoteRequest | null>(null);
 const filter = ref({
   status: undefined as QuoteStatusType | undefined,
   limit: 10,
+  companyId: undefined as number | undefined,
 });
 
 const statusOptions = [
@@ -278,7 +315,32 @@ function formatDate(dateString: string): string {
   });
 }
 
-onMounted(() => {
+function groupItems(items: any[]) {
+  const grouped = new Map();
+  items.forEach(item => {
+    if (grouped.has(item.modelId)) {
+      grouped.get(item.modelId).quantity += item.quantity;
+    } else {
+      grouped.set(item.modelId, { ...item });
+    }
+  });
+  return Array.from(grouped.values());
+}
+
+function getTotalQuantity(items: any[]): number {
+  return items.reduce((sum, item) => sum + item.quantity, 0);
+}
+
+onMounted(async () => {
+  // Super admin ise şirketleri yükle
+  if (authStore.isSuperAdmin) {
+    try {
+      companies.value = await companyService.getAllCompanies();
+    } catch (error) {
+      console.error('Error loading companies:', error);
+    }
+  }
+  
   loadQuoteRequests();
 });
 </script>

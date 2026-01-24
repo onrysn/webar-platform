@@ -46,7 +46,9 @@ export class QuoteRequestController {
   @ApiOperation({ summary: 'Get all quote requests for company' })
   @ApiResponse({ status: 200, type: [QuoteRequestResponseDto] })
   async getQuoteRequests(@User() user: any, @Query() filter: FilterQuoteRequestDto) {
-    return this.quoteRequestService.getQuoteRequestsForCompany(user.companyId, filter);
+    // Super admin can filter by companyId from query, others use their own companyId
+    const companyId = user.role === 'SUPER_ADMIN' ? filter.companyId : user.companyId;
+    return this.quoteRequestService.getQuoteRequestsForCompany(companyId, filter);
   }
 
   @Get(':id')
@@ -80,7 +82,8 @@ export class QuoteRequestController {
     @Query() filter: FilterQuoteRequestDto,
     @Res() res: Response,
   ) {
-    const csv = await this.quoteRequestService.exportToExcel(user.companyId, filter);
+    const companyId = user.role === 'SUPER_ADMIN' ? filter.companyId : user.companyId;
+    const csv = await this.quoteRequestService.exportToExcel(companyId, filter);
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', 'attachment; filename="teklif-talepleri.csv"');
