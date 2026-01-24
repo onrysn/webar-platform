@@ -101,7 +101,7 @@ export class QuoteRequestService {
     };
   }
 
-  async getQuoteRequestById(id: number, userId: number, companyId: number): Promise<QuoteRequestResponseDto> {
+  async getQuoteRequestById(id: number, userId: number, companyId: number, role?: string): Promise<QuoteRequestResponseDto> {
     const quoteRequest = await this.prisma.quoteRequest.findUnique({
       where: { id },
       include: {
@@ -118,7 +118,8 @@ export class QuoteRequestService {
       throw new NotFoundException('Quote request not found');
     }
 
-    if (quoteRequest.companyId !== companyId) {
+    // Super admin can access all quote requests
+    if (role !== 'SUPER_ADMIN' && quoteRequest.companyId !== companyId) {
       throw new ForbiddenException('Access denied');
     }
 
@@ -130,6 +131,7 @@ export class QuoteRequestService {
     dto: UpdateQuoteStatusDto,
     userId: number,
     companyId: number,
+    role?: string,
   ): Promise<QuoteRequestResponseDto> {
     const quoteRequest = await this.prisma.quoteRequest.findUnique({
       where: { id },
@@ -139,7 +141,8 @@ export class QuoteRequestService {
       throw new NotFoundException('Quote request not found');
     }
 
-    if (quoteRequest.companyId !== companyId) {
+    // Super admin can update all quote requests
+    if (role !== 'SUPER_ADMIN' && quoteRequest.companyId !== companyId) {
       throw new ForbiddenException('Access denied');
     }
 
@@ -159,7 +162,7 @@ export class QuoteRequestService {
     // Log activity
     await this.activityLog.log(
       userId,
-      companyId,
+      companyId || quoteRequest.companyId,
       'QUOTE_STATUS_UPDATE',
       `Quote request #${id} status changed to ${dto.status}`,
       { quoteRequestId: id, oldStatus: quoteRequest.status, newStatus: dto.status },
@@ -168,7 +171,7 @@ export class QuoteRequestService {
     return this.mapToResponseDto(updated);
   }
 
-  async deleteQuoteRequest(id: number, userId: number, companyId: number): Promise<void> {
+  async deleteQuoteRequest(id: number, userId: number, companyId: number, role?: string): Promise<void> {
     const quoteRequest = await this.prisma.quoteRequest.findUnique({
       where: { id },
     });
@@ -177,7 +180,8 @@ export class QuoteRequestService {
       throw new NotFoundException('Quote request not found');
     }
 
-    if (quoteRequest.companyId !== companyId) {
+    // Super admin can delete all quote requests
+    if (role !== 'SUPER_ADMIN' && quoteRequest.companyId !== companyId) {
       throw new ForbiddenException('Access denied');
     }
 
@@ -187,7 +191,7 @@ export class QuoteRequestService {
 
     await this.activityLog.log(
       userId,
-      companyId,
+      companyId || quoteRequest.companyId,
       'QUOTE_REQUEST_DELETE',
       `Quote request #${id} deleted`,
       { quoteRequestId: id },

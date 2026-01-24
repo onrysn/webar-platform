@@ -146,10 +146,11 @@
           <div v-if="quote.items.length" class="mt-4 pt-4 border-t">
             <h4 class="text-sm font-semibold text-gray-700 mb-3">Ürünler ({{ getTotalQuantity(quote.items) }} adet)</h4>
             <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-              <div
+              <router-link
                 v-for="item in groupItems(quote.items)"
                 :key="item.modelId"
-                class="flex flex-col items-center p-3 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md transition-shadow"
+                :to="`/dashboard/ar-model/${item.modelId}`"
+                class="flex flex-col items-center p-3 bg-gray-50 rounded-lg border border-gray-200 hover:shadow-md hover:border-blue-300 transition-all cursor-pointer"
               >
                 <div class="w-16 h-16 mb-2 bg-white rounded-lg overflow-hidden border border-gray-200 flex items-center justify-center">
                   <img
@@ -169,7 +170,7 @@
                 <span class="text-xs text-blue-600 font-semibold mt-1">
                   {{ item.quantity }}x
                 </span>
-              </div>
+              </router-link>
             </div>
           </div>
 

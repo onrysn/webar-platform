@@ -56,7 +56,7 @@ export class QuoteRequestController {
   @ApiOperation({ summary: 'Get quote request by ID' })
   @ApiResponse({ status: 200, type: QuoteRequestResponseDto })
   async getQuoteRequestById(@Param('id') id: string, @User() user: any) {
-    return this.quoteRequestService.getQuoteRequestById(+id, user.id, user.companyId);
+    return this.quoteRequestService.getQuoteRequestById(+id, user.id, user.companyId, user.role);
   }
 
   @Patch(':id/status')
@@ -69,7 +69,7 @@ export class QuoteRequestController {
     @Body() dto: UpdateQuoteStatusDto,
     @User() user: any,
   ) {
-    return this.quoteRequestService.updateQuoteStatus(+id, dto, user.id, user.companyId);
+    return this.quoteRequestService.updateQuoteStatus(+id, dto, user.id, user.companyId, user.role);
   }
 
   @Get('export/excel')
@@ -96,7 +96,7 @@ export class QuoteRequestController {
   @ApiOperation({ summary: 'Delete quote request' })
   @ApiResponse({ status: 204, description: 'Quote request deleted' })
   async deleteQuoteRequest(@Param('id') id: string, @User() user: any) {
-    await this.quoteRequestService.deleteQuoteRequest(+id, user.id, user.companyId);
+    await this.quoteRequestService.deleteQuoteRequest(+id, user.id, user.companyId, user.role);
     return { message: 'Quote request deleted successfully' };
   }
 }
