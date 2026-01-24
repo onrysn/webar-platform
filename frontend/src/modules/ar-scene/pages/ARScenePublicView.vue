@@ -45,10 +45,9 @@
         </div>
 
         <div class="ar-button-container absolute left-0 right-0 z-30 flex justify-center px-4">
-            <div class="relative">
+            <div class="relative flex gap-4">
                 <button @click="handleViewInAR" :disabled="isExporting"
                     class="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-full shadow-lg shadow-indigo-900/50 transition-all transform hover:scale-105 active:scale-95 group disabled:opacity-75 disabled:cursor-not-allowed">
-
                     <span v-if="isExporting" class="flex items-center gap-2">
                         <svg class="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
@@ -59,7 +58,6 @@
                         </svg>
                         <span class="hidden sm:inline font-medium">Hazırlanıyor...</span>
                     </span>
-
                     <template v-else>
                         <div class="relative w-5 h-5">
                             <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 group-hover:animate-bounce"
@@ -70,7 +68,14 @@
                         </div>
                         <span class="font-bold tracking-wide text-sm sm:text-base">AR'da Görüntüle</span>
                     </template>
-
+                </button>
+                <!-- 🆕 Ekran Görüntüsü Al Butonu -->
+                <button @click="downloadSceneScreenshot"
+                    class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3.5 rounded-full shadow-lg shadow-blue-900/40 transition-all transform hover:scale-105 active:scale-95">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16v16H4V4zm4 8h8m-4-4v8" />
+                    </svg>
+                    <span class="font-bold text-sm">Ekran Görüntüsü Al</span>
                 </button>
             </div>
         </div>
@@ -844,6 +849,38 @@ const onMouseUp = (event: MouseEvent) => {
     raycaster.setFromCamera(mouse, camera);
 };
 
+// 🆕 Sahne ekran görüntüsü al ve indir (güncel)
+function downloadSceneScreenshot() {
+    if (!canvasRef.value || !renderer || !scene || !camera) return;
+    // Eğer loading veya export overlay açıksa uyarı ver
+    if (isLoading.value || isExporting.value) {
+        alert('Sahne tam yüklenmeden ekran görüntüsü alınamaz.');
+        return;
+    }
+    // --- Yüksek çözünürlük için geçici olarak pixelRatio ve boyut artır ---
+    const scale = 3; // 2 veya 3 önerilir
+    const origWidth = renderer.domElement.width;
+    const origHeight = renderer.domElement.height;
+    const origPixelRatio = renderer.getPixelRatio();
+
+    renderer.setPixelRatio(scale * origPixelRatio);
+    renderer.setSize(origWidth, origHeight, false);
+    renderer.render(scene, camera);
+
+    const canvas = canvasRef.value;
+    const image = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = image;
+    link.download = (sceneData.value?.name || 'ar-scene') + '_screenshot.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // --- Eski çözünürlüğe geri dön ---
+    renderer.setPixelRatio(origPixelRatio);
+    renderer.setSize(origWidth, origHeight, false);
+    renderer.render(scene, camera);
+}
 </script>
 
 <style scoped>

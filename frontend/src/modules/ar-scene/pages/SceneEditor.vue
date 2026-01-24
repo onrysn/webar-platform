@@ -136,6 +136,13 @@
                     </div>
                     <div v-if="showDownloadMenu" @click="showDownloadMenu = false" class="fixed inset-0 z-[-1]"></div>
                 </div>
+                <button @click="downloadSceneScreenshot"
+                    class="flex items-center gap-2 px-4 py-3 bg-blue-700 hover:bg-blue-600 text-white rounded-xl shadow-lg font-bold text-sm transition-all">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16v16H4V4zm4 8h8m-4-4v8" />
+                    </svg>
+                    Ekran Görüntüsü Al
+                </button>
             </div>
         </div>
 
@@ -1504,6 +1511,39 @@ const copyLink = () => {
         // alert("Kopyalandı!"); 
     }
 };
+
+// 🆕 Sahne ekran görüntüsü al ve indir (güncel)
+function downloadSceneScreenshot() {
+    if (!canvasRef.value || !renderer || !scene || !camera) return;
+    // Eğer loading veya export overlay açıksa uyarı ver
+    if (isLoading.value || isExporting.value) {
+        alert('Sahne tam yüklenmeden ekran görüntüsü alınamaz.');
+        return;
+    }
+    // --- Yüksek çözünürlük için geçici olarak pixelRatio ve boyut artır ---
+    const scale = 3; // 2 veya 3 önerilir
+    const origWidth = renderer.domElement.width;
+    const origHeight = renderer.domElement.height;
+    const origPixelRatio = renderer.getPixelRatio();
+
+    renderer.setPixelRatio(scale * origPixelRatio);
+    renderer.setSize(origWidth, origHeight, false);
+    renderer.render(scene, camera);
+
+    const canvas = canvasRef.value;
+    const image = canvas.toDataURL('image/png');
+    const link = document.createElement('a');
+    link.href = image;
+    link.download = (sceneData.value?.name || 'ar-scene') + '_screenshot.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // --- Eski çözünürlüğe geri dön ---
+    renderer.setPixelRatio(origPixelRatio);
+    renderer.setSize(origWidth, origHeight, false);
+    renderer.render(scene, camera);
+}
 </script>
 
 <style scoped>
