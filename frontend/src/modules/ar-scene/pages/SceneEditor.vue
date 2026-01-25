@@ -376,8 +376,30 @@
             </div>
         </div>
     </div>
-    <MaterialEditor v-if="canEdit && isPaintMode && selectedSubMesh" :selectedMesh="selectedSubMesh"
-        @close="selectedSubMesh = null" @update="handleMaterialUpdate" />
+    
+    <!-- Kalıcı Boya Paneli -->
+    <MaterialPaintPanel 
+        v-if="canEdit && isPaintMode" 
+        ref="paintPanelRef"
+        @close="togglePaintMode" 
+    />
+    
+    <!-- Boya Modu Tooltip -->
+    <Transition name="fade">
+        <div v-if="showPaintTooltip" 
+            class="fixed top-24 left-1/2 transform -translate-x-1/2 z-[60] pointer-events-none">
+            <div class="bg-purple-600 text-white px-4 py-2 rounded-lg shadow-xl text-sm font-medium flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <!-- Web tooltip -->
+                <span class="hidden md:block">🎨 Sol Tıkla/Sürükle: Boya | Sağ Tıkla: Döndür | Space+Sürükle: Kaydır</span>
+                <!-- Mobil tooltip -->
+                <span class="md:hidden">🎨 Tıkla: Boya | Sürükle: Döndür | 2 Parmak: Zoom</span>
+            </div>
+        </div>
+    </Transition>
     
     <!-- Teklif İsteme Modalı -->
     <QuoteRequestModal 
@@ -389,7 +411,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount, nextTick, markRaw, shallowRef, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, nextTick, markRaw, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
@@ -408,7 +430,7 @@ import { arModelService } from '../../../services/arModelService';
 import type { ARSceneDto, SceneItemDto } from '../dto/arScene.dto';
 import type { ARModelDto } from '../../ar-model/dto/arModel.dto';
 import { offsetPolygon } from '../../../utils/mathUtils';
-import MaterialEditor from '../components/MaterialEditor.vue';
+import MaterialPaintPanel from '../components/MaterialPaintPanel.vue';
 import QuoteRequestModal from '../../quote-request/components/QuoteRequestModal.vue';
 import { useAuthStore } from '../../../store/modules/auth';
 import { shapesStore } from '../../../store/modules/shapes';
@@ -453,8 +475,11 @@ const sceneItems = ref<SceneItemDto[]>([]);
 const availableModels = ref<ARModelDto[]>([]);
 const selectedItemId = ref<number | null>(null);
 const isPaintMode = ref(false);
-const selectedSubMesh = shallowRef<THREE.Mesh | null>(null);
 const saveStatus = ref<'idle' | 'saved' | 'saving' | 'error'>('idle');
+const showPaintTooltip = ref(false);
+const isPainting = ref(false);
+const spacePressed = ref(false);
+const paintPanelRef = ref<InstanceType<typeof MaterialPaintPanel> | null>(null);
 const showShareModal = ref(false);
 const publicShareUrl = ref<string | null>(null);
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -543,6 +568,7 @@ onBeforeUnmount(() => {
         transformControl.dispose();
     }
     window.removeEventListener('keydown', handleKeyDown);
+    window.removeEventListener('keyup', handleKeyUp);
     window.removeEventListener('resize', handleResize);
 });
 
@@ -860,54 +886,46 @@ const togglePaintMode = () => {
     }
 
     // Mod değişince seçimleri sıfırla
-    selectedItemId.value = null; // Ana grup seçimi
-    selectedSubMesh.value = null; // Alt parça seçimi
+    selectedItemId.value = null;
     transformControl.detach();
 
     if (isPaintMode.value) {
         transformControl.enabled = false; // Gizmo'yu kapat
         document.body.style.cursor = 'crosshair'; // İmleci değiştir
+        
+        // Orbit kontrollerini boya modu için ayarla
+        orbit.mouseButtons = {
+            LEFT: null as any, // Sol tuş boyama için boş
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.ROTATE // Sağ tuş rotate
+        };
+        // Mobilde orbit her zaman aktif - tek parmak rotate, sadece tıklama boyar
+        orbit.touches = {
+            ONE: THREE.TOUCH.ROTATE, // Tek parmak döndürme
+            TWO: THREE.TOUCH.DOLLY_PAN // İki parmak zoom/pan
+        };
+        
+        // Tooltip göster
+        showPaintTooltip.value = true;
+        setTimeout(() => {
+            showPaintTooltip.value = false;
+        }, 5000);
     } else {
         transformControl.enabled = true;
         document.body.style.cursor = 'default';
+        
+        // Orbit kontrollerini normale döndür
+        orbit.mouseButtons = {
+            LEFT: THREE.MOUSE.ROTATE,
+            MIDDLE: THREE.MOUSE.DOLLY,
+            RIGHT: THREE.MOUSE.PAN
+        };
+        orbit.touches = {
+            ONE: THREE.TOUCH.ROTATE,
+            TWO: THREE.TOUCH.DOLLY_PAN
+        };
     }
 };
-
-// --- MATERYAL GÜNCELLEME ---
-const handleMaterialUpdate = (data: any) => {
-    if (!canEdit.value) return;
-
-    if (!selectedSubMesh.value) return;
-
-    let parent = selectedSubMesh.value.parent;
-    let sceneItemId: number | null = null;
-
-    while (parent) {
-        if (parent.userData?.itemId) {
-            sceneItemId = parent.userData.itemId;
-            break;
-        }
-        parent = parent.parent;
-    }
-
-    if (sceneItemId) {
-        const item = sceneItems.value.find(i => i.id === sceneItemId);
-        if (item) {
-            if (!item.materialConfig) item.materialConfig = {};
-
-            // Yerel state'i güncelle
-            item.materialConfig[data.meshName] = {
-                color: data.color,
-                metalness: data.metalness,
-                roughness: data.roughness
-            };
-
-            // [EKLE] Oto-Kayıt Tetikle
-            triggerAutoSave(sceneItemId);
-        }
-    }
-};
-
 
 // =======================================================
 // THREE.JS INIT
@@ -1168,7 +1186,9 @@ const initThreeJS = async () => {
 
     canvasRef.value.addEventListener('mousedown', onMouseDown);
     canvasRef.value.addEventListener('mouseup', onMouseUp);
+    canvasRef.value.addEventListener('mousemove', onMouseMove);
     window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('resize', handleResize);
 
     animate();
@@ -1334,10 +1354,34 @@ const addModelToScene = async (arModel: ARModelDto) => {
 // --- ETKİLEŞİM ---
 const onMouseDown = (event: MouseEvent) => {
     mouseStart.set(event.clientX, event.clientY);
+    
+    // Boya modunda sol tuş ile boyamaya başla
+    // MOBİLDE: Sürükleme başlatma, sadece tek tıklamada boya
+    // WEB: Sürükleme boyama aktif
+    const isMobile = window.innerWidth < 768;
+    if (isPaintMode.value && event.button === 0 && !spacePressed.value && !isMobile) {
+        isPainting.value = true;
+        // İlk tıklama için hemen boya
+        paintAtMouse(event);
+    }
+};
+
+const onMouseMove = (event: MouseEvent) => {
+    // Sürüklerken boyama (sadece web'de)
+    const isMobile = window.innerWidth < 768;
+    if (isPainting.value && !spacePressed.value && !isMobile) {
+        paintAtMouse(event);
+    }
 };
 
 const onMouseUp = (event: MouseEvent) => {
     if (!canvasRef.value) return;
+    
+    // Boyama bitir (web)
+    if (isPainting.value) {
+        isPainting.value = false;
+        return;
+    }
 
     // Tıklama hassasiyetini biraz artırdık (5 -> 10)
     const distance = mouseStart.distanceTo(new THREE.Vector2(event.clientX, event.clientY));
@@ -1349,43 +1393,15 @@ const onMouseUp = (event: MouseEvent) => {
 
     raycaster.setFromCamera(mouse, camera);
 
-    if (isPaintMode.value) {
-        console.log("🎨 Boyama Modu: Tıklama algılandı.");
+    // MOBİLDE: Boya modunda tek tıklama boyama
+    const isMobile = window.innerWidth < 768;
+    if (isPaintMode.value && isMobile && event.button === 0) {
+        paintAtMouse(event);
+        return;
+    }
 
-        // Sahnedeki her şeyi kontrol et
-        const intersects = raycaster.intersectObjects(scene.children, true);
-
-        if (intersects.length === 0) {
-            console.log("❌ Hiçbir nesneye denk gelmedi.");
-            selectedSubMesh.value = null;
-            return;
-        }
-
-        // SceneItem'a ait olan ilk MESH'i bul
-        const hit = intersects.find(i => {
-            // Sadece Mesh olsun
-            if (!(i.object as THREE.Mesh).isMesh) return false;
-
-            // Grid veya Helper olmasın, bir SceneItem parçası mı?
-            let p = i.object.parent;
-            while (p) {
-                if (p.userData?.isSceneItem) return true;
-                p = p.parent;
-            }
-            return false;
-        });
-
-        if (hit) {
-            const mesh = hit.object as THREE.Mesh;
-            console.log("✅ PARÇA SEÇİLDİ:", mesh.name || 'İsimsiz Parça');
-            // ShallowRef güncellemesi
-            selectedSubMesh.value = mesh;
-        } else {
-            console.log("⚠️ Tıklanan nesne bir model parçası değil (Grid veya zemin olabilir).");
-            selectedSubMesh.value = null;
-        }
-
-    } else {
+    // Sadece normal modda seçim yap
+    if (!isPaintMode.value) {
         // --- NORMAL MOD (Mevcut kodunuz) ---
         const intersects = raycaster.intersectObjects(scene.children, true);
         const hit = intersects.find(i => {
@@ -1410,6 +1426,74 @@ const onMouseUp = (event: MouseEvent) => {
     }
 };
 
+// --- BOYAMA FONKSİYONU ---
+const paintAtMouse = (event: MouseEvent) => {
+    if (!canvasRef.value || !paintPanelRef.value) return;
+    
+    const rect = canvasRef.value.getBoundingClientRect();
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObjects(scene.children, true);
+    
+    // SceneItem'a ait olan ilk MESH'i bul
+    const hit = intersects.find(i => {
+        if (!(i.object as THREE.Mesh).isMesh) return false;
+        let p = i.object.parent;
+        while (p) {
+            if (p.userData?.isSceneItem) return true;
+            p = p.parent;
+        }
+        return false;
+    });
+    
+    if (!hit) return;
+    
+    const mesh = hit.object as THREE.Mesh;
+    const material = paintPanelRef.value.getCurrentMaterial();
+    
+    // Materyal uygula
+    let mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+    if (!mesh.userData.hasCustomMaterial && mat) {
+        mat = mat.clone();
+        mesh.material = mat;
+        mesh.userData.hasCustomMaterial = true;
+    }
+    
+    const stdMat = mat as THREE.MeshStandardMaterial;
+    stdMat.color.set(material.color);
+    stdMat.metalness = material.metalness;
+    stdMat.roughness = material.roughness;
+    
+    // Parçanın bağlı olduğu sceneItem'i bul ve kaydet
+    let parent = mesh.parent;
+    let sceneItemId: number | null = null;
+    while (parent) {
+        if (parent.userData?.itemId) {
+            sceneItemId = parent.userData.itemId;
+            break;
+        }
+        parent = parent.parent;
+    }
+    
+    if (sceneItemId) {
+        const item = sceneItems.value.find(i => i.id === sceneItemId);
+        if (item) {
+            if (!item.materialConfig) item.materialConfig = {};
+            item.materialConfig[mesh.name] = {
+                color: material.color,
+                metalness: material.metalness,
+                roughness: material.roughness
+            };
+            triggerAutoSave(sceneItemId);
+        }
+    }
+    
+    // Panele bildirim gönder
+    paintPanelRef.value.notifyPaint(mesh.name || 'İsimsiz Parça');
+};
+
 const selectItemFromTree = (itemId: number) => {
     selectedItemId.value = itemId;
     const mesh = itemsMap.get(itemId);
@@ -1423,6 +1507,19 @@ const selectItemFromTree = (itemId: number) => {
 // [GÜNCELLEME]: Klavye kısayollarını UI State ile eşle
 const handleKeyDown = (event: KeyboardEvent) => {
     if (document.activeElement?.tagName === 'INPUT') return;
+    
+    // SPACE tuşu - boya modunda pan için
+    if (event.code === 'Space' && isPaintMode.value) {
+        event.preventDefault();
+        if (!spacePressed.value) {
+            spacePressed.value = true;
+            document.body.style.cursor = 'grab';
+            // SPACE basılıyken orbit'e geçici pan yetkisi ver
+            orbit.mouseButtons.LEFT = THREE.MOUSE.PAN;
+        }
+        return;
+    }
+    
     switch (event.key.toLowerCase()) {
         case 'w':
             setTransformMode('translate');
@@ -1437,6 +1534,17 @@ const handleKeyDown = (event: KeyboardEvent) => {
         case 'backspace':
             deleteSelectedItem();
             break;
+    }
+};
+
+const handleKeyUp = (event: KeyboardEvent) => {
+    // SPACE bırakıldığında pan modundan çık
+    if (event.code === 'Space' && isPaintMode.value) {
+        event.preventDefault();
+        spacePressed.value = false;
+        document.body.style.cursor = 'crosshair';
+        // Pan yetkisini geri al
+        orbit.mouseButtons.LEFT = null as any;
     }
 };
 
@@ -1566,6 +1674,14 @@ function downloadSceneScreenshot() {
 </script>
 
 <style scoped>
+.fade-enter-active, .fade-leave-active {
+    transition: opacity 0.3s ease;
+}
+
+.fade-enter-from, .fade-leave-to {
+    opacity: 0;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
 }

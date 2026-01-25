@@ -1,5 +1,5 @@
 <template>
-    <div v-if="selectedMesh" ref="sheetRef" :style="sheetStyle" class="
+    <div ref="sheetRef" :style="sheetStyle" class="
             z-50 flex flex-col bg-gray-800/95 backdrop-blur-xl border-white/10 shadow-2xl overflow-hidden transition-colors duration-300
             
             /* --- MOBİL (Bottom Sheet) --- */
@@ -19,9 +19,9 @@
 
             <div class="flex justify-between items-center w-full px-2">
                 <div class="flex items-center gap-2 overflow-hidden">
-                    <div class="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]"></div>
+                    <div class="w-3 h-3 rounded-full bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)] animate-pulse"></div>
                     <span class="text-xs font-bold text-gray-100 uppercase tracking-wider truncate">
-                        {{ selectedMesh.name || 'İsimsiz Parça' }}
+                        🎨 Boya Modu Aktif
                     </span>
                 </div>
                 <button @click.stop="$emit('close')" class="text-gray-400 hover:text-white transition-colors p-1">
@@ -35,25 +35,31 @@
 
         <div class="p-4 space-y-4 overflow-y-auto custom-scrollbar flex-1 bg-gray-800/50">
 
-            <div class="flex items-center justify-between bg-blue-600/10 border border-blue-500/20 p-2.5 rounded-xl">
-                <div class="flex items-center gap-2">
-                    <div class="p-1.5 bg-blue-500 rounded-lg text-white">
+            <div class="bg-purple-600/10 border border-purple-500/20 p-3 rounded-xl space-y-2">
+                <div class="flex items-start gap-2">
+                    <div class="p-1.5 bg-purple-500 rounded-lg text-white shrink-0 mt-0.5">
                         <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    <div class="flex flex-col">
-                        <span class="text-xs font-bold text-white">Fırça Modu</span>
-                        <span class="text-[10px] text-gray-400 hidden sm:block">Seçilen ayarları tıkla uygula</span>
+                    <div class="flex flex-col text-xs space-y-1">
+                        <p class="text-white font-semibold">Nasıl Kullanılır?</p>
+                        <!-- Web kontrolleri -->
+                        <ul class="hidden md:block text-gray-300 space-y-0.5 text-[11px] leading-relaxed">
+                            <li>• <strong>Sol Tıkla/Sürükle:</strong> Parçaları boya</li>
+                            <li>• <strong>Sağ Tıkla:</strong> Kamerayı döndür</li>
+                            <li>• <strong>Space + Sürükle:</strong> Sahneyi kaydır</li>
+                            <li>• <strong>Scroll:</strong> Yakınlaş/Uzaklaş</li>
+                        </ul>
+                        <!-- Mobil kontrolleri -->
+                        <ul class="md:hidden text-gray-300 space-y-0.5 text-[11px] leading-relaxed">
+                            <li>• <strong>Tek Tıklama:</strong> Parçayı boya</li>
+                            <li>• <strong>Tek Parmak Sürükle:</strong> Döndür</li>
+                            <li>• <strong>İki Parmak:</strong> Zoom/Kaydır</li>
+                        </ul>
                     </div>
                 </div>
-                <button @click="isBrushActive = !isBrushActive"
-                    class="w-10 h-5 rounded-full transition-colors relative focus:outline-none shrink-0"
-                    :class="isBrushActive ? 'bg-blue-500' : 'bg-gray-600'">
-                    <div class="w-3 h-3 bg-white rounded-full absolute top-1 transition-transform shadow-sm"
-                        :class="isBrushActive ? 'left-6' : 'left-1'"></div>
-                </button>
             </div>
 
             <div>
@@ -61,7 +67,7 @@
                 <div class="flex overflow-x-auto pb-2 gap-2 mb-2 md:grid md:grid-cols-5 md:pb-0 scrollbar-hide">
                     <button v-for="color in presetColors" :key="color" @click="updateColor(color)"
                         class="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 transition-transform hover:scale-110 focus:ring-2 ring-offset-2 ring-offset-gray-800 shrink-0"
-                        :class="currentColor === color ? 'border-white ring-2 ring-blue-500' : 'border-transparent'"
+                        :class="currentColor === color ? 'border-white ring-2 ring-purple-500' : 'border-transparent'"
                         :style="{ backgroundColor: color }">
                     </button>
                 </div>
@@ -74,49 +80,85 @@
 
             <div class="h-px bg-white/10"></div>
 
+            <!-- Materyal Preset'leri -->
+            <div>
+                <label class="text-xs font-bold text-gray-400 mb-2 block">Materyal Türü</label>
+                <div class="grid grid-cols-2 gap-2 mb-3">
+                    <button 
+                        v-for="(preset, index) in materialPresets" 
+                        :key="index"
+                        @click="applyMaterialPreset(index)"
+                        class="flex items-center gap-2 p-2 rounded-lg border transition-all text-left"
+                        :class="selectedPreset === index 
+                            ? 'bg-purple-600/20 border-purple-500 ring-1 ring-purple-500' 
+                            : 'bg-white/5 border-white/10 hover:border-purple-500/50'">
+                        <span class="text-lg">{{ preset.icon }}</span>
+                        <span class="text-[10px] text-gray-300 font-medium leading-tight">
+                            {{ preset.name.replace(/[💎🔩✨🧱🏀🪟]\s/, '') }}
+                        </span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="h-px bg-white/10"></div>
+
             <div class="space-y-4 pb-10 md:pb-0">
                 <div>
                     <div class="flex justify-between mb-2">
-                        <label class="text-xs font-bold text-gray-400">Metalik</label>
-                        <span class="text-xs text-blue-400">{{ Math.round(metalness * 100) }}%</span>
+                        <label class="text-xs font-bold text-gray-400">Metalik (Manuel)</label>
+                        <span class="text-xs text-purple-400">{{ Math.round(metalness * 100) }}%</span>
                     </div>
-                    <input type="range" min="0" max="1" step="0.01" v-model.number="metalness" @input="updateMaterial"
-                        class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500 touch-none">
+                    <input type="range" min="0" max="1" step="0.01" v-model.number="metalness" 
+                        @input="onManualMetalnessChange"
+                        class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500 touch-none">
                 </div>
                 <div>
                     <div class="flex justify-between mb-2">
-                        <label class="text-xs font-bold text-gray-400">Pürüzlülük</label>
-                        <span class="text-xs text-blue-400">{{ Math.round(roughness * 100) }}%</span>
+                        <label class="text-xs font-bold text-gray-400">Pürüzlülük (Manuel)</label>
+                        <span class="text-xs text-purple-400">{{ Math.round(roughness * 100) }}%</span>
                     </div>
-                    <input type="range" min="0" max="1" step="0.01" v-model.number="roughness" @input="updateMaterial"
-                        class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500 touch-none">
+                    <input type="range" min="0" max="1" step="0.01" v-model.number="roughness" 
+                        @input="onManualRoughnessChange"
+                        class="w-full h-1.5 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-500 touch-none">
                 </div>
+            </div>
+
+            <div v-if="lastPaintedMesh" class="bg-green-500/10 border border-green-500/20 p-2 rounded-lg">
+                <p class="text-xs text-green-300">
+                    ✓ Son boyanan: <strong>{{ lastPaintedMesh }}</strong>
+                </p>
             </div>
         </div>
     </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
-import * as THREE from 'three';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 
-const props = defineProps<{
-    selectedMesh: THREE.Mesh | null;
-}>();
-
-const emit = defineEmits(['close', 'update']);
+const emit = defineEmits(['close', 'paint']);
 
 const presetColors = [
     '#ffffff', '#000000', '#ef4444', '#3b82f6', '#22c55e',
     '#eab308', '#a855f7', '#ec4899', '#64748b', '#78350f'
 ];
 
+// Materyal preset'leri
+const materialPresets = [
+    { name: '💎 Parlak Metal', metalness: 1.0, roughness: 0.1, icon: '💎' },
+    { name: '🔩 Mat Metal', metalness: 1.0, roughness: 0.7, icon: '🔩' },
+    { name: '✨ Parlak Plastik', metalness: 0.0, roughness: 0.1, icon: '✨' },
+    { name: '🧱 Mat Plastik', metalness: 0.0, roughness: 0.8, icon: '🧱' },
+    { name: '🏀 Kauçuk', metalness: 0.0, roughness: 1.0, icon: '🏀' },
+    { name: '🪟 Cam', metalness: 0.0, roughness: 0.0, icon: '🪟' }
+];
+
 const currentColor = ref('#ffffff');
 const metalness = ref(0);
 const roughness = ref(0.5);
-const isBrushActive = ref(false);
+const lastPaintedMesh = ref<string | null>(null);
+const selectedPreset = ref<number | null>(null);
 
-const sheetHeight = ref(30);
+const sheetHeight = ref(35);
 const isDragging = ref(false);
 const startY = ref(0);
 const startHeight = ref(0);
@@ -193,57 +235,49 @@ onUnmounted(() => {
     window.removeEventListener('resize', checkMobile);
 });
 
-const readMaterialProperties = (mesh: THREE.Mesh) => {
-    const material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
-    if (material && (material as THREE.MeshStandardMaterial).isMeshStandardMaterial) {
-        const stdMat = material as THREE.MeshStandardMaterial;
-        currentColor.value = '#' + stdMat.color.getHexString();
-        metalness.value = stdMat.metalness;
-        roughness.value = stdMat.roughness;
-    }
-};
-
 const updateColor = (color: string) => {
     currentColor.value = color;
-    updateMaterial();
 };
 
-const updateMaterial = () => {
-    if (!props.selectedMesh) return;
-    const mesh = props.selectedMesh;
-    let material = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+const applyMaterialPreset = (index: number) => {
+    const preset = materialPresets[index];
+    if (!preset) return;
+    metalness.value = preset.metalness;
+    roughness.value = preset.roughness;
+    selectedPreset.value = index;
+};
 
-    if (!mesh.userData.hasCustomMaterial && material) {
-        material = material.clone();
-        mesh.material = material;
-        mesh.userData.hasCustomMaterial = true;
-    }
+// Manuel değişiklikte preset seçimini sıfırla
+const onManualMetalnessChange = () => {
+    selectedPreset.value = null;
+};
 
-    const stdMat = material as THREE.MeshStandardMaterial;
-    stdMat.color.set(currentColor.value);
-    stdMat.metalness = metalness.value;
-    stdMat.roughness = roughness.value;
+const onManualRoughnessChange = () => {
+    selectedPreset.value = null;
+};
 
-    emit('update', {
-        meshName: mesh.name,
+// Dışarıdan çağrılacak - mesh boyandığında
+const notifyPaint = (meshName: string) => {
+    lastPaintedMesh.value = meshName;
+    setTimeout(() => {
+        lastPaintedMesh.value = null;
+    }, 2000);
+};
+
+// Mevcut malzeme ayarlarını döndür
+const getCurrentMaterial = () => {
+    return {
         color: currentColor.value,
         metalness: metalness.value,
         roughness: roughness.value
-    });
+    };
 };
 
-watch(() => props.selectedMesh, (newMesh) => {
-    if (newMesh) {
-        if (isMobile.value) sheetHeight.value = 30;
-
-        if (isBrushActive.value) {
-            updateMaterial();
-        } else {
-            readMaterialProperties(newMesh);
-        }
-    }
-}, { immediate: true });
-
+// Parent component'e expose et
+defineExpose({
+    getCurrentMaterial,
+    notifyPaint
+});
 </script>
 
 <style scoped>
