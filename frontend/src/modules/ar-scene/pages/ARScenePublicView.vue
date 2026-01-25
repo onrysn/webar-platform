@@ -45,9 +45,9 @@
         </div>
 
         <div class="ar-button-container absolute left-0 right-0 z-30 flex justify-center px-4">
-            <div class="relative flex gap-4">
+            <div class="relative flex flex-col sm:flex-row gap-3 sm:gap-4 w-full max-w-xl items-stretch sm:items-center">
                 <button @click="handleViewInAR" :disabled="isExporting"
-                    class="flex items-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3.5 rounded-full shadow-lg shadow-indigo-900/50 transition-all transform hover:scale-105 active:scale-95 group disabled:opacity-75 disabled:cursor-not-allowed">
+                    class="flex items-center justify-center gap-3 bg-indigo-600 hover:bg-indigo-700 text-white px-5 sm:px-6 py-3 sm:py-3.5 rounded-full shadow-lg shadow-indigo-900/50 transition-all transform hover:scale-105 active:scale-95 group disabled:opacity-75 disabled:cursor-not-allowed w-full sm:w-auto">
                     <span v-if="isExporting" class="flex items-center gap-2">
                         <svg class="animate-spin h-5 w-5 text-white" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4">
@@ -66,24 +66,24 @@
                                     d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
                             </svg>
                         </div>
-                        <span class="font-bold tracking-wide text-sm sm:text-base">AR'da Görüntüle</span>
+                        <span class="font-bold tracking-wide text-sm sm:text-base text-center">AR'da Görüntüle</span>
                     </template>
                 </button>
-                <!-- 🆕 Ekran Görüntüsü Al Butonu -->
+                <!-- 🆕 Ekran Görüntüsü Al Butonu (sadece web / sm+ ekranlarda) -->
                 <button @click="downloadSceneScreenshot"
-                    class="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-3.5 rounded-full shadow-lg shadow-blue-900/40 transition-all transform hover:scale-105 active:scale-95">
+                    class="hidden sm:flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 sm:px-5 py-3 sm:py-3.5 rounded-full shadow-lg shadow-blue-900/40 transition-all transform hover:scale-105 active:scale-95 w-full sm:w-auto text-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16v16H4V4zm4 8h8m-4-4v8" />
                     </svg>
-                    <span class="font-bold text-sm">Ekran Görüntüsü Al</span>
+                    <span class="font-bold text-xs sm:text-sm whitespace-nowrap">Ekran Görüntüsü Al</span>
                 </button>
                 <!-- Teklif İste Butonu -->
                 <button @click="showQuoteModal = true"
-                    class="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-5 py-3.5 rounded-full shadow-lg shadow-green-900/40 transition-all transform hover:scale-105 active:scale-95">
+                    class="flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 sm:px-5 py-3 sm:py-3.5 rounded-full shadow-lg shadow-green-900/40 transition-all transform hover:scale-105 active:scale-95 w-full sm:w-auto text-sm">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <span class="font-bold text-sm">Teklif İste</span>
+                    <span class="font-bold text-xs sm:text-sm whitespace-nowrap">Teklif İste</span>
                 </button>
             </div>
         </div>

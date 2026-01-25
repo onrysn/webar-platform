@@ -56,7 +56,7 @@
             </div>
         </div>
 
-        <div class="absolute top-0 left-0 right-0 z-40 p-4 flex justify-between items-start pointer-events-none">
+        <div class="absolute top-0 left-0 right-0 z-40 p-4 flex justify-between items-center pointer-events-none">
             <div
                 class="flex items-center gap-3 pointer-events-auto bg-black/40 backdrop-blur-md p-2 pr-4 rounded-xl border border-white/10 shadow-lg">
                 <button @click="$router.back()"
@@ -80,88 +80,142 @@
                 </div>
             </div>
 
-            <div class="flex gap-2 pointer-events-auto">
-                <button @click="showSidebar = !showSidebar"
-                    class="p-3 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg text-white hover:bg-white/10 transition-colors"
-                    :class="showSidebar ? 'bg-blue-600/80 border-blue-500' : ''">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M4 6h16M4 12h16M4 18h16" />
-                    </svg>
-                </button>
-                <button @click="showLightingPanel = !showLightingPanel"
-                    class="p-3 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg text-white hover:bg-black/20 transition-colors"
-                    :class="showLightingPanel ? 'bg-yellow-600/80 border-yellow-500' : ''"
-                    title="Aydınlatma Ayarları">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                </button>
-                <button @click="openShareModal"
-                    class="flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                    </svg>
-                    Paylaş
-                </button>
-                <button @click="showQuoteModal = true"
-                    class="flex items-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl shadow-lg font-bold text-sm transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                        stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Teklif İste
-                </button>
-                <div class="relative">
-                    <button @click="showDownloadMenu = !showDownloadMenu" :disabled="isExporting"
+            <div class="flex gap-2 items-center pointer-events-auto">
+                <!-- Her cihazda görünen temel kontroller -->
+                <div class="flex gap-2">
+                    <button @click="showSidebar = !showSidebar"
+                        class="p-3 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg text-white hover:bg-white/10 transition-colors"
+                        :class="showSidebar ? 'bg-blue-600/80 border-blue-500' : ''">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 6h16M4 12h16M4 18h16" />
+                        </svg>
+                    </button>
+                    <button @click="showLightingPanel = !showLightingPanel"
+                        class="p-3 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg text-white hover:bg-black/20 transition-colors"
+                        :class="showLightingPanel ? 'bg-yellow-600/80 border-yellow-500' : ''"
+                        title="Aydınlatma Ayarları">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Tablet / Desktop aksiyon butonları -->
+                <div class="hidden sm:flex gap-2">
+                    <button @click="openShareModal"
                         class="flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
-                        <span v-if="isExporting" class="flex items-center gap-2">
-                            <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24">
-                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
-                                    stroke-width="4"></circle>
-                                <path class="opacity-75" fill="currentColor"
-                                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
-                                </path>
-                            </svg>
-                        </span>
-                        <span v-else class="flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                            </svg>
-                            Dışa Aktar
-                        </span>
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                        </svg>
+                        Paylaş
+                    </button>
+                    <button @click="showQuoteModal = true"
+                        class="flex items-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl shadow-lg font-bold text-sm transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Teklif İste
+                    </button>
+                    <div class="relative">
+                        <button @click="showDownloadMenu = !showDownloadMenu" :disabled="isExporting"
+                            class="flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
+                            <span v-if="isExporting" class="flex items-center gap-2">
+                                <svg class="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor"
+                                        stroke-width="4"></circle>
+                                    <path class="opacity-75" fill="currentColor"
+                                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+                                    </path>
+                                </svg>
+                            </span>
+                            <span v-else class="flex items-center gap-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                Dışa Aktar
+                            </span>
+                        </button>
+
+                        <div v-if="showDownloadMenu"
+                            class="absolute right-0 top-full mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up">
+                            <div class="p-2 space-y-1">
+                                <button @click="handleExport('glb')"
+                                    class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-700 text-sm text-gray-200 flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-green-500"></span> Android (GLB)
+                                </button>
+                                <button @click="handleExport('usdz')"
+                                    class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-700 text-sm text-gray-200 flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-blue-500"></span> iOS (USDZ)
+                                </button>
+                            </div>
+                        </div>
+                        <div v-if="showDownloadMenu" @click="showDownloadMenu = false" class="fixed inset-0 z-[-1]"></div>
+                    </div>
+                    <button @click="downloadSceneScreenshot"
+                        class="flex items-center gap-2 px-4 py-3 bg-blue-700 hover:bg-blue-600 text-white rounded-xl shadow-lg font-bold text-sm transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16v16H4V4zm4 8h8m-4-4v8" />
+                        </svg>
+                        Ekran Görüntüsü Al
+                    </button>
+                </div>
+
+                <!-- Mobil aksiyon menüsü -->
+                <div class="relative sm:hidden">
+                    <button @click="showMobileActions = !showMobileActions"
+                        class="flex items-center gap-2 px-3 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg text-xs font-semibold transition-all">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6h.01M12 12h.01M12 18h.01" />
+                        </svg>
+                        Aksiyonlar
                     </button>
 
-                    <div v-if="showDownloadMenu"
-                        class="absolute right-0 top-full mt-2 w-48 bg-gray-800 border border-gray-700 rounded-xl shadow-2xl overflow-hidden animate-fade-in-up">
-                        <div class="p-2 space-y-1">
-                            <button @click="handleExport('glb')"
-                                class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-700 text-sm text-gray-200 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-green-500"></span> Android (GLB)
+                    <div v-if="showMobileActions"
+                        class="absolute right-0 top-full mt-2 w-52 bg-gray-900/95 border border-gray-700 rounded-2xl shadow-2xl overflow-hidden animate-fade-in-up backdrop-blur-xl">
+                        <div class="p-1 divide-y divide-gray-800 text-sm text-gray-100">
+                            <button @click="showMobileActions = false; openShareModal()"
+                                class="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-gray-800 text-left">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                </svg>
+                                Paylaş
                             </button>
-                            <button @click="handleExport('usdz')"
-                                class="w-full text-left px-3 py-2.5 rounded-lg hover:bg-gray-700 text-sm text-gray-200 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-blue-500"></span> iOS (USDZ)
+                            <button @click="showMobileActions = false; showQuoteModal = true"
+                                class="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-gray-800 text-left">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                Teklif İste
                             </button>
+                            <div class="py-1">
+                                <p class="px-3 pb-1 text-[10px] uppercase tracking-wide text-gray-400">Dışa Aktar</p>
+                                <button @click="showMobileActions = false; handleExport('glb')" :disabled="isExporting"
+                                    class="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-gray-800 text-left disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                                    <span class="flex-1">Android (GLB)</span>
+                                </button>
+                                <button @click="showMobileActions = false; handleExport('usdz')" :disabled="isExporting"
+                                    class="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-gray-800 text-left disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                                    <span class="flex-1">iOS (USDZ)</span>
+                                </button>
+                            </div>
                         </div>
                     </div>
-                    <div v-if="showDownloadMenu" @click="showDownloadMenu = false" class="fixed inset-0 z-[-1]"></div>
+                    <div v-if="showMobileActions" @click="showMobileActions = false" class="fixed inset-0 z-[-1]"></div>
                 </div>
-                <button @click="downloadSceneScreenshot"
-                    class="flex items-center gap-2 px-4 py-3 bg-blue-700 hover:bg-blue-600 text-white rounded-xl shadow-lg font-bold text-sm transition-all">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16v16H4V4zm4 8h8m-4-4v8" />
-                    </svg>
-                    Ekran Görüntüsü Al
-                </button>
             </div>
         </div>
 
@@ -611,6 +665,7 @@ const showSidebar = ref(true);
 const showModelSelector = ref(false);
 const showDownloadMenu = ref(false);
 const showQuoteModal = ref(false);
+const showMobileActions = ref(false);
 const currentTransformMode = ref<'translate' | 'rotate' | 'scale'>('translate');
 
 const sceneData = ref<ARSceneDto | null>(null);
