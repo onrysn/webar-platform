@@ -54,6 +54,17 @@ export interface SceneSettings {
   textureScale?: number;
   floorLayers?: FloorLayer[];
   perimeterLayers?: PerimeterLayer[];
+  
+  // Aydınlatma ayarları
+  lighting?: {
+    ambientIntensity?: number;
+    ambientColor?: string;
+    directionalIntensity?: number;
+    directionalColor?: string;
+    directionalX?: number;
+    directionalY?: number;
+    directionalZ?: number;
+  };
 }
 
 // --- DOKU (TEXTURE) TİPLERİ ---

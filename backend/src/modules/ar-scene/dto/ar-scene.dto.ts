@@ -194,6 +194,30 @@ export class SceneSettingsDto {
   @ValidateNested({ each: true })
   @Type(() => PerimeterLayerDto)
   perimeterLayers?: PerimeterLayerDto[];
+
+  @ApiPropertyOptional({ 
+    description: 'Sahne aydınlatma ayarları',
+    example: {
+      ambientIntensity: 0.7,
+      ambientColor: '#ffffff',
+      directionalIntensity: 1.2,
+      directionalColor: '#ffffff',
+      directionalX: 15,
+      directionalY: 30,
+      directionalZ: 15
+    }
+  })
+  @IsOptional()
+  @IsObject()
+  lighting?: {
+    ambientIntensity?: number;
+    ambientColor?: string;
+    directionalIntensity?: number;
+    directionalColor?: string;
+    directionalX?: number;
+    directionalY?: number;
+    directionalZ?: number;
+  };
 }
 
 // --- ANA DTO'LAR ---

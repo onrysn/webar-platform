@@ -90,6 +90,16 @@
                             d="M4 6h16M4 12h16M4 18h16" />
                     </svg>
                 </button>
+                <button @click="showLightingPanel = !showLightingPanel"
+                    class="p-3 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg text-white hover:bg-black/20 transition-colors"
+                    :class="showLightingPanel ? 'bg-yellow-600/80 border-yellow-500' : ''"
+                    title="Aydınlatma Ayarları">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                </button>
                 <button @click="openShareModal"
                     class="flex items-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-500 text-white rounded-xl shadow-lg font-bold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
@@ -377,6 +387,139 @@
         </div>
     </div>
     
+    <!-- Aydınlatma Kontrol Paneli -->
+    <div v-if="showLightingPanel"
+        class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in"
+        @click.self="showLightingPanel = false">
+        <div
+            class="bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col">
+
+            <div class="p-5 border-b border-gray-800 flex justify-between items-center bg-gradient-to-r from-yellow-600/20 to-orange-600/20">
+                <h3 class="font-bold text-lg text-white flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-yellow-400" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    Aydınlatma Ayarları
+                </h3>
+                <button @click="showLightingPanel = false"
+                    class="text-gray-400 hover:text-white transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
+
+                <!-- Ambient Light Kontrolü -->
+                <div class="space-y-3 p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-2 h-2 rounded-full bg-blue-400"></div>
+                        <h4 class="text-sm font-bold text-white">Ortam Işığı (Ambient)</h4>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="text-xs text-gray-400 block">Yoğunluk</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" min="0" max="2" step="0.1" 
+                                :value="lightingSettings.ambientIntensity"
+                                @input="updateAmbientIntensity(parseFloat(($event.target as HTMLInputElement).value))"
+                                class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+                            <span class="text-xs text-white font-mono w-12 text-right">{{ lightingSettings.ambientIntensity.toFixed(1) }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="text-xs text-gray-400 block">Renk</label>
+                        <div class="flex items-center gap-3">
+                            <input type="color" 
+                                :value="lightingSettings.ambientColor"
+                                @input="updateAmbientColor(($event.target as HTMLInputElement).value)"
+                                class="w-12 h-8 rounded border-2 border-gray-600 cursor-pointer">
+                            <span class="text-xs text-white font-mono">{{ lightingSettings.ambientColor }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Directional Light Kontrolü -->
+                <div class="space-y-3 p-4 bg-gray-800/50 rounded-xl border border-gray-700">
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-2 h-2 rounded-full bg-yellow-400"></div>
+                        <h4 class="text-sm font-bold text-white">Yönlü Işık (Directional)</h4>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="text-xs text-gray-400 block">Yoğunluk</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" min="0" max="3" step="0.1" 
+                                :value="lightingSettings.directionalIntensity"
+                                @input="updateDirectionalIntensity(parseFloat(($event.target as HTMLInputElement).value))"
+                                class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-yellow-500">
+                            <span class="text-xs text-white font-mono w-12 text-right">{{ lightingSettings.directionalIntensity.toFixed(1) }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="text-xs text-gray-400 block">Renk</label>
+                        <div class="flex items-center gap-3">
+                            <input type="color" 
+                                :value="lightingSettings.directionalColor"
+                                @input="updateDirectionalColor(($event.target as HTMLInputElement).value)"
+                                class="w-12 h-8 rounded border-2 border-gray-600 cursor-pointer">
+                            <span class="text-xs text-white font-mono">{{ lightingSettings.directionalColor }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="text-xs text-gray-400 block">Pozisyon X</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" min="-50" max="50" step="1" 
+                                :value="lightingSettings.directionalX"
+                                @input="updateDirectionalPosition(parseFloat(($event.target as HTMLInputElement).value), lightingSettings.directionalY, lightingSettings.directionalZ)"
+                                class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-500">
+                            <span class="text-xs text-white font-mono w-12 text-right">{{ lightingSettings.directionalX }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="text-xs text-gray-400 block">Pozisyon Y (Yükseklik)</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" min="5" max="100" step="1" 
+                                :value="lightingSettings.directionalY"
+                                @input="updateDirectionalPosition(lightingSettings.directionalX, parseFloat(($event.target as HTMLInputElement).value), lightingSettings.directionalZ)"
+                                class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-500">
+                            <span class="text-xs text-white font-mono w-12 text-right">{{ lightingSettings.directionalY }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <label class="text-xs text-gray-400 block">Pozisyon Z</label>
+                        <div class="flex items-center gap-3">
+                            <input type="range" min="-50" max="50" step="1" 
+                                :value="lightingSettings.directionalZ"
+                                @input="updateDirectionalPosition(lightingSettings.directionalX, lightingSettings.directionalY, parseFloat(($event.target as HTMLInputElement).value))"
+                                class="flex-1 h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-orange-500">
+                            <span class="text-xs text-white font-mono w-12 text-right">{{ lightingSettings.directionalZ }}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Sıfırlama Butonu -->
+                <button @click="resetLighting"
+                    class="w-full py-2.5 bg-gray-700 hover:bg-gray-600 text-white rounded-lg shadow-lg text-sm font-bold flex items-center justify-center gap-2 transition-all">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Varsayılana Sıfırla
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <!-- Kalıcı Boya Paneli -->
     <MaterialPaintPanel 
         v-if="canEdit && isPaintMode" 
@@ -482,6 +625,16 @@ const spacePressed = ref(false);
 const paintPanelRef = ref<InstanceType<typeof MaterialPaintPanel> | null>(null);
 const showShareModal = ref(false);
 const publicShareUrl = ref<string | null>(null);
+const showLightingPanel = ref(false);
+const lightingSettings = ref({
+    ambientIntensity: 0.7,
+    ambientColor: '#ffffff',
+    directionalIntensity: 1.2,
+    directionalColor: '#ffffff',
+    directionalX: 15,
+    directionalY: 30,
+    directionalZ: 15
+});
 let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 const isMember = computed(() => authStore.user?.role === 'MEMBER');
 
@@ -501,6 +654,8 @@ let transformControl: TransformControls;
 let raycaster: THREE.Raycaster;
 let mouse: THREE.Vector2 = new THREE.Vector2();
 let animationId: number;
+let ambientLight: THREE.AmbientLight;
+let directionalLight: THREE.DirectionalLight;
 
 const itemsMap = new Map<number, THREE.Object3D>();
 
@@ -581,6 +736,20 @@ const loadSceneData = async () => {
         publicShareUrl.value = `${window.location.origin}/view/scene/${sceneData.value.shareToken}`;
     } else {
         publicShareUrl.value = null;
+    }
+    
+    // Kaydedilmiş aydınlatma ayarlarını yükle
+    if (sceneData.value.settings?.lighting) {
+        const saved = sceneData.value.settings.lighting;
+        lightingSettings.value = {
+            ambientIntensity: saved.ambientIntensity ?? 0.7,
+            ambientColor: saved.ambientColor ?? '#ffffff',
+            directionalIntensity: saved.directionalIntensity ?? 1.2,
+            directionalColor: saved.directionalColor ?? '#ffffff',
+            directionalX: saved.directionalX ?? 15,
+            directionalY: saved.directionalY ?? 30,
+            directionalZ: saved.directionalZ ?? 15
+        };
     }
 };
 
@@ -951,15 +1120,23 @@ const initThreeJS = async () => {
     scene.fog = new THREE.Fog(bgColor, 60, maxDim * 16);
 
     // Lights
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    dirLight.position.set(15, 30, 15);
-    dirLight.castShadow = true;
+    ambientLight = new THREE.AmbientLight(0xffffff, lightingSettings.value.ambientIntensity);
+    ambientLight.color.set(lightingSettings.value.ambientColor);
+    scene.add(ambientLight);
+    
+    directionalLight = new THREE.DirectionalLight(0xffffff, lightingSettings.value.directionalIntensity);
+    directionalLight.color.set(lightingSettings.value.directionalColor);
+    directionalLight.position.set(
+        lightingSettings.value.directionalX,
+        lightingSettings.value.directionalY,
+        lightingSettings.value.directionalZ
+    );
+    directionalLight.castShadow = true;
     const d = maxDim * 1.2;
-    dirLight.shadow.camera.left = -d; dirLight.shadow.camera.right = d;
-    dirLight.shadow.camera.top = d; dirLight.shadow.camera.bottom = -d;
-    dirLight.shadow.mapSize.set(2048, 2048);
-    scene.add(dirLight);
+    directionalLight.shadow.camera.left = -d; directionalLight.shadow.camera.right = d;
+    directionalLight.shadow.camera.top = d; directionalLight.shadow.camera.bottom = -d;
+    directionalLight.shadow.mapSize.set(2048, 2048);
+    scene.add(directionalLight);
 
     // --- ZEMİN ---
     let geometry: THREE.BufferGeometry;
@@ -1628,7 +1805,105 @@ const revokeLink = async () => {
         if (sceneData.value) sceneData.value.shareToken = null;
     } catch (e) {
         console.error("Link iptal edilemedi", e);
+        alert("Link iptal edilirken hata oluştu.");
     }
+};
+
+// --- AYDINLATMA KONTROL FONKSİYONLARI ---
+const updateAmbientIntensity = (value: number) => {
+    lightingSettings.value.ambientIntensity = value;
+    if (ambientLight) {
+        ambientLight.intensity = value;
+    }
+    saveLightingSettings();
+};
+
+const updateAmbientColor = (color: string) => {
+    lightingSettings.value.ambientColor = color;
+    if (ambientLight) {
+        ambientLight.color.set(color);
+    }
+    saveLightingSettings();
+};
+
+const updateDirectionalIntensity = (value: number) => {
+    lightingSettings.value.directionalIntensity = value;
+    if (directionalLight) {
+        directionalLight.intensity = value;
+    }
+    saveLightingSettings();
+};
+
+const updateDirectionalColor = (color: string) => {
+    lightingSettings.value.directionalColor = color;
+    if (directionalLight) {
+        directionalLight.color.set(color);
+    }
+    saveLightingSettings();
+};
+
+const updateDirectionalPosition = (x: number, y: number, z: number) => {
+    lightingSettings.value.directionalX = x;
+    lightingSettings.value.directionalY = y;
+    lightingSettings.value.directionalZ = z;
+    if (directionalLight) {
+        directionalLight.position.set(x, y, z);
+    }
+    saveLightingSettings();
+};
+
+const resetLighting = () => {
+    lightingSettings.value = {
+        ambientIntensity: 0.7,
+        ambientColor: '#ffffff',
+        directionalIntensity: 1.2,
+        directionalColor: '#ffffff',
+        directionalX: 15,
+        directionalY: 30,
+        directionalZ: 15
+    };
+    if (ambientLight) {
+        ambientLight.intensity = 0.7;
+        ambientLight.color.set('#ffffff');
+    }
+    if (directionalLight) {
+        directionalLight.intensity = 1.2;
+        directionalLight.color.set('#ffffff');
+        directionalLight.position.set(15, 30, 15);
+    }
+    saveLightingSettings();
+};
+
+// Aydınlatma ayarlarını backend'e kaydet
+let lightingSaveTimeout: ReturnType<typeof setTimeout> | null = null;
+const saveLightingSettings = async () => {
+    if (!canEdit.value || !sceneData.value) return;
+    
+    // Debounce: 1 saniye bekle
+    if (lightingSaveTimeout) clearTimeout(lightingSaveTimeout);
+    
+    lightingSaveTimeout = setTimeout(async () => {
+        try {
+            const currentSettings = sceneData.value!.settings || {};
+            await arSceneService.updateScene(sceneId, {
+                settings: {
+                    ...currentSettings,
+                    lighting: {
+                        ambientIntensity: lightingSettings.value.ambientIntensity,
+                        ambientColor: lightingSettings.value.ambientColor,
+                        directionalIntensity: lightingSettings.value.directionalIntensity,
+                        directionalColor: lightingSettings.value.directionalColor,
+                        directionalX: lightingSettings.value.directionalX,
+                        directionalY: lightingSettings.value.directionalY,
+                        directionalZ: lightingSettings.value.directionalZ
+                    }
+                }
+            });
+            console.log('✅ Aydınlatma ayarları kaydedildi');
+        } catch (error) {
+            console.error('❌ Aydınlatma kaydetme hatası:', error);
+        }
+    }, 1000);
 };
 
 const copyLink = () => {

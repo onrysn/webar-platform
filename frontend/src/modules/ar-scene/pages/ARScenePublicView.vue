@@ -519,10 +519,21 @@ const initThreeJS = async () => {
     const maxDim = Math.max(sceneWidth, sceneDepth);
     scene.fog = new THREE.Fog(bgColor, 60, maxDim * 16);
 
-    // Lights
-    scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-    const dirLight = new THREE.DirectionalLight(0xffffff, 1.2);
-    dirLight.position.set(15, 30, 15);
+    // Lights - Kaydedilmiş ayarları kullan veya varsayılan değerler
+    const lightingSettings = settings.lighting || {};
+    const ambientIntensity = lightingSettings.ambientIntensity ?? 0.7;
+    const ambientColor = lightingSettings.ambientColor ?? '#ffffff';
+    const directionalIntensity = lightingSettings.directionalIntensity ?? 1.2;
+    const directionalColor = lightingSettings.directionalColor ?? '#ffffff';
+    const directionalX = lightingSettings.directionalX ?? 15;
+    const directionalY = lightingSettings.directionalY ?? 30;
+    const directionalZ = lightingSettings.directionalZ ?? 15;
+
+    const ambientLight = new THREE.AmbientLight(ambientColor, ambientIntensity);
+    scene.add(ambientLight);
+    
+    const dirLight = new THREE.DirectionalLight(directionalColor, directionalIntensity);
+    dirLight.position.set(directionalX, directionalY, directionalZ);
     dirLight.castShadow = true;
     const d = maxDim * 1.2;
     dirLight.shadow.camera.left = -d; dirLight.shadow.camera.right = d;
