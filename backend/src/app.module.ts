@@ -16,6 +16,7 @@ import { ProductSeriesModule } from './modules/product-series/product-series.mod
 import { ShapeModule } from './modules/shape/shape.module';
 import { UploadQueueModule } from './modules/upload-queue/upload-queue.module';
 import { QuoteRequestModule } from './modules/quote-request/quote-request.module';
+import { PbrTextureModule } from './modules/pbr-texture/pbr-texture.module';
 
 @Module({
   imports: [
@@ -27,6 +28,10 @@ import { QuoteRequestModule } from './modules/quote-request/quote-request.module
     ServeStaticModule.forRoot({
       rootPath: join(process.cwd(), 'uploads', 'thumbnails'),
       serveRoot: '/app/uploads/thumbnails',
+    }),
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'textures'),
+      serveRoot: '/textures',
     }),
     // --- STATİK DOSYA AYARI BİTİŞ ---
 
@@ -41,7 +46,8 @@ import { QuoteRequestModule } from './modules/quote-request/quote-request.module
     ProductSeriesModule,
     ShapeModule,
     UploadQueueModule,
-    QuoteRequestModule
+    QuoteRequestModule,
+    PbrTextureModule
   ],
   // --- 3. PROVIDERS KISMI EKLENDİ ---
   providers: [

@@ -39,6 +39,10 @@ import ShapeList from '../modules/shape/pages/ShapeList.vue';
 // --- QUOTE REQUEST PAGES ---
 import QuoteRequestList from '../modules/quote-request/pages/QuoteRequestList.vue';
 
+// --- PBR TEXTURE PAGES ---
+import PbrTextureList from '../modules/pbr-texture/pages/PbrTextureList.vue';
+import PbrTextureForm from '../modules/pbr-texture/pages/PbrTextureForm.vue';
+
 // --- ROL SABİTLERİ ---
 const ROLES = {
   SUPER_ADMIN: 'SUPER_ADMIN',
@@ -199,6 +203,26 @@ const routes: RouteRecordRaw[] = [
         name: 'QuoteRequestList',
         component: QuoteRequestList,
         meta: { roles: ADMINS_AND_EDITORS }
+      },
+
+      // 8. PBR Texture Management (Sadece Super Admin)
+      {
+        path: 'pbr-textures',
+        name: 'PbrTextureList',
+        component: PbrTextureList,
+        meta: { roles: [ROLES.SUPER_ADMIN] }
+      },
+      {
+        path: 'pbr-textures/create',
+        name: 'PbrTextureCreate',
+        component: PbrTextureForm,
+        meta: { roles: [ROLES.SUPER_ADMIN] }
+      },
+      {
+        path: 'pbr-textures/:id/edit',
+        name: 'PbrTextureEdit',
+        component: PbrTextureForm,
+        meta: { roles: [ROLES.SUPER_ADMIN] }
       },
     ],
   },
