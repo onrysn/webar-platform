@@ -119,6 +119,8 @@ import { arSceneService } from '../../../services/arSceneService';
 import type { ARSceneDto, SceneItemDto } from '../dto/arScene.dto';
 import { offsetPolygon } from '../../../utils/mathUtils';
 import { shapesStore } from '../../../store/modules/shapes';
+import type { FloorLayer } from '../../../types/geometry';
+import { generateFilletPath } from '../../../utils/geometryEngine';
 
 // --- DYNAMIC SHAPE LIBRARY ---
 const shapeLibrary = computed(() =>
@@ -666,59 +668,165 @@ const initThreeJS = async () => {
     if (floorLayers.length > 0) {
         const sortedLayers = [...floorLayers].sort((a, b) => a.zIndex - b.zIndex);
         const svgLoader = new SVGLoader();
+        const textureLoader = new THREE.TextureLoader();
 
-        sortedLayers.forEach((layer, index) => {
-            const shapeDef = shapeLibrary.value.find(s => s.id === layer.shapeId) || shapeLibrary.value[0];
-            if (!shapeDef) return;
+        for (let index = 0; index < sortedLayers.length; index++) {
+            const layer = sortedLayers[index] as FloorLayer;
+            let layerGeo: THREE.BufferGeometry | null = null;
 
-            const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg"><path d="${shapeDef.path}" /></svg>`;
-            const shapeData = svgLoader.parse(svgMarkup);
-            if (!shapeData.paths || shapeData.paths.length === 0) return;
+            // Handle freehand geometry with fillets
+            if (layer.geometryType === 'freehand' && layer.points && layer.points.length >= 3) {
+                const svgPath = generateFilletPath(layer.points, true);
+                const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg"><path d="${svgPath}" /></svg>`;
+                const shapeData = svgLoader.parse(svgMarkup);
+                
+                if (shapeData.paths && shapeData.paths.length > 0) {
+                    const shapes: THREE.Shape[] = [];
+                    shapeData.paths.forEach((path) => {
+                        const pathShapes = path.toShapes(true);
+                        shapes.push(...pathShapes);
+                    });
+                    
+                    if (shapes.length > 0) {
+                        layerGeo = new THREE.ShapeGeometry(shapes);
+                    }
+                }
+            }
+            // Handle preset geometry
+            else {
+                const shapeDef = shapeLibrary.value.find(s => s.id === layer.shapeId) || shapeLibrary.value[0];
+                if (shapeDef) {
+                    const svgMarkup = `<svg xmlns="http://www.w3.org/2000/svg"><path d="${shapeDef.path}" /></svg>`;
+                    const shapeData = svgLoader.parse(svgMarkup);
+                    
+                    if (shapeData.paths && shapeData.paths.length > 0) {
+                        const shapes: THREE.Shape[] = [];
+                        shapeData.paths.forEach((path) => {
+                            const pathShapes = path.toShapes(true);
+                            shapes.push(...pathShapes);
+                        });
+                        
+                        if (shapes.length > 0) {
+                            layerGeo = new THREE.ShapeGeometry(shapes);
+                            layerGeo.computeBoundingBox();
+                            const center = new THREE.Vector3();
+                            if (layerGeo.boundingBox) layerGeo.boundingBox.getCenter(center);
+                            layerGeo.translate(-center.x, -center.y, -center.z);
+                        }
+                    }
+                }
+            }
 
-            const shapes: THREE.Shape[] = [];
-            shapeData.paths.forEach((path) => {
-                const pathShapes = path.toShapes(true);
-                shapes.push(...pathShapes);
-            });
-            if (shapes.length === 0) return;
+            if (!layerGeo) continue;
 
-            const layerGeo = new THREE.ShapeGeometry(shapes);
-            layerGeo.computeBoundingBox();
-            const center = new THREE.Vector3();
-            if (layerGeo.boundingBox) layerGeo.boundingBox.getCenter(center);
-            layerGeo.translate(-center.x, -center.y, -center.z);
+            let layerMat: THREE.Material;
 
-            const layerMat = new THREE.MeshBasicMaterial({
-                color: layer.color,
-                transparent: layer.opacity !== undefined && layer.opacity < 1,
-                opacity: layer.opacity !== undefined ? layer.opacity : 1,
-                side: THREE.DoubleSide,
-                polygonOffset: true,
-                polygonOffsetFactor: -1 - index,
-                polygonOffsetUnits: -1 - index,
-                depthTest: true
-            });
+            // Load layer texture if available
+            if (layer.texture && layer.texture.id) {
+                // PBR texture - use MeshStandardMaterial
+                try {
+                    const { createPBRMaterialFromId } = await import('../utils/pbrTextureLoader');
+                    const scale = layer.texture.scale || 1;
+                    layerMat = await createPBRMaterialFromId(
+                        layer.texture.id,
+                        {
+                            textureScale: scale,
+                            roughnessValue: 0.8,
+                            metalnessValue: 0.1
+                        }
+                    );
+                    // Apply layer specific properties
+                    layerMat.transparent = layer.opacity !== undefined && layer.opacity < 1;
+                    layerMat.opacity = layer.opacity !== undefined ? layer.opacity : 1;
+                    layerMat.side = THREE.DoubleSide;
+                    layerMat.polygonOffset = true;
+                    layerMat.polygonOffsetFactor = -1 - index;
+                    layerMat.polygonOffsetUnits = -1 - index;
+                    layerMat.depthTest = true;
+                } catch (err) {
+                    console.warn('Layer PBR texture yüklenemedi:', layer.texture.id, err);
+                    layerMat = new THREE.MeshBasicMaterial({
+                        color: layer.color,
+                        transparent: layer.opacity !== undefined && layer.opacity < 1,
+                        opacity: layer.opacity !== undefined ? layer.opacity : 1,
+                        side: THREE.DoubleSide,
+                        polygonOffset: true,
+                        polygonOffsetFactor: -1 - index,
+                        polygonOffsetUnits: -1 - index,
+                        depthTest: true
+                    });
+                }
+            } else if (layer.texture && layer.texture.url) {
+                // Simple texture - use MeshBasicMaterial
+                try {
+                    const tex = await textureLoader.loadAsync(layer.texture.url);
+                    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+                    const scale = layer.texture.scale || 1;
+                    tex.repeat.set(scale, scale);
+                    layerMat = new THREE.MeshBasicMaterial({
+                        map: tex,
+                        transparent: layer.opacity !== undefined && layer.opacity < 1,
+                        opacity: layer.opacity !== undefined ? layer.opacity : 1,
+                        side: THREE.DoubleSide,
+                        polygonOffset: true,
+                        polygonOffsetFactor: -1 - index,
+                        polygonOffsetUnits: -1 - index,
+                        depthTest: true
+                    });
+                } catch (err) {
+                    console.warn('Layer simple texture yüklenemedi:', layer.texture.url, err);
+                    layerMat = new THREE.MeshBasicMaterial({
+                        color: layer.color,
+                        transparent: layer.opacity !== undefined && layer.opacity < 1,
+                        opacity: layer.opacity !== undefined ? layer.opacity : 1,
+                        side: THREE.DoubleSide,
+                        polygonOffset: true,
+                        polygonOffsetFactor: -1 - index,
+                        polygonOffsetUnits: -1 - index,
+                        depthTest: true
+                    });
+                }
+            } else {
+                // No texture - use color
+                layerMat = new THREE.MeshBasicMaterial({
+                    color: layer.color,
+                    transparent: layer.opacity !== undefined && layer.opacity < 1,
+                    opacity: layer.opacity !== undefined ? layer.opacity : 1,
+                    side: THREE.DoubleSide,
+                    polygonOffset: true,
+                    polygonOffsetFactor: -1 - index,
+                    polygonOffsetUnits: -1 - index,
+                    depthTest: true
+                });
+            }
             
             const correctedX = layer.x - centerOffset.x;
             const correctedZ = layer.z - centerOffset.y;
             const zFightOffset = 0.001 * (index + 1);
             
             console.log('Floor layer oluşturuldu:', { 
+                geometryType: layer.geometryType,
                 shapeId: layer.shapeId, 
                 color: layer.color, 
                 position: [correctedX, correctedZ, zFightOffset],
-                scale: [layer.width, layer.height, 1],
-                opacity: layer.opacity
+                scale: layer.geometryType === 'preset' ? [layer.width, layer.height, 1] : [1, 1, 1],
+                opacity: layer.opacity,
+                hasTexture: !!layer.texture
             });
             
             const layerMesh = new THREE.Mesh(layerGeo, layerMat);
-            layerMesh.scale.set(layer.width, layer.height, 1);
+            
+            // Scale only for preset shapes
+            if (layer.geometryType === 'preset') {
+                layerMesh.scale.set(layer.width, layer.height, 1);
+            }
+            
             layerMesh.position.set(correctedX, correctedZ, zFightOffset);
             layerMesh.renderOrder = 100 + layer.zIndex;
             layerMesh.rotation.z = -layer.rotation;
-            layerMesh.name = `FloorLayer_${layer.shapeId}_${index}`;
+            layerMesh.name = `FloorLayer_${layer.geometryType}_${index}`;
             floorGroup.add(layerMesh);
-        });
+        }
     }
 
     floorGroup.rotation.x = Math.PI / 2;

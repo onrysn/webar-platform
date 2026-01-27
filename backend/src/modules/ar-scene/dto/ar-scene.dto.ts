@@ -71,6 +71,56 @@ export class FloorPointDto {
   z: number;
 }
 
+// Köşe Pah (Fillet) Bilgisi
+export class LayerFilletDto {
+  @ApiProperty({ description: 'Pah yarıçapı (metre)', example: 0.5 })
+  @IsNumber()
+  radius: number;
+
+  @ApiProperty({ enum: ['arc', 'chamfer'], description: 'Pah tipi' })
+  @IsEnum(['arc', 'chamfer'])
+  type: 'arc' | 'chamfer';
+}
+
+// Freehand Layer Noktası (Fillet desteği ile)
+export class LayerPointDto {
+  @ApiProperty({ example: 0 })
+  @IsNumber()
+  x: number;
+
+  @ApiProperty({ example: 0 })
+  @IsNumber()
+  z: number;
+
+  @ApiPropertyOptional({ type: LayerFilletDto, description: 'Köşe pah bilgisi' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LayerFilletDto)
+  fillet?: LayerFilletDto;
+}
+
+// Layer Texture Bilgisi
+export class LayerTextureDto {
+  @ApiPropertyOptional({ description: 'PBR Texture ID', example: 1 })
+  @IsOptional()
+  @IsNumber()
+  id?: number;
+
+  @ApiPropertyOptional({ description: 'Simple Texture URL', example: '/textures/wood.jpg' })
+  @IsOptional()
+  @IsString()
+  url?: string;
+
+  @ApiProperty({ description: 'Texture scale/repeat', example: 2 })
+  @IsNumber()
+  scale: number;
+
+  @ApiPropertyOptional({ description: 'Thumbnail URL', example: '/textures/thumb.jpg' })
+  @IsOptional()
+  @IsString()
+  thumbnailUrl?: string;
+}
+
 export class FloorLayerDto {
   @ApiProperty({ description: 'Frontend tarafında üretilen UUID', example: '550e8400-e29b-41d4-a716-446655440000' })
   @IsString()
@@ -79,7 +129,7 @@ export class FloorLayerDto {
   @ApiProperty({ 
     description: 'Şekil Tipi (Kütüphanedeki ID)', 
     example: 'rect', 
-    enum: ['rect', 'circle', 'triangle', 'arrow', 'l-shape', 'star', 'warning', 'hexagon'] 
+    enum: ['rect', 'circle', 'triangle', 'arrow', 'l-shape', 'star', 'warning', 'hexagon', 'freehand'] 
   })
   @IsString()
   shapeId: string;
@@ -121,6 +171,24 @@ export class FloorLayerDto {
   @ApiProperty({ description: 'Katman sırası', example: 1 })
   @IsNumber()
   zIndex: number;
+
+  @ApiPropertyOptional({ enum: ['preset', 'freehand'], description: 'Geometri tipi' })
+  @IsOptional()
+  @IsEnum(['preset', 'freehand'])
+  geometryType?: 'preset' | 'freehand';
+
+  @ApiPropertyOptional({ type: [LayerPointDto], description: 'Freehand şekil noktaları (fillet desteği ile)' })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => LayerPointDto)
+  points?: LayerPointDto[];
+
+  @ApiPropertyOptional({ type: LayerTextureDto, description: 'Layer texture bilgisi' })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => LayerTextureDto)
+  texture?: LayerTextureDto;
 }
 
 // 3. Sahne Ayarları (Settings JSON İçeriği)

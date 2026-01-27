@@ -6,7 +6,7 @@
         @keydown.window.delete="removeLayer" tabindex="-1">
 
         <div ref="modalRoot"
-            :class="['bg-white rounded-3xl md:rounded-3xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col min-h-[60vh] max-h-[92vh] md:h-[92vh] border border-slate-200/50 transform transition-all duration-200', isShowing ? 'scale-100 opacity-100' : 'scale-95 opacity-90']">
+            :class="['bg-white rounded-3xl md:rounded-3xl shadow-2xl w-full max-w-[95vw] xl:max-w-[1600px] overflow-hidden flex flex-col min-h-[60vh] max-h-[92vh] md:h-[92vh] border border-slate-200/50 transform transition-all duration-200', isShowing ? 'scale-100 opacity-100' : 'scale-95 opacity-90']">
 
             <div
                 class="px-4 md:px-8 py-5 border-b border-slate-100 flex justify-between items-center bg-white/80 backdrop-blur-md">
@@ -204,7 +204,16 @@
                         </div>
 
                         <div class="grid grid-cols-4 gap-2">
-                            <button v-for="tool in quickAccessTools" :key="tool.id" @click="selectTool(tool.id)"
+                            <!-- Freehand Tool (Always first) -->
+                            <button @click="selectTool('freehand')"
+                                class="group relative aspect-square rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all duration-200"
+                                :class="activeTool === 'freehand' || isFreehandMode
+                                    ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200 scale-105 z-10'
+                                    : 'bg-white border-slate-100 text-slate-600 hover:border-indigo-200 hover:bg-slate-50'">
+                                <span class="text-xl group-hover:scale-110 transition-transform duration-300">✏️</span>
+                            </button>
+
+                            <button v-for="tool in quickAccessTools.slice(0, 7)" :key="tool.id" @click="selectTool(tool.id)"
                                 class="group relative aspect-square rounded-2xl border flex flex-col items-center justify-center gap-1 transition-all duration-200"
                                 :class="activeTool === tool.id
                                     ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-200 scale-105 z-10'
@@ -217,6 +226,22 @@
                                 class="aspect-square rounded-2xl border border-dashed border-slate-300 bg-slate-50 text-slate-400 flex items-center justify-center hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-200 transition-all">
                                 <span class="text-xl">+</span>
                             </button>
+                        </div>
+
+                        <div v-if="isFreehandMode"
+                            class="bg-slate-900 text-white p-3 rounded-xl flex gap-3 items-center shadow-lg animate-in fade-in slide-in-from-bottom-2">
+                            <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-lg">
+                                ✏️
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Serbest Çizim</p>
+                                <p class="text-xs font-bold">
+                                    {{ freehandPoints.length === 0 ? 'Tıklayarak nokta ekleyin...' : 
+                                       freehandPoints.length < 3 ? `${freehandPoints.length} nokta (Min: 3)` :
+                                       `${freehandPoints.length} nokta - Başlangıca tıklayın` }}
+                                </p>
+                            </div>
+                            <button @click="cancelFreehandDrawing" class="text-slate-400 hover:text-white px-2">✕</button>
                         </div>
 
                         <div v-if="activeTool"
@@ -248,6 +273,10 @@
                                     <button @click="bringToFront" title="Öne Getir"
                                         class="w-7 h-7 flex items-center justify-center bg-white rounded shadow-sm text-slate-400 hover:text-indigo-600 hover:shadow transition-all">
                                         ▲
+                                    </button>
+                                    <button @click="sendToBack" title="Arkaya Gönder"
+                                        class="w-7 h-7 flex items-center justify-center bg-white rounded shadow-sm text-slate-400 hover:text-amber-600 hover:shadow transition-all">
+                                        ▼
                                     </button>
                                     <button @click="removeLayer" title="Sil"
                                         class="w-7 h-7 flex items-center justify-center bg-white rounded shadow-sm text-slate-400 hover:text-red-500 hover:shadow transition-all">
@@ -306,16 +335,134 @@
                                 <div>
                                     <div class="flex justify-between mb-1.5">
                                         <span class="text-[10px] font-bold text-slate-500 flex items-center gap-1">
-                                            <span>👁</span> Görünürlük
+                                            <span>◐</span> Opaklık
                                         </span>
                                         <span
-                                            class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-1.5 rounded">%{{Math.round((layers.find(l => l.id === selectedLayerId)?.opacity || 1) * 100)}}</span>
+                                            class="text-[10px] font-black text-indigo-600 bg-indigo-50 px-1.5 rounded">{{Math.round((layers.find(l => l.id === selectedLayerId)?.opacity || 0) * 100)}}%</span>
                                     </div>
                                     <input type="range" min="0.1" max="1" step="0.05"
                                         v-model.number="layers.find(l => l.id === selectedLayerId)!.opacity"
                                         class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600 hover:accent-indigo-500">
                                 </div>
                             </div>
+
+                            <!-- Layer Texture Section -->
+                            <div class="border-t border-slate-100 pt-3 space-y-2">
+                                <div class="flex justify-between items-center">
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase">Doku</span>
+                                    <button v-if="selectedLayer?.texture" @click="clearLayerTexture(selectedLayerId!)"
+                                        class="text-[9px] text-red-500 hover:text-red-600 font-bold">
+                                        Temizle
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-4 gap-2">
+                                    <button @click="openLayerTexturePicker(selectedLayerId!)"
+                                        :class="['aspect-square rounded-xl border-2 flex items-center justify-center transition-all',
+                                            selectedLayer?.texture ? 'border-slate-200' : 'border-indigo-300 bg-indigo-50']">
+                                        <span v-if="!selectedLayer?.texture" class="text-2xl">+</span>
+                                        <img v-else :src="selectedLayer.texture.thumbnailUrl" 
+                                            class="w-full h-full object-cover rounded-lg" />
+                                    </button>
+                                </div>
+                                <div v-if="selectedLayer?.texture" class="bg-indigo-50 p-2 rounded-xl">
+                                    <label class="text-[9px] font-bold text-indigo-600 uppercase block mb-1">Ölçek</label>
+                                    <div class="flex gap-1">
+                                        <button v-for="val in [1, 2, 4, 8]" :key="val" 
+                                            @click="selectedLayer.texture!.scale = val"
+                                            :class="['flex-1 py-1 text-[10px] font-bold rounded transition-all',
+                                                selectedLayer.texture.scale === val 
+                                                    ? 'bg-indigo-600 text-white' 
+                                                    : 'bg-white text-indigo-600 hover:bg-indigo-100']">
+                                            {{val}}x
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Freehand Point Fillet Section -->
+                            <div v-if="selectedLayer?.geometryType === 'freehand' && selectedLayer.points" 
+                                class="border-t border-slate-100 pt-3 space-y-3">
+                                <div class="flex justify-between items-center">
+                                    <h5 class="text-[10px] font-bold text-slate-500 uppercase">Köşe Düzenleme</h5>
+                                    <span class="text-[9px] text-slate-400">{{selectedLayer.points.length}} nokta</span>
+                                </div>
+                                
+                                <!-- Selected Point Editor -->
+                                <div v-if="selectedPoint" 
+                                    class="bg-gradient-to-br from-indigo-50 to-purple-50 p-3 rounded-xl border border-indigo-200 space-y-2">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-xs font-black text-indigo-700">P{{selectedPointIndex! + 1}}</span>
+                                        <button @click="selectedPointIndex = null" 
+                                            class="text-slate-400 hover:text-slate-600 text-sm">✕</button>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between items-center mb-1">
+                                            <label class="text-[9px] font-bold text-indigo-600 uppercase">Pah Yarıçapı</label>
+                                            <span class="text-[10px] font-mono font-bold text-indigo-700">
+                                                {{(selectedPoint.fillet?.radius || 0).toFixed(2)}}m 
+                                                <span class="text-slate-400 font-normal">/ {{maxFilletRadius.toFixed(2)}}m</span>
+                                            </span>
+                                        </div>
+                                        <input type="range" min="0" :max="maxFilletRadius" step="0.01"
+                                            :value="Math.min(selectedPoint.fillet?.radius || 0, maxFilletRadius)"
+                                            @input="layerManager.setPointFillet(selectedLayerId!, selectedPointIndex!, parseFloat(($event.target as HTMLInputElement).value), selectedPoint.fillet?.type || 'arc')"
+                                            class="w-full h-2 bg-indigo-200 rounded-lg appearance-none cursor-pointer accent-indigo-600">
+                                    </div>
+                                    <div v-if="selectedPoint.fillet && selectedPoint.fillet.radius > 0" 
+                                        class="flex gap-2">
+                                        <button @click="layerManager.setPointFillet(selectedLayerId!, selectedPointIndex!, selectedPoint.fillet.radius, 'arc')"
+                                            :class="['flex-1 py-2 rounded-lg text-[10px] font-bold border-2 transition-all',
+                                                selectedPoint.fillet.type === 'arc' 
+                                                    ? 'bg-indigo-600 text-white border-indigo-600' 
+                                                    : 'bg-white text-indigo-600 border-indigo-200 hover:border-indigo-400']">
+                                            ○ Yuvarlak
+                                        </button>
+                                        <button @click="layerManager.setPointFillet(selectedLayerId!, selectedPointIndex!, selectedPoint.fillet.radius, 'chamfer')"
+                                            :class="['flex-1 py-2 rounded-lg text-[10px] font-bold border-2 transition-all',
+                                                selectedPoint.fillet.type === 'chamfer' 
+                                                    ? 'bg-amber-600 text-white border-amber-600' 
+                                                    : 'bg-white text-amber-600 border-amber-200 hover:border-amber-400']">
+                                            ◇ Kesik
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Layer Texture Picker Modal -->
+                        <Teleport to="body">
+                            <div v-if="layerTexturePickerOpen" @click.self="closeLayerTexturePicker"
+                                class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                                <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
+                                    <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                                        <h3 class="text-lg font-black text-slate-800">Doku Seç</h3>
+                                        <button @click="closeLayerTexturePicker" class="text-slate-400 hover:text-slate-600 text-2xl">
+                                            ×
+                                        </button>
+                                    </div>
+                                    <div class="p-6 overflow-y-auto">
+                                        <div class="grid grid-cols-4 gap-3">
+                                            <button v-for="tex in textureList" :key="tex.id" @click="selectLayerTexture(tex)"
+                                                class="aspect-square rounded-xl border-2 overflow-hidden hover:border-indigo-600 transition-all">
+                                                <img :src="tex.thumbnailUrl" class="w-full h-full object-cover" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </Teleport>
+
+                        <div v-if="activeTool"
+                            class="bg-slate-900 text-white p-3 rounded-xl flex gap-3 items-center shadow-lg animate-in fade-in slide-in-from-bottom-2">
+                            <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-lg">
+                                {{shapeLibrary.find(t => t.id === activeTool)?.icon}}
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mod Aktif</p>
+                                <p class="text-xs font-bold">{{shapeLibrary.find(t => t.id === activeTool)?.label}}
+                                    çiziliyor...</p>
+                            </div>
+                            <button @click="cancelTool" class="text-slate-400 hover:text-white px-2">✕</button>
                         </div>
 
                         <Teleport to="body">
@@ -567,8 +714,8 @@
 
                     <div class="w-full h-full relative" ref="svgContainer" :style="{ cursor: cursorStyle }"
                         @wheel.prevent="handleWheel" @mousedown="handleMouseDown" @mouseup="stopDrag"
-                        @mouseleave="stopDrag" @mousemove="handleMouseMove" @click="handleSvgClick"
-                        @contextmenu.prevent="removeLastPoint">
+                        @mouseleave="stopDrag" @mousemove="handleMouseMove" @click="handleSvgClickWithFreehand"
+                        @contextmenu.prevent="isFreehandMode ? removeFreehandLastPoint : removeLastPoint">
 
                         <svg ref="svgEl" width="100%" height="100%" :viewBox="dynamicViewBox"
                             class="block w-full h-full pointer-events-none drop-shadow-2xl">
@@ -650,10 +797,76 @@
                                     </text>
                                 </g>
 
-                                <path :d="getShapePath(layer.shapeId)" :fill="layer.color" stroke="black"
+                                <!-- Layer fill with texture or color -->
+                                <defs v-if="layer.texture">
+                                    <pattern :id="`layerTex-${layer.id}`" patternUnits="userSpaceOnUse" 
+                                        :width="layer.texture.scale" :height="layer.texture.scale">
+                                        <image :href="layer.texture.url || getTextureUrlById(layer.texture.id)" 
+                                            :width="layer.texture.scale" :height="layer.texture.scale" />
+                                    </pattern>
+                                </defs>
+
+                                <path :d="getShapePath(layer)" 
+                                    :fill="layer.texture ? `url(#layerTex-${layer.id})` : layer.color" 
+                                    stroke="black"
                                     stroke-width="0.02" stroke-opacity="0.1" vector-effect="non-scaling-stroke"
-                                    :transform="`scale(${layer.width}, ${layer.height})`"
+                                    :transform="layer.geometryType === 'preset' ? `scale(${layer.width}, ${layer.height})` : undefined"
                                     class="transition-colors drop-shadow-sm" />
+                                
+                                <!-- Freehand point visualization (when selected) -->
+                                <g v-if="selectedLayerId === layer.id && layer.geometryType === 'freehand' && layer.points">
+                                    <circle v-for="(point, idx) in layer.points" :key="'point-' + idx"
+                                        :cx="point.x" :cy="point.z" :r="0.08"
+                                        :fill="selectedPointIndex === idx ? '#f59e0b' : '#6366f1'"
+                                        stroke="white" stroke-width="0.04"
+                                        style="cursor: pointer;"
+                                        class="pointer-events-auto"
+                                        @click.stop="selectLayerPoint(layer.id, idx)" />
+                                    <text v-for="(point, idx) in layer.points" :key="'label-' + idx"
+                                        :x="point.x" :y="point.z - 0.25"
+                                        text-anchor="middle" font-size="0.2" font-weight="bold"
+                                        fill="#1e293b" class="pointer-events-none"
+                                        style="text-shadow: 0 0 3px white, 0 0 3px white; user-select: none;">P{{idx + 1}}</text>
+                                </g>
+                            </g>
+
+                            <!-- Freehand Drawing Preview -->
+                            <g v-if="isFreehandMode">
+                                <path v-if="freehandPoints.length > 0" 
+                                    :d="generateFreehandPreviewPath()" 
+                                    fill="none" 
+                                    stroke="#4f46e5" 
+                                    stroke-width="0.15" 
+                                    stroke-dasharray="0.3,0.3" 
+                                    opacity="0.8" 
+                                    class="pointer-events-none" />
+                                
+                                <!-- Preview line to mouse -->
+                                <line v-if="freehandPoints.length > 0 && !freehandClosed && freehandPoints[freehandPoints.length - 1]" 
+                                    :x1="freehandPoints[freehandPoints.length - 1]!.x" 
+                                    :y1="freehandPoints[freehandPoints.length - 1]!.z" 
+                                    :x2="mousePos.x" 
+                                    :y2="mousePos.z" 
+                                    stroke="#4f46e5" 
+                                    stroke-width="0.1" 
+                                    stroke-dasharray="0.2,0.2" 
+                                    opacity="0.6" 
+                                    class="pointer-events-none" />
+                                
+                                <!-- Freehand points -->
+                                <circle v-for="(p, i) in freehandPoints" :key="i" 
+                                    :cx="p.x" :cy="p.z" :r="0.25"
+                                    :fill="i === 0 && freehandPoints.length >= 3 && isNearPoint(mousePos, p, 0.5) ? '#10b981' : '#4f46e5'"
+                                    stroke="white" stroke-width="0.08" 
+                                    class="pointer-events-auto cursor-pointer"
+                                    @click.stop="i === 0 && freehandPoints.length >= 3 ? completeFreehandDrawing() : null" />
+                                
+                                <!-- Mouse cursor preview -->
+                                <circle v-if="!freehandClosed" 
+                                    :cx="mousePos.x" :cy="mousePos.z" :r="0.12"
+                                    fill="#4f46e5" opacity="0.6" 
+                                    stroke="white" stroke-width="0.04" 
+                                    class="animate-pulse pointer-events-none" />
                             </g>
 
                             <g v-if="form.shapeType === 'custom'">
@@ -665,9 +878,9 @@
                                     stroke-width="0.05" class="animate-pulse pointer-events-none" />
                                 <circle v-for="(p, i) in customPoints" :key="i" :cx="p.x" :cy="p.z" :r="0.25"
                                     :fill="i === 0 && isSnapToStart ? '#22c55e' : '#4f46e5'" stroke="white"
-                                    stroke-width="0.08" :class="draggingPointIndex === null
-                                        ? 'pointer-events-auto hover:scale-125 transition-transform cursor-grab'
-                                        : 'pointer-events-none'" @mousedown.stop="startDragPoint(i)" />
+                                    stroke-width="0.08" :style="{ cursor: draggingPointIndex === null ? 'grab' : 'grabbing' }"
+                                    :class="draggingPointIndex === null ? 'pointer-events-auto' : 'pointer-events-none'" 
+                                    @mousedown.stop="startDragPoint(i)" />
                             </g>
                         </svg>
                     </div>
@@ -676,7 +889,11 @@
                         <div
                             class="bg-white/90 backdrop-blur px-4 py-2 rounded-2xl border border-slate-200 shadow-xl flex gap-3 items-center">
                             <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                            <span v-if="form.shapeType === 'custom'"
+                            <span v-if="isFreehandMode"
+                                class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                                Sol Tık: Nokta Ekle <span class="mx-1 text-slate-300">|</span> Sağ Tık: Geri Al
+                            </span>
+                            <span v-else-if="form.shapeType === 'custom'"
                                 class="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
                                 Sol Tık: Nokta Ekle <span class="mx-1 text-slate-300">|</span> Sağ Tık: Nokta Sil
                             </span>
@@ -711,21 +928,11 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { arSceneService } from '../../../services/arSceneService';
+import type { FloorLayer, LayerPoint, LayerTexture } from '../../../types/geometry';
+import { useLayerManager } from '../../../composables/useLayerManager';
+import { isNearPoint } from '../../../utils/geometryEngine';
 
 // --- TİP TANIMLARI ---
-interface FloorLayer {
-    id: string;
-    shapeId: string;
-    name: string;
-    x: number;
-    z: number;
-    width: number;
-    height: number;
-    rotation: number;
-    color: string;
-    opacity: number;
-    zIndex: number;
-}
 
 // --- SABİTLER ---
 // --- NEW: Dynamic Shape Library from backend ---
@@ -960,14 +1167,121 @@ const customPoints = ref<{ x: number, z: number }[]>([]);
 const mousePos = reactive({ x: 0, z: 0 });
 const viewPort = reactive({ x: -2, y: -2, zoom: 15, isDragging: false, lastMouseX: 0, lastMouseY: 0 });
 
-const layers = ref<FloorLayer[]>([]);
-const selectedLayerId = ref<string | null>(null);
-const draggingLayerId = ref<string | null>(null);
+// Layer Management
+const layerManager = useLayerManager();
+const { layers, selectedLayerId, draggingLayerId, selectedLayer } = layerManager;
+
 const activeTool = ref<string | null>(null);
 const isDrawing = ref(false);
 const drawStartPos = reactive({ x: 0, z: 0 });
 // Yeni: Sürükleme sırasında mouse'un şeklin merkezine olan uzaklığı (Smooth drag için)
 const dragOffset = reactive({ x: 0, z: 0 });
+
+// Freehand Drawing State
+const freehandPoints = ref<LayerPoint[]>([]);
+const isFreehandMode = ref(false);
+const freehandClosed = ref(false);
+const editingFreehandLayerId = ref<string | null>(null);
+const selectedPointIndex = ref<number | null>(null);
+
+// Select a specific point on a layer
+const selectLayerPoint = (layerId: string, pointIndex: number) => {
+    selectedLayerId.value = layerId;
+    selectedPointIndex.value = pointIndex;
+    
+    // Scroll to the selected point editor in sidebar
+    nextTick(() => {
+        const sidebar = document.querySelector('.custom-scrollbar');
+        const selectedPointEditor = document.querySelector('.bg-gradient-to-br.from-indigo-50.to-purple-50');
+        
+        if (sidebar && selectedPointEditor) {
+            selectedPointEditor.scrollIntoView({ 
+                behavior: 'smooth', 
+                block: 'center' 
+            });
+        }
+    });
+};
+
+// Watch for layer changes to reset point selection
+watch(selectedLayerId, () => {
+    selectedPointIndex.value = null;
+});
+
+// Selected point for editing
+const selectedPoint = computed(() => {
+    if (!selectedLayer.value || selectedPointIndex.value === null) return null;
+    if (selectedLayer.value.geometryType !== 'freehand' || !selectedLayer.value.points) return null;
+    return selectedLayer.value.points[selectedPointIndex.value];
+});
+
+// Calculate maximum fillet radius for selected point based on angle
+const maxFilletRadius = computed(() => {
+    if (!selectedLayer.value || selectedPointIndex.value === null) return 1;
+    if (selectedLayer.value.geometryType !== 'freehand' || !selectedLayer.value.points) return 1;
+    
+    const points = selectedLayer.value.points;
+    if (points.length < 3) return 1;
+    
+    const idx = selectedPointIndex.value;
+    const prevIdx = (idx - 1 + points.length) % points.length;
+    const nextIdx = (idx + 1) % points.length;
+    
+    const curr = points[idx];
+    const prev = points[prevIdx];
+    const next = points[nextIdx];
+    
+    if (!curr || !prev || !next) return 1;
+    
+    // Calculate vectors from current point to adjacent points
+    const v1 = { x: prev.x - curr.x, z: prev.z - curr.z };
+    const v2 = { x: next.x - curr.x, z: next.z - curr.z };
+    
+    // Calculate vector magnitudes
+    const mag1 = Math.sqrt(v1.x * v1.x + v1.z * v1.z);
+    const mag2 = Math.sqrt(v2.x * v2.x + v2.z * v2.z);
+    
+    if (mag1 === 0 || mag2 === 0) return 1;
+    
+    // Normalize vectors
+    v1.x /= mag1; v1.z /= mag1;
+    v2.x /= mag2; v2.z /= mag2;
+    
+    // Calculate angle using dot product
+    const dotProduct = v1.x * v2.x + v1.z * v2.z;
+    const angleRadians = Math.acos(Math.max(-1, Math.min(1, dotProduct)));
+    const angleDegrees = angleRadians * (180 / Math.PI);
+    
+    // Calculate max radius based on angle:
+    // - Sharp angles (< 30°): 0.2m
+    // - Right angles (~90°): 1.5m
+    // - Obtuse angles (> 120°): 3m
+    // - Near-straight (> 160°): 5m
+    let maxRadius: number;
+    if (angleDegrees < 30) {
+        maxRadius = 0.2;
+    } else if (angleDegrees < 60) {
+        maxRadius = 0.2 + (angleDegrees - 30) / 30 * 0.6; // 0.2 -> 0.8
+    } else if (angleDegrees < 90) {
+        maxRadius = 0.8 + (angleDegrees - 60) / 30 * 0.7; // 0.8 -> 1.5
+    } else if (angleDegrees < 120) {
+        maxRadius = 1.5 + (angleDegrees - 90) / 30 * 1.0; // 1.5 -> 2.5
+    } else if (angleDegrees < 150) {
+        maxRadius = 2.5 + (angleDegrees - 120) / 30 * 1.0; // 2.5 -> 3.5
+    } else {
+        maxRadius = 3.5 + (angleDegrees - 150) / 30 * 1.5; // 3.5 -> 5.0
+    }
+    
+    // Also consider edge lengths to prevent overflow
+    const edgeLimit = Math.min(mag1, mag2) / 2;
+    
+    // Use the smaller of angle-based or edge-based limit
+    return Math.max(0.1, Math.min(maxRadius, edgeLimit));
+});
+
+// Layer Texture State
+const layerTexturePickerOpen = ref(false);
+const editingTextureLayerId = ref<string | null>(null);
 
 const draggingPointIndex = ref<number | null>(null);
 const isClosed = ref(false);
@@ -1122,6 +1436,7 @@ const dynamicViewBox = computed(() => {
 const lastPoint = computed(() => customPoints.value.length ? customPoints.value[customPoints.value.length - 1] : null);
 
 const cursorStyle = computed(() => {
+    if (isFreehandMode.value) return 'crosshair';
     if (activeTool.value) return 'crosshair';
     if (isDrawing.value) return 'crosshair';
     if (viewPort.isDragging) return 'grabbing';
@@ -1138,22 +1453,43 @@ const selectTool = (toolId: string) => {
     if (activeTool.value === toolId) {
         cancelTool();
     } else {
-        activeTool.value = toolId;
-        selectedLayerId.value = null;
+        // Check if freehand tool
+        if (toolId === 'freehand') {
+            startFreehandDrawing();
+        } else {
+            activeTool.value = toolId;
+            selectedLayerId.value = null;
+        }
     }
 };
 
 const cancelTool = () => {
     activeTool.value = null;
     isDrawing.value = false;
+    
+    // Cancel freehand mode
+    if (isFreehandMode.value) {
+        if (freehandPoints.value.length > 0 && !confirm('Çizimi iptal etmek istediğinize emin misiniz?')) {
+            return;
+        }
+        cancelFreehandDrawing();
+    }
 };
 
-const getShapePath = (shapeId: string) => {
-    return shapeLibrary.value.find(s => s.id === shapeId)?.path || '';
+const getShapePath = (layer: FloorLayer) => {
+    if (layer.geometryType === 'freehand' && layer.points) {
+        return layerManager.getLayerPath(layer);
+    }
+    return shapeLibrary.value.find(s => s.id === layer.shapeId)?.path || '';
 };
 
 // MOUSE EVENT: Down (Container)
 const handleMouseDown = (e: MouseEvent) => {
+    // FREEHAND MODE: İgnore (handled by click)
+    if (isFreehandMode.value) {
+        return;
+    }
+
     // 1. ÇİZİM BAŞLANGICI
     if (activeTool.value) {
         e.stopPropagation();
@@ -1162,23 +1498,15 @@ const handleMouseDown = (e: MouseEvent) => {
         drawStartPos.z = mousePos.z;
 
         const shapeDef = shapeLibrary.value.find(s => s.id === activeTool.value);
-        const newLayer: FloorLayer = {
-            id: crypto.randomUUID(),
-            shapeId: activeTool.value,
-            name: shapeDef?.label || 'Şekil',
-            x: mousePos.x,
-            z: mousePos.z,
-            width: 0.1,
-            height: 0.1,
-            rotation: 0,
-            color: '#3b82f6',
-            opacity: 0.8,
-            zIndex: layers.value.length + 1
-        };
-
-        layers.value.push(newLayer);
-        selectedLayerId.value = newLayer.id;
-        draggingLayerId.value = newLayer.id;
+        layerManager.createPresetLayer(
+            activeTool.value,
+            shapeDef?.label || 'Şekil',
+            mousePos.x,
+            mousePos.z,
+            0.1,
+            0.1
+        );
+        draggingLayerId.value = selectedLayerId.value;
         return;
     }
 
@@ -1186,6 +1514,7 @@ const handleMouseDown = (e: MouseEvent) => {
     // Şekiller üzerindeki mousedown eventinde 'stop' olduğu için,
     // eğer olay buraya kadar ulaştıysa kesinlikle boşluğa (background'a) tıklanmıştır.
     selectedLayerId.value = null;
+    selectedPointIndex.value = null;
 
     // Pan işlemini başlat (Sol tık veya Orta tık)
     if (e.button === 0 || e.button === 1) {
@@ -1334,6 +1663,133 @@ const handleSvgClick = () => {
     }
 };
 
+// --- FREEHAND DRAWING METHODS ---
+
+const startFreehandDrawing = () => {
+    isFreehandMode.value = true;
+    freehandPoints.value = [];
+    freehandClosed.value = false;
+    activeTool.value = 'freehand';
+    selectedLayerId.value = null;
+};
+
+const cancelFreehandDrawing = () => {
+    isFreehandMode.value = false;
+    freehandPoints.value = [];
+    freehandClosed.value = false;
+    activeTool.value = null;
+    editingFreehandLayerId.value = null;
+    selectedPointIndex.value = null;
+};
+
+const addFreehandPoint = () => {
+    if (freehandClosed.value) return;
+    
+    // Check if snapping to start
+    if (freehandPoints.value.length >= 3) {
+        const startPoint = freehandPoints.value[0];
+        if (startPoint && isNearPoint(mousePos, startPoint, 0.5)) {
+            // Close the path
+            completeFreehandDrawing();
+            return;
+        }
+    }
+    
+    // Add new point
+    freehandPoints.value.push({ x: mousePos.x, z: mousePos.z });
+};
+
+const removeFreehandLastPoint = () => {
+    if (freehandClosed.value) {
+        freehandClosed.value = false;
+    } else {
+        freehandPoints.value.pop();
+    }
+};
+
+const completeFreehandDrawing = () => {
+    if (freehandPoints.value.length < 3) {
+        alert('En az 3 nokta gereklidir!');
+        return;
+    }
+    
+    freehandClosed.value = true;
+    
+    // Create layer
+    layerManager.createFreehandLayer('Serbest Şekil', freehandPoints.value);
+    
+    // Reset freehand state
+    cancelFreehandDrawing();
+};
+
+const handleSvgClickWithFreehand = () => {
+    // Handle freehand mode
+    if (isFreehandMode.value) {
+        addFreehandPoint();
+        return;
+    }
+    
+    // Original custom shape logic
+    handleSvgClick();
+};
+
+// Layer texture methods
+const openLayerTexturePicker = (layerId: string) => {
+    editingTextureLayerId.value = layerId;
+    layerTexturePickerOpen.value = true;
+};
+
+const closeLayerTexturePicker = () => {
+    layerTexturePickerOpen.value = false;
+    editingTextureLayerId.value = null;
+};
+
+const selectLayerTexture = (texture: any) => {
+    if (!editingTextureLayerId.value) return;
+    
+    const layerTexture: LayerTexture = {
+        id: texture.type === 'PBR' ? texture.id : undefined,
+        url: texture.type === 'SIMPLE' ? texture.textureUrl : undefined,
+        scale: texture.defaultScale || 2,
+        thumbnailUrl: texture.thumbnailUrl
+    };
+    
+    layerManager.setLayerTexture(editingTextureLayerId.value, layerTexture);
+    closeLayerTexturePicker();
+};
+
+const clearLayerTexture = (layerId: string) => {
+    layerManager.setLayerTexture(layerId, null);
+};
+
+// Helper: Get texture URL by ID
+const getTextureUrlById = (id?: number): string => {
+    if (!id) return '';
+    const texture = textureList.value.find((t: any) => t.id === id);
+    return texture?.type === 'PBR' ? texture.baseColorUrl : texture?.textureUrl || '';
+};
+
+// Helper: Generate freehand preview path
+const generateFreehandPreviewPath = (): string => {
+    if (freehandPoints.value.length === 0) return '';
+    
+    const firstPoint = freehandPoints.value[0];
+    if (!firstPoint) return '';
+    
+    let path = `M ${firstPoint.x} ${firstPoint.z}`;
+    for (let i = 1; i < freehandPoints.value.length; i++) {
+        const p = freehandPoints.value[i];
+        if (!p) continue;
+        path += ` L ${p.x} ${p.z}`;
+    }
+    
+    if (freehandClosed.value) {
+        path += ' Z';
+    }
+    
+    return path;
+};
+
 const resetView = () => {
     const aspectRatio = containerSize.width / containerSize.height;
     viewPort.zoom = 15;
@@ -1367,8 +1823,9 @@ const resetForm = () => {
     isSnapToStart.value = false;
     draggingPointIndex.value = null;
     hoveredPointIndex.value = null;
-    layers.value = [];
+    layerManager.clearLayers();
     activeTool.value = null;
+    cancelFreehandDrawing();
     resetView();
 };
 
@@ -1406,17 +1863,17 @@ const startDragLayer = (id: string, e: MouseEvent) => {
 
 const removeLayer = () => {
     if (!selectedLayerId.value) return;
-    layers.value = layers.value.filter(l => l.id !== selectedLayerId.value);
-    selectedLayerId.value = null;
+    layerManager.removeLayer(selectedLayerId.value);
 };
 
 const bringToFront = () => {
     if (!selectedLayerId.value) return;
-    const layer = layers.value.find(l => l.id === selectedLayerId.value);
-    if (layer) {
-        layers.value = layers.value.filter(l => l.id !== selectedLayerId.value);
-        layers.value.push(layer);
-    }
+    layerManager.bringToFront(selectedLayerId.value);
+};
+
+const sendToBack = () => {
+    if (!selectedLayerId.value) return;
+    layerManager.sendToBack(selectedLayerId.value);
 };
 
 const setShape = (id: string) => {
