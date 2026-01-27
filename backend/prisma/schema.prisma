@@ -201,7 +201,7 @@ enum TextureType {
 model FloorTexture {
   id           Int         @id @default(autoincrement())
   name         String   
-  thumbnailUrl String   
+  thumbnailUrl String   // BaseColor will be used as thumbnail
   
   // Texture Tipi
   type         TextureType @default(SIMPLE)

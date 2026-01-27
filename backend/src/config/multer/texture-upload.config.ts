@@ -15,7 +15,8 @@ export const textureUploadConfig = {
         .replace(/-+/g, '-')
         .replace(/^-|-$/g, '');
       
-      const uploadPath = join(process.cwd(), 'textures', 'pbr', folderName);
+      // Upload to shared texture volume (mounted in docker-compose)
+      const uploadPath = join('/shared/textures', 'pbr', folderName);
 
       // Create directory if not exists
       if (!existsSync(uploadPath)) {

@@ -136,11 +136,10 @@ export class PbrTextureService {
 
     const result: any = {};
 
-    if (files.thumbnail?.[0]) {
-      result.thumbnailUrl = `/textures/pbr/${folderName}/${files.thumbnail[0].filename}`;
-    }
     if (files.baseColor?.[0]) {
-      result.baseColorUrl = `/textures/pbr/${folderName}/${files.baseColor[0].filename}`;
+      const baseColorUrl = `/textures/pbr/${folderName}/${files.baseColor[0].filename}`;
+      result.baseColorUrl = baseColorUrl;
+      result.thumbnailUrl = baseColorUrl; // Use baseColor as thumbnail
     }
     if (files.normal?.[0]) {
       result.normalUrl = `/textures/pbr/${folderName}/${files.normal[0].filename}`;

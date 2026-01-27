@@ -16,7 +16,7 @@ export class CreatePbrTextureDto {
   @IsString()
   name: string;
 
-  @ApiProperty({ description: 'Thumbnail URL' })
+  @ApiProperty({ description: 'Thumbnail URL (baseColor kullanılır)' })
   @IsString()
   thumbnailUrl: string;
 

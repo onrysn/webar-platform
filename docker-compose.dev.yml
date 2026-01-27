@@ -41,6 +41,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/node_modules
+      - ./frontend/public/textures:/shared/textures
 
   frontend:
     build:
@@ -54,6 +55,7 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+      - ./frontend/public/textures:/app/public/textures
 
   converter:
     build: ./gltf2usdz

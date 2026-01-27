@@ -24,7 +24,6 @@ import { Role } from '@prisma/client';
 import { textureUploadConfig } from '../../config/multer/texture-upload.config';
 
 interface UploadedTextureFiles {
-  thumbnail?: any[];
   baseColor?: any[];
   normal?: any[];
   roughness?: any[];
@@ -79,7 +78,6 @@ export class PbrTextureController {
   @UseInterceptors(
     FileFieldsInterceptor(
       [
-        { name: 'thumbnail', maxCount: 1 },
         { name: 'baseColor', maxCount: 1 },
         { name: 'normal', maxCount: 1 },
         { name: 'roughness', maxCount: 1 },

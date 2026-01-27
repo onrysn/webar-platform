@@ -49,20 +49,6 @@
             </div>
           </div>
 
-          <!-- Thumbnail -->
-          <div class="form-group">
-            <label>Thumbnail *</label>
-            <input
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
-              @change="handleFileChange($event, 'thumbnail')"
-              :required="!isEdit"
-            />
-            <small v-if="form.thumbnailUrl" class="file-info">
-              Mevcut: {{ form.thumbnailUrl }}
-            </small>
-          </div>
-
           <!-- PBR Maps -->
           <div v-if="form.type === 'PBR'" class="pbr-maps">
             <h3>PBR Texture Katmanları</h3>
@@ -278,8 +264,7 @@ const existingCategories = ref<string[]>([]);
 const submitting = ref(false);
 
 const uploadedFiles = ref<{
-  thumbnail?: File;
-  baseColor?: File;
+
   normal?: File;
   roughness?: File;
   metallic?: File;
@@ -288,7 +273,6 @@ const uploadedFiles = ref<{
 
 const form = ref({
   name: '',
-  thumbnailUrl: '',
   type: 'PBR' as 'PBR' | 'SIMPLE',
   baseColorUrl: '',
   normalUrl: '',
@@ -320,7 +304,6 @@ const fetchTexture = async (id: number) => {
     const texture = await pbrTextureService.getOne(id);
     form.value = {
       name: texture.name,
-      thumbnailUrl: texture.thumbnailUrl,
       type: texture.type,
       baseColorUrl: texture.baseColorUrl || '',
       normalUrl: texture.normalUrl || '',
@@ -352,9 +335,6 @@ const handleFileChange = (event: Event, fieldName: string) => {
     // Preview için URL oluştur
     const previewUrl = URL.createObjectURL(target.files[0]);
     switch (fieldName) {
-      case 'thumbnail':
-        form.value.thumbnailUrl = previewUrl;
-        break;
       case 'baseColor':
         form.value.baseColorUrl = previewUrl;
         break;
@@ -392,10 +372,11 @@ const handleSubmit = async () => {
       );
     }
 
-    const dto = {
+    const dto: any = {
       ...form.value,
+      // Use baseColor as thumbnail for PBR textures
+      thumbnailUrl: uploadedUrls.thumbnailUrl || uploadedUrls.baseColorUrl || form.value.baseColorUrl,
       // Upload edilen URL'leri kullan, yoksa mevcut form değerlerini kullan
-      thumbnailUrl: uploadedUrls.thumbnailUrl || form.value.thumbnailUrl,
       baseColorUrl: uploadedUrls.baseColorUrl || form.value.baseColorUrl,
       normalUrl: uploadedUrls.normalUrl || form.value.normalUrl,
       roughnessUrl: uploadedUrls.roughnessUrl || form.value.roughnessUrl,

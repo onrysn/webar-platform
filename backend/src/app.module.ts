@@ -29,10 +29,6 @@ import { PbrTextureModule } from './modules/pbr-texture/pbr-texture.module';
       rootPath: join(process.cwd(), 'uploads', 'thumbnails'),
       serveRoot: '/app/uploads/thumbnails',
     }),
-    ServeStaticModule.forRoot({
-      rootPath: join(process.cwd(), 'textures'),
-      serveRoot: '/textures',
-    }),
     // --- STATİK DOSYA AYARI BİTİŞ ---
 
     PrismaModule,
