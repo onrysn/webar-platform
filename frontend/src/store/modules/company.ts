@@ -103,7 +103,7 @@ export const useCompanyStore = defineStore('company', {
       }
     },
 
-    async createCompany(data: { name: string; domain?: string }) {
+    async createCompany(data: { name: string; domain?: string; maxScenes?: number; logoBase64?: string }) {
       try {
         const newCompany = await companyService.createCompany(data);
         this.companiesList.unshift(newCompany);
@@ -128,7 +128,7 @@ export const useCompanyStore = defineStore('company', {
     },
 
     // SUPER ADMIN: Company Limits
-    async updateCompanyLimits(companyId: number, body: { maxApiKeys?: number | null; maxStorage?: number | null }) {
+    async updateCompanyLimits(companyId: number, body: { maxApiKeys?: number | null; maxStorage?: number | null; maxScenes?: number | null }) {
       try {
         return await companyService.updateCompanyLimits(companyId, body);
       } catch (error) { throw error; }

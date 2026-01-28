@@ -51,6 +51,26 @@
             <p class="text-xs text-slate-400 mt-2">CORS ve güvenlik ayarları için kullanılır (Opsiyonel).</p>
           </div>
 
+          <div>
+            <label for="logo" class="block text-sm font-bold text-slate-700 mb-2">Şirket Logosu</label>
+            <div class="flex items-start gap-4">
+              <div v-if="logoPreview || company?.logoUrl" class="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-slate-200">
+                <img :src="logoPreview || company?.logoUrl || ''" alt="Logo" class="w-full h-full object-contain" />
+                <button v-if="logoPreview" type="button" @click="clearLogo"
+                  class="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-bl-lg hover:bg-red-600">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <div class="flex-1">
+                <input type="file" id="logo" @change="handleLogoChange" accept="image/*"
+                  class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+                <p class="text-xs text-slate-400 mt-1">PNG, JPG, GIF, WebP veya SVG (Maks. 5MB)</p>
+              </div>
+            </div>
+          </div>
+
           <div v-if="isSuperAdmin" class="mt-8 pt-8 border-t border-slate-200 bg-slate-50/50 -mx-8 px-8 pb-4">
             <h3 class="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" viewBox="0 0 20 20"
@@ -90,7 +110,7 @@
 
             </div>
 
-            <div class="mt-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label class="block text-sm font-bold text-slate-700 mb-2">Maksimum API Key Sayısı</label>
                 <input type="number" min="0" v-model.number="form.maxApiKeys"
@@ -102,6 +122,12 @@
                 <input type="number" min="0" v-model.number="form.maxStorage"
                   class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500" />
                 <p class="text-xs text-slate-400 mt-1">Toplam GLB+USDZ şifreli boyut sınırı.</p>
+              </div>
+              <div>
+                <label class="block text-sm font-bold text-slate-700 mb-2">Maksimum Sahne Sayısı</label>
+                <input type="number" min="1" v-model.number="form.maxScenes"
+                  class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+                <p class="text-xs text-slate-400 mt-1">Şirketin oluşturabileceği maksimum sahne sayısı.</p>
               </div>
             </div>
           </div>
@@ -143,6 +169,8 @@ const authStore = useAuthStore();
 const loading = ref(true);
 const isSaving = ref(false);
 const company = ref<CompanyDto | null>(null);
+const logoFile = ref<File | null>(null);
+const logoPreview = ref<string | null>(null);
 
 // Form başlangıç değerleri
 const form = reactive({
@@ -151,12 +179,49 @@ const form = reactive({
   isActive: true,
   subscriptionEndsAt: '',
   maxApiKeys: null as number | null,
-  maxStorage: null as number | null
+  maxStorage: null as number | null,
+  maxScenes: null as number | null
 });
 
 // COMPUTED
 const targetCompanyId = computed(() => route.params.id ? Number(route.params.id) : null);
 const isSuperAdmin = computed(() => authStore.user?.role === 'SUPER_ADMIN');
+
+const handleLogoChange = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (file) {
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Logo dosyası 5MB\'dan küçük olmalıdır.');
+      return;
+    }
+    
+    logoFile.value = file;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      logoPreview.value = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+const clearLogo = () => {
+  logoFile.value = null;
+  logoPreview.value = null;
+  const input = document.getElementById('logo') as HTMLInputElement;
+  if (input) input.value = '';
+};
+
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
 
 // 1. ŞİRKET BİLGİLERİNİ YÜKLE
 async function loadCompany() {
@@ -189,6 +254,7 @@ async function loadCompany() {
       }
       form.maxApiKeys = data.maxApiKeys ?? null;
       form.maxStorage = data.maxStorage ?? null;
+      form.maxScenes = data.maxScenes ?? null;
     }
 
   } catch (error) {
@@ -209,7 +275,13 @@ async function handleUpdate() {
 
     if (isSuperAdmin.value && targetCompanyId.value) {
       // --- SUPER ADMIN GÜNCELLEMESİ (TÜM ALANLAR) ---
-      const payload = {
+      let logoBase64: string | undefined;
+
+      if (logoFile.value) {
+        logoBase64 = await fileToBase64(logoFile.value);
+      }
+
+      const payload: any = {
         name: form.name,
         domain: form.domain,
         isActive: form.isActive,
@@ -218,26 +290,48 @@ async function handleUpdate() {
           : null
       };
 
+      if (logoBase64) {
+        payload.logoBase64 = logoBase64;
+      }
+
       await companyService.updateCompany(targetCompanyId.value, payload);
 
       // Limits update
       await companyService.updateCompanyLimits(targetCompanyId.value, {
         maxApiKeys: form.maxApiKeys,
-        maxStorage: form.maxStorage
+        maxStorage: form.maxStorage,
+        maxScenes: form.maxScenes
       });
     } else {
       // --- COMPANY ADMIN GÜNCELLEMESİ (KISITLI ALANLAR) ---
-      // isActive ve subscriptionEndsAt BURADA YOK. 
-      // Sadece isim ve domain gönderiliyor.
-      const payload = {
+      let logoBase64: string | undefined;
+
+      if (logoFile.value) {
+        logoBase64 = await fileToBase64(logoFile.value);
+      }
+
+      const payload: any = {
         name: form.name,
         domain: form.domain
       };
+
+      if (logoBase64) {
+        payload.logoBase64 = logoBase64;
+      }
 
       await companyService.updateMyCompany(payload);
     }
 
     toast.success('Şirket bilgileri başarıyla güncellendi!');
+    
+    // Logoyu yüklendi yse önizlemeyi temizle
+    if (logoFile.value) {
+      logoFile.value = null;
+      logoPreview.value = null;
+    }
+    
+    // Şirketi yeniden yükle
+    await loadCompany();
 
   } catch (error: any) {
     console.error(error);

@@ -19,6 +19,8 @@ export interface CompanyDto {
   subscriptionEndsAt?: string | null;
   maxStorage?: number | null; // MB
   maxApiKeys?: number | null;
+  maxScenes?: number | null; // Maksimum sahne sayısı
+  logoUrl?: string | null; // Logo dosyasının URL'si
 
   _count?: {
     users: number;
@@ -33,6 +35,8 @@ export interface CompanyDto {
 export interface CreateCompanyDto {
   name: string;
   domain?: string;
+  maxScenes?: number;
+  logoBase64?: string;
 }
 
 // 5. ŞİRKET GÜNCELLEME (Super Admin veya Company Admin)
@@ -41,6 +45,10 @@ export interface UpdateCompanyDto {
   domain?: string;
   isActive?: boolean;
   subscriptionEndsAt?: string | null;
+  maxStorage?: number | null;
+  maxApiKeys?: number | null;
+  maxScenes?: number | null;
+  logoBase64?: string;
 }
 
 // 6. EKİBE YENİ ÜYE EKLEME

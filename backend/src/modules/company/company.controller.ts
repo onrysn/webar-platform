@@ -1,7 +1,7 @@
 import { Controller, Post, Body, Get, Param, UseGuards, Put, Delete, ParseIntPipe, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { CompanyService } from './company.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags, ApiOperation, ApiBody } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiTags, ApiOperation } from '@nestjs/swagger';
 import { CreateCompanyDto } from './dto/createCompany.dto';
 import { UpdateCompanyDto } from './dto/updateCompany.dto';
 import { AddUserToCompanyDto } from './dto/add-user.dto';
@@ -27,7 +27,10 @@ export class CompanyController {
   @Post()
   @Roles(Role.SUPER_ADMIN) // Sadece Süper Admin manuel şirket oluşturabilir
   @ApiOperation({ summary: 'Yeni bir şirket oluşturur (Sadece Super Admin)' })
-  async createCompany(@User() user: CurrentUser, @Body() dto: CreateCompanyDto) {
+  async createCompany(
+    @User() user: CurrentUser, 
+    @Body() dto: CreateCompanyDto
+  ) {
     return this.companyService.createCompany(user, dto);
   }
 
@@ -56,9 +59,12 @@ export class CompanyController {
   @Put('my-company')
   @Roles(Role.COMPANY_ADMIN) // Sadece Şirket Yöneticisi güncelleyebilir
   @ApiOperation({ summary: 'Kullanıcının kendi şirket bilgilerini günceller' })
-  async updateMyCompany(@User() user: CurrentUser, @Body() updateDto: UpdateCompanyDto) {
+  async updateMyCompany(
+    @User() user: CurrentUser, 
+    @Body() updateDto: UpdateCompanyDto
+  ) {
     if (!user.companyId) throw new BadRequestException('Şirket bulunamadı');
-    const { isActive, subscriptionEndsAt, ...safeDto } = updateDto;
+    const { isActive, subscriptionEndsAt, maxStorage, maxApiKeys, maxScenes, ...safeDto } = updateDto;
     return this.companyService.updateCompany(user, user.companyId, safeDto);
   }
 
@@ -235,11 +241,11 @@ export class CompanyController {
   // --- LIMITS (Super Admin) ---
   @Put(':id/limits')
   @Roles(Role.SUPER_ADMIN)
-  @ApiOperation({ summary: 'Şirket limitlerini günceller (maxApiKeys, maxStorage) (Super Admin)' })
+  @ApiOperation({ summary: 'Şirket limitlerini günceller (maxApiKeys, maxStorage, maxScenes) (Super Admin)' })
   async updateCompanyLimits(
     @User() user: CurrentUser,
     @Param('id', ParseIntPipe) companyId: number,
-    @Body() body: { maxApiKeys?: number | null; maxStorage?: number | null }
+    @Body() body: { maxApiKeys?: number | null; maxStorage?: number | null; maxScenes?: number | null }
   ) {
     return this.companyService.updateCompanyLimits(user, companyId, body);
   }

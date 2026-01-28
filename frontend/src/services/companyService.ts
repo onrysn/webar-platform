@@ -23,8 +23,10 @@ export const companyService = {
   },
 
   /** Kendi şirket bilgilerini güncelle */
-  async updateMyCompany(data: UpdateCompanyDto): Promise<CompanyDto> {
-    const res = await apiService.put<CompanyDto>('/companies/my-company', data);
+  async updateMyCompany(data: FormData | UpdateCompanyDto): Promise<CompanyDto> {
+    const res = await apiService.put<CompanyDto>('/companies/my-company', data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
+    });
     return res.data;
   },
 
@@ -79,8 +81,10 @@ export const companyService = {
   },
 
   /** Yeni şirket oluştur */
-  async createCompany(data: CreateCompanyDto): Promise<CompanyDto> {
-    const res = await apiService.post<CompanyDto>('/companies', data);
+  async createCompany(data: FormData | CreateCompanyDto): Promise<CompanyDto> {
+    const res = await apiService.post<CompanyDto>('/companies', data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
+    });
     return res.data;
   },
 
@@ -95,8 +99,10 @@ export const companyService = {
     await apiService.delete(`/companies/${id}`);
   },
 
-  async updateCompany(id: number, data: UpdateCompanyDto): Promise<CompanyDto> {
-    const res = await apiService.put<CompanyDto>(`/companies/${id}`, data);
+  async updateCompany(id: number, data: FormData | UpdateCompanyDto): Promise<CompanyDto> {
+    const res = await apiService.put<CompanyDto>(`/companies/${id}`, data, {
+      headers: data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {}
+    });
     return res.data;
   },
 
@@ -124,7 +130,7 @@ export const companyService = {
   },
 
   /** SUPER ADMIN: Şirket limitlerini günceller */
-  async updateCompanyLimits(companyId: number, body: { maxApiKeys?: number | null; maxStorage?: number | null }): Promise<CompanyDto> {
+  async updateCompanyLimits(companyId: number, body: { maxApiKeys?: number | null; maxStorage?: number | null; maxScenes?: number | null }): Promise<CompanyDto> {
     const res = await apiService.put<CompanyDto>(`/companies/${companyId}/limits`, body);
     return res.data;
   },

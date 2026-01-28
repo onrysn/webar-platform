@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { Role } from '@prisma/client';
@@ -90,6 +90,27 @@ export class ARSceneService {
             : user.companyId;
 
         if (!targetCompanyId) throw new NotFoundException('Şirket bilgisi bulunamadı.');
+
+        // maxScenes kontrolü
+        const company = await this.prisma.company.findUnique({ 
+            where: { id: targetCompanyId },
+            select: { maxScenes: true }
+        });
+
+        if (company?.maxScenes != null) {
+            const currentSceneCount = await this.prisma.aRScene.count({
+                where: { 
+                    companyId: targetCompanyId,
+                    isDeleted: false 
+                }
+            });
+
+            if (currentSceneCount >= company.maxScenes) {
+                throw new BadRequestException(
+                    `Maksimum sahne sayısına (${company.maxScenes}) ulaşıldı. Daha fazla sahne oluşturamazsınız.`
+                );
+            }
+        }
 
         const scene = await this.prisma.aRScene.create({
             data: {

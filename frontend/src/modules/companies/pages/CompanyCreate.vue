@@ -60,6 +60,36 @@
             </p>
           </div>
 
+          <div>
+            <label for="maxScenes" class="block text-sm font-bold text-slate-700 mb-1.5">Maksimum Sahne Sayısı</label>
+            <input v-model.number="maxScenes" type="number" id="maxScenes" min="1"
+              class="block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:text-sm font-medium"
+              placeholder="Örn. 10" />
+            <p class="mt-2 text-xs text-slate-500">
+              Şirketin oluşturabileceği maksimum sahne sayısı.
+            </p>
+          </div>
+
+          <div>
+            <label for="logo" class="block text-sm font-bold text-slate-700 mb-1.5">Şirket Logosu (Opsiyonel)</label>
+            <div class="mt-1 flex items-center gap-4">
+              <div v-if="logoPreview" class="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-slate-200">
+                <img :src="logoPreview" alt="Logo önizleme" class="w-full h-full object-contain" />
+                <button type="button" @click="clearLogo"
+                  class="absolute top-0 right-0 bg-red-500 text-white p-1 rounded-bl-lg hover:bg-red-600">
+                  <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+              <input type="file" id="logo" @change="handleLogoChange" accept="image/*"
+                class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
+            </div>
+            <p class="mt-2 text-xs text-slate-500">
+              PNG, JPG, GIF, WebP veya SVG formatında yükleyebilirsiniz (Maks. 5MB).
+            </p>
+          </div>
+
           <div class="pt-4 flex items-center justify-end gap-4 border-t border-slate-100">
             <button type="button" @click="$router.back()"
               class="px-6 py-2.5 border border-slate-300 rounded-xl text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-200">
@@ -98,6 +128,9 @@ const companyStore = useCompanyStore();
 
 const name = ref('');
 const domain = ref('');
+const maxScenes = ref<number | null>(10);
+const logoFile = ref<File | null>(null);
+const logoPreview = ref<string | null>(null);
 const isLoading = ref(false);
 
 // Kullanıcı domain'i kopyala yapıştır yaparsa https:// kısmını temizle
@@ -109,6 +142,44 @@ const sanitizeDomain = () => {
     .toLowerCase();
 };
 
+const handleLogoChange = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const file = target.files?.[0];
+  
+  if (file) {
+    // Dosya boyutu kontrolü (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Logo dosyası 5MB\'dan küçük olmalıdır.');
+      return;
+    }
+    
+    logoFile.value = file;
+    
+    // Önizleme oluştur
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      logoPreview.value = e.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+};
+
+const clearLogo = () => {
+  logoFile.value = null;
+  logoPreview.value = null;
+  const input = document.getElementById('logo') as HTMLInputElement;
+  if (input) input.value = '';
+};
+
+const fileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+};
+
 const handleSubmit = async () => {
   if (isLoading.value) return;
 
@@ -117,10 +188,18 @@ const handleSubmit = async () => {
 
   isLoading.value = true;
   try {
-    // DTO'ya uygun obje gönderiyoruz
+    let logoBase64: string | undefined;
+
+    // Logo varsa base64'e çevir
+    if (logoFile.value) {
+      logoBase64 = await fileToBase64(logoFile.value);
+    }
+
     await companyStore.createCompany({
       name: name.value,
-      domain: domain.value || undefined // Boş string yerine undefined gitsin
+      domain: domain.value || undefined,
+      maxScenes: maxScenes.value || undefined,
+      logoBase64
     });
 
     toast.success('Şirket başarıyla oluşturuldu!');

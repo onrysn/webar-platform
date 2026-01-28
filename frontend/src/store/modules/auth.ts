@@ -7,6 +7,7 @@ export interface Company {
   id: number;
   name: string;
   domain?: string;
+  logoUrl?: string | null;
 }
 
 export interface User {

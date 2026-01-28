@@ -5,8 +5,17 @@
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-lg flex items-center justify-center text-white font-bold shadow-md">W</div>
-          <span class="font-bold text-slate-800 text-lg tracking-tight">WebAR <span class="text-indigo-600 font-medium">Viewer</span></span>
+          <!-- Company Logo: Varsa company logo, yoksa default -->
+          <div v-if="auth.user?.company?.logoUrl" 
+            class="w-10 h-10 rounded-lg overflow-hidden bg-white border border-slate-200 flex items-center justify-center shadow-sm">
+            <img :src="auth.user.company.logoUrl" :alt="auth.user.company.name" class="w-full h-full object-contain p-1" />
+          </div>
+          <div v-else class="w-8 h-8 bg-gradient-to-br from-indigo-600 to-violet-600 rounded-lg flex items-center justify-center text-white font-bold shadow-md">
+            W
+          </div>
+          <span class="font-bold text-slate-800 text-lg tracking-tight">
+            {{ auth.user?.company?.name || 'WebAR' }} <span class="text-indigo-600 font-medium">Viewer</span>
+          </span>
         </div>
 
         <nav class="hidden md:flex gap-1">

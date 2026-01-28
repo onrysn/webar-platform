@@ -237,12 +237,47 @@ const fetchCompanies = async () => {
 };
 
 // MODAL ACTIONS
-const openCreateModal = () => {
+const openCreateModal = async () => {
   // Super Admin Validation: Şirket seçmediyse uyar
   if (isSuperAdmin.value && !routeCompanyId.value && !selectedFilterCompanyId.value) {
     alert("Lütfen önce yukarıdaki filtreden sahne oluşturulacak şirketi seçiniz.");
     return;
   }
+  
+  // maxScenes kontrolü
+  try {
+    const targetCompanyId = routeCompanyId.value || selectedFilterCompanyId.value;
+    
+    if (targetCompanyId) {
+      // Şirket bilgilerini çek
+      const company = await companyService.getCompanyById(targetCompanyId);
+      
+      if (company.maxScenes != null) {
+        // Şirketin mevcut sahne sayısını hesapla
+        const currentSceneCount = scenes.value.filter(s => s.companyId === targetCompanyId).length;
+        
+        if (currentSceneCount >= company.maxScenes) {
+          alert(`Maksimum sahne sayısına (${company.maxScenes}) ulaşıldı. Daha fazla sahne oluşturamazsınız.`);
+          return;
+        }
+      }
+    } else if (!isSuperAdmin.value) {
+      // Normal kullanıcı için kendi şirketini kontrol et
+      const company = await companyService.getMyCompany();
+      
+      if (company.maxScenes != null) {
+        const currentSceneCount = scenes.value.length;
+        
+        if (currentSceneCount >= company.maxScenes) {
+          alert(`Maksimum sahne sayısına (${company.maxScenes}) ulaşıldı. Daha fazla sahne oluşturamazsınız.`);
+          return;
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Şirket bilgileri kontrol edilemedi:', error);
+  }
+  
   modal.mode = 'create';
   modal.editingData = null;
   modal.isOpen = true;

@@ -67,8 +67,12 @@ model Company {
 
   isActive           Boolean   @default(true)
   subscriptionEndsAt DateTime?
+
   maxStorage         Int?      @default(1000) // MB cinsinden
   maxApiKeys         Int?      @default(1)
+  maxScenes          Int?      @default(10)   // Maksimum sahne sayısı
+
+  logoUrl            String?   // Şirket logosunun dosya URL'si
 
   users     User[]  
   arModels  ARModel[]    

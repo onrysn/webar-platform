@@ -8,6 +8,9 @@ import { CreateCompanyDto } from './dto/createCompany.dto';
 import { UpdateCompanyDto } from './dto/updateCompany.dto';
 import { AddUserToCompanyDto } from './dto/add-user.dto';
 import { Role } from '@prisma/client';
+import { unlink, writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
+import { existsSync } from 'fs';
 
 @Injectable()
 export class CompanyService {
@@ -18,10 +21,19 @@ export class CompanyService {
 
   // 1. Şirket Oluşturma (Sadece Super Admin)
   async createCompany(user: CurrentUser, data: CreateCompanyDto) {
+    let logoUrl: string | null = null;
+
+    // Base64 logo varsa kaydet
+    if (data.logoBase64) {
+      logoUrl = await this.saveBase64Logo(data.logoBase64);
+    }
+
     const company = await this.prisma.company.create({
       data: {
         name: data.name,
         domain: data.domain,
+        maxScenes: data.maxScenes ?? 10, // Default 10
+        logoUrl,
       },
     });
 
@@ -38,9 +50,30 @@ export class CompanyService {
 
   // 2. Şirket Güncelleme
   async updateCompany(user: CurrentUser, companyId: number, data: UpdateCompanyDto) {
+    const existingCompany = await this.prisma.company.findUnique({ where: { id: companyId } });
+    if (!existingCompany) throw new NotFoundException('Şirket bulunamadı');
+
+    const updateData: any = { ...data };
+    delete updateData.logoBase64; // DTO'dan logoBase64'ü çıkar
+
+    // Base64 logo varsa kaydet
+    if (data.logoBase64) {
+      // Eski logoyu sil
+      if (existingCompany.logoUrl) {
+        try {
+          const oldLogoPath = join(process.cwd(), existingCompany.logoUrl);
+          await unlink(oldLogoPath);
+        } catch (error) {
+          console.warn('Eski logo silinemedi:', error);
+        }
+      }
+
+      updateData.logoUrl = await this.saveBase64Logo(data.logoBase64);
+    }
+
     const company = await this.prisma.company.update({
       where: { id: companyId },
-      data,
+      data: updateData,
     });
 
     await this.activityLogger.log(
@@ -312,13 +345,14 @@ export class CompanyService {
   async updateCompanyLimits(
     user: CurrentUser,
     companyId: number,
-    body: { maxApiKeys?: number | null; maxStorage?: number | null }
+    body: { maxApiKeys?: number | null; maxStorage?: number | null; maxScenes?: number | null }
   ) {
     const updated = await this.prisma.company.update({
       where: { id: companyId },
       data: {
         maxApiKeys: body.maxApiKeys ?? undefined,
         maxStorage: body.maxStorage ?? undefined,
+        maxScenes: body.maxScenes ?? undefined,
       },
     });
     await this.activityLogger.log(
@@ -326,8 +360,47 @@ export class CompanyService {
       companyId,
       'UPDATE_COMPANY_LIMITS',
       `Şirket limitleri güncellendi.`,
-      { maxApiKeys: updated.maxApiKeys, maxStorage: updated.maxStorage }
+      { maxApiKeys: updated.maxApiKeys, maxStorage: updated.maxStorage, maxScenes: updated.maxScenes }
     );
     return updated;
+  }
+
+  // Base64 logo'yu dosyaya kaydet
+  private async saveBase64Logo(base64String: string): Promise<string> {
+    try {
+      // Data URL'den base64 kısmını ayır (data:image/png;base64,...)
+      const matches = base64String.match(/^data:image\/([a-zA-Z+]+);base64,(.+)$/);
+      if (!matches || matches.length !== 3) {
+        throw new BadRequestException('Geçersiz base64 formatı');
+      }
+
+      const imageType = matches[1]; // png, jpeg, etc.
+      const base64Data = matches[2];
+      const buffer = Buffer.from(base64Data, 'base64');
+
+      // Dosya boyutu kontrolü (5MB)
+      if (buffer.length > 5 * 1024 * 1024) {
+        throw new BadRequestException('Logo dosyası 5MB\'dan küçük olmalıdır');
+      }
+
+      // Uploads klasörünü oluştur
+      const uploadsDir = join(process.cwd(), 'uploads', 'logo');
+      if (!existsSync(uploadsDir)) {
+        await mkdir(uploadsDir, { recursive: true });
+      }
+
+      // Benzersiz dosya adı oluştur
+      const filename = `logo-${Date.now()}-${uuidv4()}.${imageType}`;
+      const filepath = join(uploadsDir, filename);
+
+      // Dosyayı kaydet
+      await writeFile(filepath, buffer);
+
+      // Public URL döndür
+      return `/uploads/logo/${filename}`;
+    } catch (error) {
+      console.error('Logo kaydetme hatası:', error);
+      throw new BadRequestException('Logo kaydedilemedi');
+    }
   }
 }
