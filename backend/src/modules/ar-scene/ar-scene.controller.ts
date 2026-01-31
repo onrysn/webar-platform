@@ -77,9 +77,11 @@ export class ARSceneController {
   @Get('list')
   @ApiOperation({ summary: 'Şirkete ait sahneleri listeler' })
   @ApiQuery({ name: 'companyId', type: Number, required: false, description: 'Sadece Super Admin için' })
+  @ApiQuery({ name: 'categoryId', type: Number, required: false, description: 'Kategoriye göre filtreleme' })
   listScenes(
     @User() user: CurrentUser,
-    @Query('companyId') queryCompanyId?: string
+    @Query('companyId') queryCompanyId?: string,
+    @Query('categoryId') queryCategoryId?: string
   ) {
     let targetCompanyId: number | undefined = user.companyId || undefined;
 
@@ -92,8 +94,9 @@ export class ARSceneController {
     }
 
     const onlyPublic = user.role === Role.MEMBER;
+    const categoryId = queryCategoryId ? Number(queryCategoryId) : undefined;
 
-    return this.arSceneService.listScenes(targetCompanyId, onlyPublic);
+    return this.arSceneService.listScenes(targetCompanyId, onlyPublic, categoryId);
   }
 
   // =================================================================

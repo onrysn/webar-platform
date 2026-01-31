@@ -62,6 +62,30 @@
         </button>
       </div>
 
+      <!-- Kategori Filtresi (Tüm Kullanıcılar) -->
+      <div class="mb-8 p-4 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col sm:flex-row items-center gap-4">
+        <div class="flex items-center gap-2 text-gray-500 min-w-max">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+          <span class="text-sm font-bold">Kategori Filtrele:</span>
+        </div>
+
+        <select v-model="selectedCategoryId" @change="fetchModels"
+          class="flex-1 w-full sm:w-auto p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block">
+          <option :value="null">Tüm Kategoriler</option>
+          <option v-for="category in modelCategories" :key="category.id" :value="category.id">
+            {{ category.name }}
+          </option>
+        </select>
+
+        <button v-if="selectedCategoryId" @click="clearCategoryFilter"
+          class="text-xs text-red-600 font-bold hover:underline">
+          Kategori Filtresini Temizle
+        </button>
+      </div>
+
       <div v-if="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <div v-for="n in 8" :key="n" class="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm animate-pulse">
           <div class="bg-gray-200 h-32 w-full rounded-xl mb-4"></div>
@@ -117,10 +141,12 @@ import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { arModelService } from '../../../services/arModelService';
 import { companyService } from '../../../services/companyService';
+import { categoryService } from '../../../services/categoryService';
 import { useAuthStore } from '../../../store/modules/auth';
 import ModelCard from '../components/ModelCard.vue';
 import type { ARModelDto } from '../dto/arModel.dto';
 import type { CompanyDto } from '../../companies/dto/company.dto';
+import type { CategoryDto } from '../../../services/categoryService';
 
 const router = useRouter();
 const route = useRoute();
@@ -134,6 +160,10 @@ const error = ref<string | null>(null);
 // SUPER ADMIN STATE
 const companiesList = ref<CompanyDto[]>([]);
 const selectedFilterCompanyId = ref<number | null>(null);
+
+// CATEGORY STATE
+const modelCategories = ref<CategoryDto[]>([]);
+const selectedCategoryId = ref<number | null>(null);
 
 // COMPUTED
 const isSuperAdmin = computed(() => authStore.user?.role === 'SUPER_ADMIN');
@@ -155,8 +185,13 @@ const fetchModels = async () => {
     // 3. Hiçbiri yoksa -> undefined gönder (Backend token'a bakar veya hepsi gelir)
 
     const targetId = routeCompanyId.value || selectedFilterCompanyId.value || undefined;
+    
+    const filters: { categoryId?: number } = {};
+    if (selectedCategoryId.value) {
+      filters.categoryId = selectedCategoryId.value;
+    }
 
-    models.value = await arModelService.listModels(targetId);
+    models.value = await arModelService.listModels(targetId, filters);
   } catch (err: any) {
     error.value = err.response?.data?.message || 'Modeller yüklenirken bir hata oluştu.';
     console.error(err);
@@ -176,8 +211,23 @@ const fetchCompanies = async () => {
   }
 };
 
+// FETCH MODEL CATEGORIES
+const fetchModelCategories = async () => {
+  try {
+    // MODEL tipindeki kategorileri getir
+    modelCategories.value = await categoryService.list(undefined, undefined, 'MODEL');
+  } catch (e) {
+    console.error("Kategoriler yüklenemedi", e);
+  }
+};
+
 const clearFilter = () => {
   selectedFilterCompanyId.value = null;
+  fetchModels();
+};
+
+const clearCategoryFilter = () => {
+  selectedCategoryId.value = null;
   fetchModels();
 };
 
@@ -201,6 +251,7 @@ const goBackToCompany = () => {
 // Lifecycle
 onMounted(() => {
   fetchCompanies();
+  fetchModelCategories();
   fetchModels();
 });
 

@@ -164,6 +164,12 @@ export interface ARSceneDto {
   id: number;
   name: string;
   companyId: number;
+  categoryId?: number | null;
+  category?: {
+    id: number;
+    name: string;
+    categoryType: string;
+  } | null;
   createdAt: string;
   updatedAt?: string;
   items: SceneItemDto[];
@@ -187,6 +193,7 @@ export interface ARSceneDto {
 export interface CreateSceneDto {
   name: string;
   companyId?: number; 
+  categoryId?: number | null;
   settings?: SceneSettings;
   
   // Yeni
@@ -197,6 +204,7 @@ export interface CreateSceneDto {
 // 2. Sahne Güncelleme
 export interface UpdateSceneDto {
   name?: string;
+  categoryId?: number | null;
   settings?: SceneSettings;
   
   // Yeni

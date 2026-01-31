@@ -30,8 +30,10 @@ export const arSceneService = {
   },
 
   // Listele
-  async listScenes(companyId?: number): Promise<ARSceneDto[]> {
-    const params = companyId ? { companyId } : {};
+  async listScenes(companyId?: number, categoryId?: number): Promise<ARSceneDto[]> {
+    const params: any = {};
+    if (companyId !== undefined) params.companyId = companyId;
+    if (categoryId !== undefined) params.categoryId = categoryId;
     const res = await apiService.get<ARSceneDto[]>('/ar-scene/list', { params });
     return res.data;
   },

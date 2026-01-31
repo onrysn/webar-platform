@@ -4,15 +4,20 @@ import { ActivityLogService } from '../activity-log/activity-log.service';
 import type { CurrentUser } from 'src/common/decorators/current-user.decorator';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
-import { Role } from '@prisma/client';
+import { Role, CategoryType } from '@prisma/client';
 
 @Injectable()
 export class CategoryService {
   constructor(private prisma: PrismaService, private activity: ActivityLogService) {}
 
-  async list(companyId: number, parentId?: number) {
+  async list(companyId?: number, parentId?: number, categoryType?: CategoryType) {
     return this.prisma.category.findMany({
-      where: { companyId, isDeleted: false, ...(parentId !== undefined ? { parentId } : {}) },
+      where: { 
+        ...(companyId !== undefined ? { companyId } : {}),
+        isDeleted: false, 
+        ...(parentId !== undefined ? { parentId } : {}),
+        ...(categoryType ? { categoryType } : {})
+      },
       orderBy: { createdAt: 'desc' }
     });
   }
@@ -29,6 +34,7 @@ export class CategoryService {
       data: {
         name: dto.name,
         description: dto.description,
+        categoryType: dto.categoryType,
         parentId: dto.parentId,
         companyId: dto.companyId,
       }
@@ -49,6 +55,7 @@ export class CategoryService {
       data: {
         name: dto.name ?? cat.name,
         description: dto.description ?? cat.description,
+        categoryType: dto.categoryType ?? cat.categoryType,
         parentId: dto.parentId === undefined ? cat.parentId : dto.parentId,
       }
     });

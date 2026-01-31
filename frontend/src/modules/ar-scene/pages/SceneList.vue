@@ -52,6 +52,30 @@
         </select>
       </div>
 
+      <!-- Kategori Filtresi (Tüm Kullanıcılar) -->
+      <div class="mb-8 p-4 bg-white rounded-2xl border border-gray-200 shadow-sm flex flex-col sm:flex-row items-center gap-4">
+        <div class="flex items-center gap-2 text-gray-500 min-w-max">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+              d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+          <span class="text-sm font-bold">Kategori Filtrele:</span>
+        </div>
+
+        <select v-model="selectedCategoryId" @change="fetchScenes"
+          class="flex-1 w-full sm:w-auto p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block">
+          <option :value="null">Tüm Kategoriler</option>
+          <option v-for="category in sceneCategories" :key="category.id" :value="category.id">
+            {{ category.name }}
+          </option>
+        </select>
+
+        <button v-if="selectedCategoryId" @click="clearCategoryFilter"
+          class="text-xs text-red-600 font-bold hover:underline">
+          Kategori Filtresini Temizle
+        </button>
+      </div>
+
       <div v-if="loading" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <div v-for="n in 6" :key="n" class="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 animate-pulse">
           <div class="h-48 bg-gray-200 rounded-xl mb-4"></div>
@@ -160,10 +184,16 @@
             <div class="p-5">
               <h3 class="font-bold text-gray-900 text-lg mb-1 truncate group-hover:text-blue-600 transition-colors">{{
                 scene.name }}</h3>
-              <div class="flex items-center text-xs text-gray-500 gap-2">
+              <div class="flex items-center text-xs text-gray-500 gap-2 mb-1">
                 <span class="flex items-center bg-gray-100 px-2 py-1 rounded">ID: #{{ scene.id }}</span>
                 <span v-if="scene.createdAt" class="text-gray-400">{{ new
                   Date(scene.createdAt).toLocaleDateString('tr-TR') }}</span>
+              </div>
+              <div v-if="scene.category" class="flex items-center gap-1 mt-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+                </svg>
+                <span class="text-xs font-medium text-blue-600">{{ scene.category.name }}</span>
               </div>
             </div>
           </div>
@@ -182,8 +212,10 @@ import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { arSceneService } from '../../../services/arSceneService';
 import { companyService } from '../../../services/companyService';
+import { categoryService } from '../../../services/categoryService';
 import { useAuthStore } from '../../../store/modules/auth';
 import type { CompanyDto } from '../../companies/dto/company.dto';
+import type { CategoryDto } from '../../../services/categoryService';
 import SceneCreatorModal from '../components/SceneCreatorModal.vue';
 import type { ARSceneDto } from '../dto/arScene.dto';
 
@@ -197,6 +229,10 @@ const loading = ref(true);
 const companiesList = ref<CompanyDto[]>([]);
 const selectedFilterCompanyId = ref<number | null>(null);
 const textureCache = ref<Map<number, string>>(new Map());
+
+// CATEGORY STATE
+const sceneCategories = ref<CategoryDto[]>([]);
+const selectedCategoryId = ref<number | null>(null);
 
 const getTextureThumbnail = (textureId?: number): string | null => {
   if (!textureId) return null;
@@ -218,7 +254,8 @@ const fetchScenes = async () => {
   loading.value = true;
   try {
     const targetId = routeCompanyId.value || selectedFilterCompanyId.value || undefined;
-    scenes.value = await arSceneService.listScenes(targetId);
+    const categoryId = selectedCategoryId.value || undefined;
+    scenes.value = await arSceneService.listScenes(targetId, categoryId);
   } catch (e) {
     console.error(e);
   } finally {
@@ -234,6 +271,21 @@ const fetchCompanies = async () => {
       console.error(e);
     }
   }
+};
+
+// FETCH SCENE CATEGORIES
+const fetchSceneCategories = async () => {
+  try {
+    // SCENE tipindeki kategorileri getir
+    sceneCategories.value = await categoryService.list(undefined, undefined, 'SCENE');
+  } catch (e) {
+    console.error("Kategoriler yüklenemedi", e);
+  }
+};
+
+const clearCategoryFilter = () => {
+  selectedCategoryId.value = null;
+  fetchScenes();
 };
 
 // MODAL ACTIONS
@@ -292,11 +344,14 @@ const openEditModal = (scene: ARSceneDto) => {
 const handleSaveFromModal = async (payload: any) => {
   loading.value = true;
   try {
+    // Super admin için: Filtre veya route'dan gelen şirket ID'sini kullan
+    // Normal kullanıcılar için: Backend kendi şirketini kullanır
     const targetId = routeCompanyId.value || selectedFilterCompanyId.value;
 
     if (modal.mode === 'create') {
       const createData = {...payload};
-      if (targetId) {
+      // Super admin için companyId gönder, normal kullanıcılar için gönderme (backend halleder)
+      if (isSuperAdmin.value && targetId) {
         createData.companyId = targetId;
       }
       await arSceneService.createScene(createData);
@@ -342,6 +397,7 @@ const goBackToCompany = () => {
 // LIFECYCLE
 onMounted(async () => {
   fetchCompanies();
+  fetchSceneCategories();
   await fetchScenes();
   // Texture'ları cache'le
   try {

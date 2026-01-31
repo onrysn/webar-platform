@@ -23,6 +23,11 @@ enum Role {
   MEMBER         // Sadece İzleyici
 }
 
+enum CategoryType {
+  MODEL          // Model kategorisi
+  SCENE          // Sahne kategorisi
+}
+
 enum ShapeCategory {
   BASIC        // Temel şekiller (kare, daire, üçgen)
   GEOMETRIC    // Geometrik şekiller (beşgen, altıgen)
@@ -170,11 +175,15 @@ model ARScene {
   memberCanEdit Boolean  @default(true)
   shareToken    String?  @unique
 
+  categoryId    Int?
+  category      Category? @relation(fields: [categoryId], references: [id])
+
   company   Company  @relation(fields: [companyId], references: [id])
   quoteRequests QuoteRequest[]
   items     SceneItem[]
 
   @@index([shareToken])
+  @@index([categoryId])
 }
 
 model SceneItem {
@@ -263,6 +272,7 @@ model Category {
   id          Int       @id @default(autoincrement())
   name        String
   description String?
+  categoryType CategoryType @default(MODEL) // MODEL veya SCENE
   parentId    Int?      // Alt kategoriler için
   parent      Category? @relation("CategoryHierarchy", fields: [parentId], references: [id])
   children    Category[] @relation("CategoryHierarchy")
@@ -275,9 +285,11 @@ model Category {
   isDeleted   Boolean   @default(false)
   
   models      ARModel[]
+  scenes      ARScene[]
   
   @@index([companyId])
   @@index([parentId])
+  @@index([categoryType])
 }
 
 model Series {

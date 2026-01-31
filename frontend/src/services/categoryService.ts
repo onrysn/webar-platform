@@ -4,6 +4,7 @@ export interface CategoryDto {
   id: number;
   name: string;
   description?: string | null;
+  categoryType: 'MODEL' | 'SCENE';
   parentId?: number | null;
   companyId: number;
   createdAt: string;
@@ -14,6 +15,7 @@ export interface CategoryDto {
 export interface CreateCategoryPayload {
   name: string;
   description?: string;
+  categoryType: 'MODEL' | 'SCENE';
   parentId?: number | null;
   companyId?: number; // Only for SUPER_ADMIN
 }
@@ -21,14 +23,16 @@ export interface CreateCategoryPayload {
 export interface UpdateCategoryPayload {
   name?: string;
   description?: string;
+  categoryType?: 'MODEL' | 'SCENE';
   parentId?: number | null;
 }
 
 export const categoryService = {
-  async list(companyId?: number, parentId?: number): Promise<CategoryDto[]> {
+  async list(companyId?: number, parentId?: number, type?: 'MODEL' | 'SCENE'): Promise<CategoryDto[]> {
     const params: any = {};
-    if (companyId) params.companyId = companyId;
+    if (companyId !== undefined) params.companyId = companyId;
     if (parentId !== undefined) params.parentId = parentId;
+    if (type) params.type = type;
     const res = await apiService.get<CategoryDto[]>("/categories/list", { params });
     return res.data;
   },

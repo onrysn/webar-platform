@@ -1,4 +1,5 @@
-import { IsInt, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsInt, IsOptional, IsString, MaxLength, IsEnum } from 'class-validator';
+import { CategoryType } from '@prisma/client';
 
 export class UpdateCategoryDto {
   @IsOptional()
@@ -10,6 +11,10 @@ export class UpdateCategoryDto {
   @IsString()
   @MaxLength(500)
   description?: string;
+
+  @IsOptional()
+  @IsEnum(CategoryType)
+  categoryType?: CategoryType;
 
   @IsOptional()
   @IsInt()

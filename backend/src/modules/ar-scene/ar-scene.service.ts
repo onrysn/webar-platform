@@ -55,7 +55,7 @@ export class ARSceneService {
     // 1. SAHNE (SCENE) YÖNETİMİ
     // =================================================================
 
-    async listScenes(companyId?: number, onlyPublic = false) {
+    async listScenes(companyId?: number, onlyPublic = false, categoryId?: number) {
         const whereClause: any = {
             isDeleted: false
         };
@@ -71,11 +71,16 @@ export class ARSceneService {
             whereClause.isPrivate = false;
         }
 
+        if (categoryId) {
+            whereClause.categoryId = categoryId;
+        }
+
         return this.prisma.aRScene.findMany({
             where: whereClause,
             orderBy: { updatedAt: 'desc' },
             include: {
                 company: { select: { id: true, name: true } },
+                category: { select: { id: true, name: true, categoryType: true } },
                 _count: { select: { items: true } }
             }
         });
@@ -116,6 +121,7 @@ export class ARSceneService {
             data: {
                 name: data.name,
                 companyId: targetCompanyId,
+                categoryId: data.categoryId,
                 settings: data.settings ? (data.settings as any) : {},
                 isPrivate: data.isPrivate ?? false,
                 memberCanEdit: data.memberCanEdit ?? true, // Default true yapıyoruz
@@ -144,6 +150,7 @@ export class ARSceneService {
             where: { id },
             data: {
                 name: data.name,
+                categoryId: data.categoryId !== undefined ? data.categoryId : undefined,
                 settings: data.settings ? (data.settings as any) : undefined,
                 isPrivate: data.isPrivate,
                 memberCanEdit: data.memberCanEdit,
@@ -194,6 +201,7 @@ export class ARSceneService {
         const scene = await this.prisma.aRScene.findUnique({
             where: { id },
             include: {
+                category: { select: { id: true, name: true, categoryType: true } },
                 items: {
                     include: {
                         model: {
@@ -460,6 +468,7 @@ export class ARSceneService {
             where: { shareToken: token },
             include: {
                 company: { select: { name: true, isActive: true } },
+                category: { select: { id: true, name: true, categoryType: true } },
                 items: {
                     include: {
                         model: {

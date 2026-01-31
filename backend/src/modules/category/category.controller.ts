@@ -7,7 +7,7 @@ import { CompanyActiveGuard } from 'src/common/guards/company-active.guard';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { User } from 'src/common/decorators/current-user.decorator';
 import type { CurrentUser } from 'src/common/decorators/current-user.decorator';
-import { Role } from '@prisma/client';
+import { Role, CategoryType } from '@prisma/client';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 
@@ -22,15 +22,24 @@ export class CategoryController {
   @ApiOperation({ summary: 'Kategorileri listeler' })
   @ApiQuery({ name: 'companyId', required: false })
   @ApiQuery({ name: 'parentId', required: false })
+  @ApiQuery({ name: 'type', required: false, enum: CategoryType })
   async list(
     @User() user: CurrentUser,
     @Query('companyId') companyIdQuery?: string,
     @Query('parentId') parentIdQuery?: string,
+    @Query('type') typeQuery?: CategoryType,
   ) {
-    const companyId = user.role === Role.SUPER_ADMIN && companyIdQuery ? Number(companyIdQuery) : user.companyId;
-    if (!companyId) throw new BadRequestException('Şirket bilgisi bulunamadı.');
+    let companyId: number | undefined;
+    if (user.role === Role.SUPER_ADMIN) {
+      // Super admin: companyId query'den gelirse onu kullan, yoksa tümünü getir
+      companyId = companyIdQuery ? Number(companyIdQuery) : undefined;
+    } else {
+      // Diğer roller: kendi şirketini kullan
+      companyId = user.companyId ?? undefined;
+      if (!companyId) throw new BadRequestException('Şirket bilgisi bulunamadı.');
+    }
     const parentId = parentIdQuery ? Number(parentIdQuery) : undefined;
-    return this.categoryService.list(companyId, parentId);
+    return this.categoryService.list(companyId, parentId, typeQuery);
   }
 
   @Get(':id')

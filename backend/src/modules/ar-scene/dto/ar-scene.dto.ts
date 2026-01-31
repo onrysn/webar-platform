@@ -302,6 +302,11 @@ export class CreateSceneDto {
   @IsNumber()
   companyId?: number;
 
+  @ApiPropertyOptional({ description: 'Kategori ID' })
+  @IsOptional()
+  @IsNumber()
+  categoryId?: number;
+
   @ApiPropertyOptional({ type: SceneSettingsDto })
   @IsOptional()
   @ValidateNested()
@@ -325,6 +330,11 @@ export class UpdateSceneDto {
   @IsOptional()
   @IsString()
   name?: string;
+
+  @ApiPropertyOptional({ description: 'Kategori ID' })
+  @IsOptional()
+  @IsNumber()
+  categoryId?: number;
 
   @ApiPropertyOptional({ type: SceneSettingsDto })
   @IsOptional()

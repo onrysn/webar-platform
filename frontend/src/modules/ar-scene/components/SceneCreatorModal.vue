@@ -76,6 +76,18 @@
                                 <input v-model="form.name" type="text" placeholder="Örn: Oturma Odası"
                                     class="w-full bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:font-normal">
                             </div>
+                            <div
+                                class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm focus-within:border-indigo-500 transition-all group">
+                                <label
+                                    class="block text-[10px] font-bold text-slate-400 uppercase mb-1 group-focus-within:text-indigo-500 transition-colors">Kategori</label>
+                                <select v-model="form.categoryId"
+                                    class="w-full bg-transparent text-sm font-bold text-slate-700 outline-none">
+                                    <option :value="null">Kategori Seçiniz</option>
+                                    <option v-for="cat in sceneCategories" :key="cat.id" :value="cat.id">
+                                        {{ cat.name }}
+                                    </option>
+                                </select>
+                            </div>
                             <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                                 <div class="flex justify-between mb-3">
                                     <label class="text-[10px] font-bold text-slate-400 uppercase">Duvar
@@ -928,6 +940,7 @@
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import { arSceneService } from '../../../services/arSceneService';
+import { categoryService } from '../../../services/categoryService';
 import type { FloorLayer, LayerPoint, LayerTexture } from '../../../types/geometry';
 import { useLayerManager } from '../../../composables/useLayerManager';
 import { isNearPoint } from '../../../utils/geometryEngine';
@@ -1079,6 +1092,7 @@ const isShowing = ref(false);
 // --- STATE ---
 const form = reactive({
     name: '',
+    categoryId: null as number | null,
     width: 5,
     depth: 4,
     shapeType: 'rectangle',
@@ -1145,6 +1159,7 @@ const svgPerimeterPaths = computed(() => {
 });
 
 const textureList = ref<any[]>([]);
+const sceneCategories = ref<any[]>([]);
 const selectedTexture = ref<string | number | null>(null); // ID veya URL olabilir
 const selectedTextureData = ref<any | null>(null); // Seçili texture'ın tam data'sı
 
@@ -1911,6 +1926,7 @@ const handleSave = () => {
 
     emit('save', {
         name: form.name,
+        categoryId: form.categoryId,
         settings: {
             floorType: form.shapeType,
             floorPoints: pts,
@@ -1989,6 +2005,11 @@ onMounted(async () => {
     }
     catch (e) { console.error("Dokular yüklenemedi", e); }
     
+    try {
+        sceneCategories.value = await categoryService.list(undefined, undefined, 'SCENE');
+    }
+    catch (e) { console.error("Kategoriler yüklenemedi", e); }
+    
     if (svgContainer.value) {
         resizeObserver = new ResizeObserver((entries) => {
             for (const entry of entries) {
@@ -2020,6 +2041,7 @@ watch(() => props.isOpen, (val) => {
             const s = props.initialData.settings;
             Object.assign(form, {
                 name: props.initialData.name,
+                categoryId: props.initialData.categoryId || null,
                 width: s.width || 5,
                 depth: s.depth || 4,
                 shapeType: s.floorType || 'rectangle',
