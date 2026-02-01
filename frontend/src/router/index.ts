@@ -21,6 +21,7 @@ import CompanyApiKey from '../modules/companies/pages/CompanyApiKey.vue';
 import Login from '../modules/auth/pages/Login.vue';
 import Register from '../modules/auth/pages/Register.vue';
 import SubscriptionLocked from '../modules/auth/pages/SubscriptionLocked.vue';
+import ApiLogin from '../modules/auth/pages/ApiLogin.vue';
 
 // --- AR MODEL PAGES ---
 import ModelList from '../modules/ar-model/pages/ModelList.vue';
@@ -62,6 +63,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/login' },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
+  { path: '/api-login', component: ApiLogin }, // External API key login redirect
 
   { 
     path: '/access-denied', 
@@ -276,6 +278,7 @@ router.beforeEach(async (to, _from, next) => {
   }
 
   // 4. Kullanıcı Bilgisi Yoksa Çek (F5 durumları)
+  // localStorage'dan user bilgisi yüklendiyse fetchMe'yi atlıyoruz
   if (isAuthenticated && !auth.user) {
     try {
       await auth.fetchMe();

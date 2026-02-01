@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harici Web Sitesi - API Key Login Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 100%;
+        }
+
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .logo h1 {
+            color: #667eea;
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .logo p {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin-bottom: 30px;
+            border-radius: 6px;
+        }
+
+        .info-box h3 {
+            color: #333;
+            font-size: 16px;
+            margin-bottom: 10px;
+        }
+
+        .info-box p {
+            color: #666;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .button {
+            width: 100%;
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .button:active {
+            transform: translateY(0);
+        }
+
+        .button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .spinner {
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top: 2px solid white;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 0.6s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .response-box {
+            margin-top: 30px;
+            padding: 20px;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .response-box.success {
+            background: #d1fae5;
+            border: 2px solid #10b981;
+            display: block;
+        }
+
+        .response-box.error {
+            background: #fee2e2;
+            border: 2px solid #ef4444;
+            display: block;
+        }
+
+        .response-box h3 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .response-box.success h3 { color: #065f46; }
+        .response-box.error h3 { color: #991b1b; }
+
+        .user-info {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .user-info p {
+            margin: 8px 0;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .user-info strong {
+            color: #667eea;
+            display: inline-block;
+            min-width: 100px;
+        }
+
+        .token-box {
+            background: #1f2937;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 12px;
+            word-break: break-all;
+            line-height: 1.6;
+        }
+
+        .config-section {
+            margin-bottom: 30px;
+        }
+
+        .config-section label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .config-section input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e5e7eb;
+            border-radius: 6px;
+            font-size: 14px;
+            font-family: 'Courier New', monospace;
+            transition: border-color 0.3s;
+        }
+
+        .config-section input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .config-section small {
+            display: block;
+            margin-top: 6px;
+            color: #666;
+            font-size: 12px;
+        }
+
+        .next-steps {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+
+        .next-steps h4 {
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .next-steps ul {
+            margin-left: 20px;
+            color: #666;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+
+        .code-example {
+            background: #1f2937;
+            color: #10b981;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            margin-top: 10px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <h1>🏢 Harici Web Sitesi Demo</h1>
+            <p>API Key ile WebAR Platform'a Bağlanma Örneği</p>
+        </div>
+
+        <div class="info-box">
+            <h3>📌 Bu Sayfa Nedir?</h3>
+            <p>
+                Bu sayfa, kendi web sitenizden API key kullanarak WebAR Platform'a nasıl login olacağınızı gösterir.
+                Butona tıkladığınızda, API key backend'e gönderilir ve otomatik olarak sisteme MEMBER rolü ile giriş yaparsınız.
+            </p>
+        </div>
+
+        <div class="config-section">
+            <label for="apiUrl">Backend URL:</label>
+            <input 
+                type="text" 
+                id="apiUrl" 
+                value="http://localhost:4000/api" 
+                placeholder="http://localhost:4000/api"
+            >
+        </div>
+
+        <div class="config-section">
+            <label for="apiKey">API Key:</label>
+            <input 
+                type="text" 
+                id="apiKey" 
+                value="COMPANY_A_KEY" 
+                placeholder="Şirketinizin API key'ini girin"
+            >
+            <small>Seed'de oluşturulan key'ler: COMPANY_A_KEY, COMPANY_B_KEY</small>
+        </div>
+
+        <button id="loginBtn" class="button" onclick="loginWithApiKey()">
+            <span id="btnText">🔑 API Key ile Giriş Yap</span>
+            <div id="btnSpinner" class="spinner" style="display: none;"></div>
+        </button>
+
+        <div id="responseBox" class="response-box">
+            <!-- Dinamik içerik buraya gelecek -->
+        </div>
+    </div>
+
+    <script>
+        let authToken = null;
+
+        async function loginWithApiKey() {
+            const apiUrl = document.getElementById('apiUrl').value;
+            const apiKey = document.getElementById('apiKey').value;
+            const loginBtn = document.getElementById('loginBtn');
+            const btnText = document.getElementById('btnText');
+            const btnSpinner = document.getElementById('btnSpinner');
+            const responseBox = document.getElementById('responseBox');
+
+            // Buton durumunu güncelle
+            loginBtn.disabled = true;
+            btnText.style.display = 'none';
+            btnSpinner.style.display = 'block';
+            responseBox.style.display = 'none';
+
+            try {
+                const response = await fetch(`${apiUrl}/auth/api-key-login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ apiKey: apiKey })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.message || 'API key doğrulaması başarısız');
+                }
+
+                // Başarılı!
+                authToken = data.token;
+                
+                // Token ve user bilgilerini localStorage'a kaydet (Frontend 'token' key'i kullanıyor)
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('user', JSON.stringify(data.user));
+                
+                showSuccess(data);
+                
+                // 2 saniye sonra ana platforma yönlendir - token'ı URL ile gönder
+                setTimeout(() => {
+                    // Token'ı URL parametresi olarak gönder (farklı origin sorunu için)
+                    const redirectUrl = `http://localhost:4000/api-login?token=${encodeURIComponent(data.token)}&user=${encodeURIComponent(JSON.stringify(data.user))}`;
+                    window.location.href = redirectUrl;
+                }, 2000);
+
+            } catch (error) {
+                showError(error.message);
+            } finally {
+                // Buton durumunu geri al
+                loginBtn.disabled = false;
+                btnText.style.display = 'inline';
+                btnSpinner.style.display = 'none';
+            }
+        }
+
+        function showSuccess(data) {
+            const responseBox = document.getElementById('responseBox');
+            responseBox.className = 'response-box success';
+            
+            responseBox.innerHTML = `
+                <h3>✅ Giriş Başarılı!</h3>
+                
+                <div class="user-info">
+                    <p><strong>Kullanıcı ID:</strong> ${data.user.id}</p>
+                    <p><strong>İsim:</strong> ${data.user.name}</p>
+                    <p><strong>Email:</strong> ${data.user.email}</p>
+                    <p><strong>Rol:</strong> <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; color: #065f46;">${data.user.role}</span></p>
+                    <p><strong>Şirket:</strong> ${data.user.company.name}</p>
+                </div>
+
+                <div>
+                    <strong style="color: #065f46;">JWT Token:</strong>
+                    <div class="token-box">${data.token}</div>
+                </div>
+
+                <div class="next-steps">
+                    <h4>🚀 Yönlendirme:</h4>
+                    <p style="color: #065f46; font-size: 14px;">
+                        ✨ 2 saniye içinde WebAR Platform'a yönlendiriliyorsunuz...<br>
+                        📦 Token ve kullanıcı bilgileriniz localStorage'a kaydedildi.
+                    </p>
+                    
+                    <h4 style="margin-top: 15px;">💡 localStorage İçeriği:</h4>
+                    <ul>
+                        <li><strong>token:</strong> JWT token kaydedildi</li>
+                        <li><strong>user:</strong> Kullanıcı bilgileri kaydedildi</li>
+                    </ul>
+                    
+                    <div class="code-example">// Frontend'de token'ı kullanma:
+const token = localStorage.getItem('token');
+const user = JSON.parse(localStorage.getItem('user'));
+
+// API çağrılarında kullan:
+fetch('http://localhost:4000/api/ar-models', {
+  headers: {
+    'Authorization': 'Bearer ' + token
+  }
+});</div>
+                </div>
+            `;
+        }
+
+        function showError(message) {
+            const responseBox = document.getElementById('responseBox');
+            responseBox.className = 'response-box error';
+            
+            responseBox.innerHTML = `
+                <h3>❌ Hata</h3>
+                <p style="color: #991b1b; font-size: 14px; line-height: 1.6;">
+                    <strong>Hata Mesajı:</strong><br>
+                    ${message}
+                </p>
+                <div class="next-steps">
+                    <h4>🔍 Kontrol Edilecekler:</h4>
+                    <ul>
+                        <li>Backend çalışıyor mu? (docker ps)</li>
+                        <li>API key doğru mu?</li>
+                        <li>API key aktif mi? (isActive = true)</li>
+                        <li>Şirket aktif mi? (company.isActive = true)</li>
+                        <li>API key süresi dolmadı mı?</li>
+                    </ul>
+                </div>
+            `;
+        }
+
+        // Sayfa yüklendiğinde bilgilendirme göster
+        window.addEventListener('load', () => {
+            console.log('✅ Harici web sitesi demo sayfası hazır');
+            console.log('📝 Bu sayfayı kendi web sitenize entegre edebilirsiniz');
+        });
+    </script>
+</body>
+</html>

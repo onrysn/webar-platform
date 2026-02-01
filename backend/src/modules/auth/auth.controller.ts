@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ApiKeyLoginDto } from './dto/api-key-login.dto';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { User } from 'src/common/decorators/current-user.decorator';
 import type { CurrentUser } from 'src/common/decorators/current-user.decorator';
@@ -28,6 +29,15 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Giriş başarılı, JWT döner' })
   async login(@Body() loginDto: LoginDto) {
     return this.authService.login(loginDto);
+  }
+
+  @Public()
+  @Post('api-key-login')
+  @ApiOperation({ summary: 'API Key ile login (Harici web siteleri için)' })
+  @ApiResponse({ status: 200, description: 'API key doğrulandı, JWT token döner' })
+  @ApiResponse({ status: 401, description: 'Geçersiz veya süresi dolmuş API key' })
+  async apiKeyLogin(@Body() apiKeyLoginDto: ApiKeyLoginDto) {
+    return this.authService.apiKeyLogin(apiKeyLoginDto);
   }
 
   @UseGuards(JwtAuthGuard)

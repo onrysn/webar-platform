@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from 'src/prisma/prisma.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { ApiKeyLoginDto } from './dto/api-key-login.dto';
 import { ActivityLogService } from '../activity-log/activity-log.service';
 import { Role } from '@prisma/client'; // Enum importu
 import { v4 as uuidv4 } from 'uuid'; // API Key üretimi için
@@ -152,5 +153,67 @@ export class AuthService {
 
     if (!user) throw new UnauthorizedException('Kullanıcı bulunamadı');
     return user;
+  }
+
+  async apiKeyLogin(apiKeyLoginDto: ApiKeyLoginDto) {
+    const { apiKey } = apiKeyLoginDto;
+
+    const keyRecord = await this.prisma.apiKey.findUnique({
+      where: { key: apiKey },
+      include: { company: true },
+    });
+
+    if (!keyRecord) throw new UnauthorizedException('Geçersiz API key.');
+    if (!keyRecord.isActive) throw new UnauthorizedException('API key aktif değil.');
+    if (!keyRecord.company.isActive) throw new UnauthorizedException('Şirket hesabı askıya alınmış.');
+    if (keyRecord.expiresAt && new Date() > keyRecord.expiresAt) throw new UnauthorizedException('API key süresi dolmuş.');
+
+    const apiUserEmail = `api-user-${keyRecord.companyId}@system.internal`;
+    let apiUser = await this.prisma.user.findUnique({ where: { email: apiUserEmail } });
+
+    if (!apiUser) {
+      apiUser = await this.prisma.user.create({
+        data: {
+          name: `${keyRecord.company.name} - API User`,
+          email: apiUserEmail,
+          passwordHash: await argon2.hash(uuidv4()),
+          role: Role.MEMBER,
+          companyId: keyRecord.companyId,
+        },
+      });
+      await this.activityLogger.log(apiUser.id, keyRecord.companyId, 'API_USER_CREATED', `API User oluşturuldu (API Key: ${keyRecord.name})`, { apiKeyId: keyRecord.id });
+    }
+
+    if (apiUser.isDeleted) throw new UnauthorizedException('API User erişime kapatılmış.');
+
+    await this.prisma.apiKey.update({
+      where: { id: keyRecord.id },
+      data: { usageCount: { increment: 1 }, lastUsedAt: new Date() },
+    });
+
+    const token = this.jwtService.sign({
+      sub: apiUser.id,
+      email: apiUser.email,
+      role: apiUser.role,
+    });
+
+    await this.activityLogger.log(apiUser.id, keyRecord.companyId, 'API_KEY_LOGIN', `Harici site API key ile giriş yaptı (${keyRecord.name})`, { apiKeyId: keyRecord.id });
+
+    return {
+      message: 'API key ile giriş başarılı',
+      token,
+      user: {
+        id: apiUser.id,
+        name: apiUser.name,
+        email: apiUser.email,
+        role: apiUser.role,
+        company: {
+          id: keyRecord.company.id,
+          name: keyRecord.company.name,
+          domain: keyRecord.company.domain,
+          logoUrl: keyRecord.company.logoUrl,
+        },
+      },
+    };
   }
 }

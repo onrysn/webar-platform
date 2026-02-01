@@ -76,13 +76,25 @@ export const useAuthStore = defineStore('auth', {
       this.user = null;
       this.token = '';
       localStorage.removeItem('token');
+      localStorage.removeItem('user'); // API key login'den gelen user'ı da temizle
     },
 
     // Router guard içinde çağrılıyor, manuel set etmek için
     loadFromStorage() {
       const token = localStorage.getItem('token');
+      const userStr = localStorage.getItem('user');
+      
       if (token) {
         this.token = token;
+      }
+      
+      // API key login'den gelen user bilgisini yükle
+      if (userStr) {
+        try {
+          this.user = JSON.parse(userStr);
+        } catch {
+          // Parse hatası olursa ignore et
+        }
       }
     },
   },

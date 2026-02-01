@@ -375,7 +375,8 @@
 
             <div class="p-6 space-y-6">
 
-                <div class="space-y-4">
+                <!-- Member kullanıcılar için gizlenen ayarlar -->
+                <div v-if="authStore.user?.role !== 'MEMBER'" class="space-y-4">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-sm font-bold text-white">🔒 Gizli Sahne</p>
