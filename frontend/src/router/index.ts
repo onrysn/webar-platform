@@ -63,7 +63,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/', redirect: '/login' },
   { path: '/login', component: Login },
   { path: '/register', component: Register },
-  { path: '/api-login', component: ApiLogin }, // External API key login redirect
+  { path: '/integration-login', component: ApiLogin }, // External API key login redirect
 
   { 
     path: '/access-denied', 

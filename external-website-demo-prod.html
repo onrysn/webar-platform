@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Harici Web Sitesi - API Key Login Demo</title>
+    <title>🏢 Harici Web Sitesi Demo - Production</title>
     <style>
         * {
             margin: 0;
@@ -12,173 +12,67 @@
         }
 
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
+            padding: 40px 20px;
         }
 
         .container {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-            padding: 40px;
             max-width: 600px;
-            width: 100%;
+            margin: 0 auto;
         }
 
         .logo {
             text-align: center;
-            margin-bottom: 30px;
+            color: white;
+            margin-bottom: 40px;
         }
 
         .logo h1 {
-            color: #667eea;
-            font-size: 28px;
+            font-size: 36px;
             margin-bottom: 10px;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
 
         .logo p {
-            color: #666;
-            font-size: 14px;
+            font-size: 16px;
+            opacity: 0.9;
         }
 
         .info-box {
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            margin-bottom: 30px;
-            border-radius: 6px;
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         }
 
         .info-box h3 {
-            color: #333;
-            font-size: 16px;
-            margin-bottom: 10px;
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 18px;
         }
 
         .info-box p {
-            color: #666;
-            font-size: 14px;
-            line-height: 1.6;
-        }
-
-        .button {
-            width: 100%;
-            background: #667eea;
-            color: white;
-            border: none;
-            padding: 16px;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .button:hover {
-            background: #5568d3;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-
-        .button:active {
-            transform: translateY(0);
-        }
-
-        .button:disabled {
-            background: #ccc;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .spinner {
-            border: 2px solid rgba(255,255,255,0.3);
-            border-top: 2px solid white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            animation: spin 0.6s linear infinite;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .response-box {
-            margin-top: 30px;
-            padding: 20px;
-            border-radius: 8px;
-            display: none;
-        }
-
-        .response-box.success {
-            background: #d1fae5;
-            border: 2px solid #10b981;
-            display: block;
-        }
-
-        .response-box.error {
-            background: #fee2e2;
-            border: 2px solid #ef4444;
-            display: block;
-        }
-
-        .response-box h3 {
-            margin-bottom: 15px;
-            color: #333;
-        }
-
-        .response-box.success h3 { color: #065f46; }
-        .response-box.error h3 { color: #991b1b; }
-
-        .user-info {
-            background: white;
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-        }
-
-        .user-info p {
-            margin: 8px 0;
-            color: #333;
-            font-size: 14px;
-        }
-
-        .user-info strong {
-            color: #667eea;
-            display: inline-block;
-            min-width: 100px;
-        }
-
-        .token-box {
-            background: #1f2937;
-            color: #10b981;
-            padding: 15px;
-            border-radius: 6px;
-            font-family: 'Courier New', monospace;
-            font-size: 12px;
-            word-break: break-all;
-            line-height: 1.6;
+            color: #555;
+            line-height: 1.8;
+            margin-bottom: 10px;
         }
 
         .config-section {
-            margin-bottom: 30px;
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
         }
 
         .config-section label {
             display: block;
-            margin-bottom: 8px;
-            color: #333;
             font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
             font-size: 14px;
         }
 
@@ -186,15 +80,114 @@
             width: 100%;
             padding: 12px;
             border: 2px solid #e5e7eb;
-            border-radius: 6px;
+            border-radius: 8px;
             font-size: 14px;
             font-family: 'Courier New', monospace;
-            transition: border-color 0.3s;
+            transition: border-color 0.2s;
         }
 
         .config-section input:focus {
             outline: none;
             border-color: #667eea;
+        }
+
+        .button {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 18px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+        }
+
+        .button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.5);
+        }
+
+        .button:disabled {
+            background: #94a3b8;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 3px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .response-box {
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            display: none;
+        }
+
+        .response-box.success {
+            display: block;
+            border-left: 4px solid #10b981;
+        }
+
+        .response-box.error {
+            display: block;
+            border-left: 4px solid #ef4444;
+        }
+
+        .response-box h3 {
+            margin-bottom: 15px;
+            font-size: 18px;
+        }
+
+        .response-box.success h3 {
+            color: #10b981;
+        }
+
+        .response-box.error h3 {
+            color: #ef4444;
+        }
+
+        .user-info {
+            background: #f9fafb;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .user-info p {
+            color: #374151;
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .user-info strong {
+            color: #1f2937;
+        }
+
+        .token-box {
+            background: #1f2937;
+            color: #10b981;
+            padding: 12px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 11px;
+            word-break: break-all;
+            margin-top: 10px;
         }
 
         .config-section small {
@@ -224,6 +217,13 @@
             line-height: 1.8;
         }
 
+        .next-steps p {
+            color: #10b981;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
         .code-example {
             background: #1f2937;
             color: #10b981;
@@ -234,6 +234,17 @@
             margin-top: 10px;
             overflow-x: auto;
         }
+
+        .env-badge {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 10px;
+        }
     </style>
 </head>
 <body>
@@ -241,6 +252,7 @@
         <div class="logo">
             <h1>🏢 Harici Web Sitesi Demo</h1>
             <p>API Key ile WebAR Platform'a Bağlanma Örneği</p>
+            <span class="env-badge">🚀 PRODUCTION</span>
         </div>
 
         <div class="info-box">
@@ -249,6 +261,9 @@
                 Bu sayfa, kendi web sitenizden API key kullanarak WebAR Platform'a nasıl login olacağınızı gösterir.
                 Butona tıkladığınızda, API key backend'e gönderilir ve otomatik olarak sisteme MEMBER rolü ile giriş yaparsınız.
             </p>
+            <p>
+                <strong>⚠️ Production Ortamı:</strong> Bu demo production sunucusuna bağlanır.
+            </p>
         </div>
 
         <div class="config-section">
@@ -256,8 +271,8 @@
             <input 
                 type="text" 
                 id="apiUrl" 
-                value="http://localhost:4000/api" 
-                placeholder="http://localhost:4000/api"
+                value="https://ozmediadigital.online/api" 
+                placeholder="https://ozmediadigital.online/api"
             >
         </div>
 
@@ -266,10 +281,10 @@
             <input 
                 type="text" 
                 id="apiKey" 
-                value="COMPANY_A_KEY" 
+                value="" 
                 placeholder="Şirketinizin API key'ini girin"
             >
-            <small>Seed'de oluşturulan key'ler: COMPANY_A_KEY, COMPANY_B_KEY</small>
+            <small>Production API Key'inizi WebAR Platform'dan alın</small>
         </div>
 
         <button id="loginBtn" class="button" onclick="loginWithApiKey()">
@@ -292,6 +307,11 @@
             const btnText = document.getElementById('btnText');
             const btnSpinner = document.getElementById('btnSpinner');
             const responseBox = document.getElementById('responseBox');
+
+            if (!apiKey.trim()) {
+                alert('⚠️ Lütfen API Key giriniz!');
+                return;
+            }
 
             // Buton durumunu güncelle
             loginBtn.disabled = true;
@@ -326,7 +346,7 @@
                 // 2 saniye sonra ana platforma yönlendir - token'ı URL ile gönder
                 setTimeout(() => {
                     // Token'ı URL parametresi olarak gönder (farklı origin sorunu için)
-                    const redirectUrl = `http://localhost:4000/integration-login?token=${encodeURIComponent(data.token)}&user=${encodeURIComponent(JSON.stringify(data.user))}`;
+                    const redirectUrl = `https://ozmediadigital.online/integration-login?token=${encodeURIComponent(data.token)}&user=${encodeURIComponent(JSON.stringify(data.user))}`;
                     window.location.href = redirectUrl;
                 }, 2000);
 
@@ -362,10 +382,8 @@
 
                 <div class="next-steps">
                     <h4>🚀 Yönlendirme:</h4>
-                    <p style="color: #065f46; font-size: 14px;">
-                        ✨ 2 saniye içinde WebAR Platform'a yönlendiriliyorsunuz...<br>
-                        📦 Token ve kullanıcı bilgileriniz localStorage'a kaydedildi.
-                    </p>
+                    <p>✨ 2 saniye içinde WebAR Platform'a yönlendiriliyorsunuz...<br>
+                    📦 Token ve kullanıcı bilgileriniz localStorage'a kaydedildi.</p>
                     
                     <h4 style="margin-top: 15px;">💡 localStorage İçeriği:</h4>
                     <ul>
@@ -378,7 +396,7 @@ const token = localStorage.getItem('token');
 const user = JSON.parse(localStorage.getItem('user'));
 
 // API çağrılarında kullan:
-fetch('http://localhost:4000/api/ar-models', {
+fetch('https://ozmediadigital.online/api/ar-models', {
   headers: {
     'Authorization': 'Bearer ' + token
   }
@@ -400,11 +418,12 @@ fetch('http://localhost:4000/api/ar-models', {
                 <div class="next-steps">
                     <h4>🔍 Kontrol Edilecekler:</h4>
                     <ul>
-                        <li>Backend çalışıyor mu? (docker ps)</li>
+                        <li>Backend çalışıyor mu?</li>
                         <li>API key doğru mu?</li>
                         <li>API key aktif mi? (isActive = true)</li>
                         <li>Şirket aktif mi? (company.isActive = true)</li>
                         <li>API key süresi dolmadı mı?</li>
+                        <li>HTTPS bağlantısı çalışıyor mu?</li>
                     </ul>
                 </div>
             `;
@@ -412,7 +431,8 @@ fetch('http://localhost:4000/api/ar-models', {
 
         // Sayfa yüklendiğinde bilgilendirme göster
         window.addEventListener('load', () => {
-            console.log('✅ Harici web sitesi demo sayfası hazır');
+            console.log('✅ Harici web sitesi demo sayfası hazır (PRODUCTION)');
+            console.log('🌐 Domain: https://ozmediadigital.online');
             console.log('📝 Bu sayfayı kendi web sitenize entegre edebilirsiniz');
         });
     </script>

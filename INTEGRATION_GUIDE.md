@@ -163,7 +163,7 @@ Yukarıdaki `</body>` etiketinden hemen önce şu kodu ekleyin:
 
             // Token ile WebAR'a yönlendir
             const userParam = encodeURIComponent(JSON.stringify(data.user));
-            const redirectUrl = `https://your-domain.com/api-login?token=${data.token}&user=${userParam}`;
+            const redirectUrl = `https://your-domain.com/integration-login?token=${data.token}&user=${userParam}`;
             
             window.location.href = redirectUrl;
 
@@ -392,7 +392,7 @@ Kullanıcı butona tıkladığında:
             // Iframe'e token ile yönlendir
             const iframe = document.getElementById('webarFrame');
             const userParam = encodeURIComponent(JSON.stringify(data.user));
-            iframe.src = `${WEBAR_URL}/api-login?token=${data.token}&user=${userParam}`;
+            iframe.src = `${WEBAR_URL}/integration-login?token=${data.token}&user=${userParam}`;
 
             // Container'ı göster
             document.getElementById('webarContainer').classList.add('active');
@@ -694,7 +694,7 @@ function WebarButton() {
             });
             const data = await response.json();
             // Token ile yönlendir
-            window.location.href = `${WEBAR_URL}/api-login?token=${data.token}`;
+            window.location.href = `${WEBAR_URL}/integration-login?token=${data.token}`;
         } catch (error) {
             alert('Hata: ' + error.message);
         } finally {
