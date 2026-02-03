@@ -198,7 +198,6 @@ let orbit: OrbitControls;
 let transformControl: TransformControls;
 let raycaster: THREE.Raycaster;
 let mouse: THREE.Vector2 = new THREE.Vector2();
-let animationId: number;
 
 const itemsMap = new Map<number, THREE.Object3D>();
 
@@ -268,7 +267,6 @@ onBeforeUnmount(() => {
     window.removeEventListener('resize', setViewportHeight);
     window.removeEventListener('orientationchange', setViewportHeight);
 
-    cancelAnimationFrame(animationId);
     renderer?.dispose();
     if (transformControl) {
         transformControl.detach();
@@ -856,6 +854,9 @@ const initThreeJS = async () => {
     orbit.enableDamping = true;
     orbit.dampingFactor = 0.05;
     orbit.maxPolarAngle = Math.PI / 2 - 0.05;
+    
+    // Sadece kullanıcı kamerayı hareket ettirdiğinde render yap
+    orbit.addEventListener('change', renderScene);
 
     // [GÜNCELLEME]: Transform Controls (Yetki Kontrollü)
     transformControl = markRaw(new TransformControls(camera, renderer.domElement));
@@ -870,7 +871,7 @@ const initThreeJS = async () => {
     canvasRef.value.addEventListener('mouseup', onMouseUp);
     window.addEventListener('resize', handleResize);
 
-    animate();
+    startRendering();
 };
 
 const handleResize = () => {
@@ -883,12 +884,28 @@ const handleResize = () => {
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     renderer.setSize(width, height);
+    renderScene(); // Resize'da bir kez render
 };
 
-const animate = () => {
-    animationId = requestAnimationFrame(animate);
-    orbit.update();
-    renderer.render(scene, camera);
+// On-demand rendering - sadece gerektiğinde render yap
+let renderRequested = false;
+const renderScene = () => {
+    if (!renderer || !scene || !camera) return;
+    
+    // Eğer zaten bir render bekliyor ise tekrar isteme
+    if (renderRequested) return;
+    
+    renderRequested = true;
+    requestAnimationFrame(() => {
+        renderRequested = false;
+        orbit.update();
+        renderer.render(scene, camera);
+    });
+};
+
+// İlk render
+const startRendering = () => {
+    renderScene();
 };
 
 // --- MODEL İŞLEMLERİ ---
@@ -946,6 +963,9 @@ const loadSceneObjects = async () => {
     
     // Draco loader'ı temizle
     dracoLoader.dispose();
+    
+    // Modeller yüklendikten sonra ilk render
+    renderScene();
 };
 
 const applyMaterialConfig = (model: THREE.Group, materialConfig: any) => {

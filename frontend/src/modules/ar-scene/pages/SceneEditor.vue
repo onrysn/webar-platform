@@ -712,7 +712,6 @@ let orbit: OrbitControls;
 let transformControl: TransformControls;
 let raycaster: THREE.Raycaster;
 let mouse: THREE.Vector2 = new THREE.Vector2();
-let animationId: number;
 let ambientLight: THREE.AmbientLight;
 let directionalLight: THREE.DirectionalLight;
 
@@ -775,7 +774,6 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
-    cancelAnimationFrame(animationId);
     renderer?.dispose();
     if (transformControl) {
         transformControl.detach();
@@ -865,6 +863,7 @@ const setTransformMode = (mode: 'translate' | 'rotate' | 'scale') => {
     currentTransformMode.value = mode;
     if (transformControl) {
         transformControl.setMode(mode);
+        renderScene();
     }
 };
 
@@ -1153,6 +1152,8 @@ const togglePaintMode = () => {
             TWO: THREE.TOUCH.DOLLY_PAN
         };
     }
+    
+    renderScene(); // Mod değişiminde render
 };
 
 // =======================================================
@@ -1500,19 +1501,29 @@ const initThreeJS = async () => {
     orbit.enableDamping = true;
     orbit.dampingFactor = 0.05;
     orbit.maxPolarAngle = Math.PI / 2 - 0.05;
+    
+    // Sadece kullanıcı kamerayı hareket ettirdiğinde render yap
+    orbit.addEventListener('change', renderScene);
 
     // [GÜNCELLEME]: Transform Controls'u UI state ile bağla
     transformControl = markRaw(new TransformControls(camera, renderer.domElement));
+    
+    // Transform değiştiğinde render yap
+    transformControl.addEventListener('change', renderScene);
+    transformControl.addEventListener('dragging-changed', (event) => { 
+        orbit.enabled = !event.value;
+        renderScene();
+    });
     
     // Eğer düzenleme yetkisi YOKSA (canEdit = false), kontrolü devre dışı bırak
     if (!canEdit.value) {
         transformControl.enabled = false;
     } else {
         // Yetki VARSA eventleri bağla ve modu ayarla
-        transformControl.addEventListener('dragging-changed', (event) => { orbit.enabled = !event.value; });
         transformControl.addEventListener('mouseUp', async () => {
             if (transformControl.object && selectedItemId.value) {
                 await saveTransform(selectedItemId.value);
+                renderScene();
             }
         });
         // Başlangıç modunu ayarla
@@ -1531,7 +1542,7 @@ const initThreeJS = async () => {
     window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('resize', handleResize);
 
-    animate();
+    startRendering();
 };
 
 const handleResize = () => {
@@ -1542,12 +1553,28 @@ const handleResize = () => {
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     renderer.setSize(width, height);
+    renderScene(); // Resize'da bir kez render
 };
 
-const animate = () => {
-    animationId = requestAnimationFrame(animate);
-    orbit.update();
-    renderer.render(scene, camera);
+// On-demand rendering - sadece gerektiğinde render yap
+let renderRequested = false;
+const renderScene = () => {
+    if (!renderer || !scene || !camera) return;
+    
+    // Eğer zaten bir render bekliyor ise tekrar isteme
+    if (renderRequested) return;
+    
+    renderRequested = true;
+    requestAnimationFrame(() => {
+        renderRequested = false;
+        orbit.update();
+        renderer.render(scene, camera);
+    });
+};
+
+// İlk render
+const startRendering = () => {
+    renderScene();
 };
 
 // --- MODEL İŞLEMLERİ ---
@@ -1624,6 +1651,9 @@ const loadSceneObjects = async () => {
     
     // Draco loader'ı temizle
     dracoLoader.dispose();
+    
+    // Modeller yüklendikten sonra ilk render
+    renderScene();
 };
 
 const addModelToScene = async (arModel: ARModelDto) => {
@@ -1682,6 +1712,8 @@ const addModelToScene = async (arModel: ARModelDto) => {
         scene.add(model);
         itemsMap.set(newItem.id, model);
         selectItemFromTree(newItem.id);
+        
+        renderScene(); // Yeni model eklendiğinde render
 
     } catch (err) {
         console.error("Model ekleme hatası:", err);
@@ -1762,6 +1794,7 @@ const onMouseUp = (event: MouseEvent) => {
         } else {
             transformControl.detach();
             selectedItemId.value = null;
+            renderScene();
         }
     }
 };
@@ -1844,6 +1877,9 @@ const paintAtMouse = (event: MouseEvent) => {
     
     // Panele bildirim gönder (undo history ile birlikte)
     paintPanelRef.value.notifyPaint(mesh.name || 'İsimsiz Parça', mesh, previousMaterial);
+    
+    // Boyama sonrası render
+    renderScene();
 };
 
 // Boyama undo handler - materyal bilgisini güncelle ve kaydet
@@ -1861,6 +1897,9 @@ const handlePaintUndo = (sceneItemId: number, meshName: string, previousMaterial
     
     // Auto-save tetikle
     triggerAutoSave(sceneItemId);
+    
+    // Undo sonrası render
+    renderScene();
 };
 
 const selectItemFromTree = (itemId: number) => {
@@ -1871,6 +1910,7 @@ const selectItemFromTree = (itemId: number) => {
     } else {
         transformControl.detach();
     }
+    renderScene();
 };
 
 // [GÜNCELLEME]: Klavye kısayollarını UI State ile eşle
@@ -1933,6 +1973,7 @@ const deleteItem = async (itemId: number) => {
         }
         sceneItems.value = sceneItems.value.filter(i => i.id !== itemId);
         selectedItemId.value = null;
+        renderScene(); // Silme sonrası render
     } catch (err) {
         console.error(err);
         alert("Silinemedi");
@@ -2008,6 +2049,7 @@ const updateAmbientIntensity = (value: number) => {
         ambientLight.intensity = value;
     }
     saveLightingSettings();
+    renderScene();
 };
 
 const updateAmbientColor = (color: string) => {
@@ -2016,6 +2058,7 @@ const updateAmbientColor = (color: string) => {
         ambientLight.color.set(color);
     }
     saveLightingSettings();
+    renderScene();
 };
 
 const updateDirectionalIntensity = (value: number) => {
@@ -2024,6 +2067,7 @@ const updateDirectionalIntensity = (value: number) => {
         directionalLight.intensity = value;
     }
     saveLightingSettings();
+    renderScene();
 };
 
 const updateDirectionalColor = (color: string) => {
@@ -2032,6 +2076,7 @@ const updateDirectionalColor = (color: string) => {
         directionalLight.color.set(color);
     }
     saveLightingSettings();
+    renderScene();
 };
 
 const updateDirectionalPosition = (x: number, y: number, z: number) => {
@@ -2042,6 +2087,7 @@ const updateDirectionalPosition = (x: number, y: number, z: number) => {
         directionalLight.position.set(x, y, z);
     }
     saveLightingSettings();
+    renderScene();
 };
 
 const resetLighting = () => {
@@ -2064,6 +2110,7 @@ const resetLighting = () => {
         directionalLight.position.set(15, 30, 15);
     }
     saveLightingSettings();
+    renderScene();
 };
 
 // Aydınlatma ayarlarını backend'e kaydet
