@@ -4,9 +4,16 @@ import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bodyParser: true,
+    rawBody: true,
+  });
 
   app.enableCors();
+  
+  // JSON body size limitini artır (logo base64 için)
+  app.use(require('express').json({ limit: '50mb' }));
+  app.use(require('express').urlencoded({ limit: '50mb', extended: true }));
 
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,               // DTO’da olmayan alanları otomatik siler

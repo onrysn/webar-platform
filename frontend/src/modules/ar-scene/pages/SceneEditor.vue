@@ -580,6 +580,7 @@
         v-if="canEdit && isPaintMode" 
         ref="paintPanelRef"
         @close="togglePaintMode" 
+        @undo="handlePaintUndo"
     />
     
     <!-- Boya Modu Tooltip -->
@@ -1794,6 +1795,18 @@ const paintAtMouse = (event: MouseEvent) => {
     
     // Materyal uygula
     let mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+    
+    // Önceki materyal bilgisini kaydet (undo için)
+    const previousMaterial = mat ? {
+        color: '#' + (mat as THREE.MeshStandardMaterial).color.getHexString(),
+        metalness: (mat as THREE.MeshStandardMaterial).metalness || 0,
+        roughness: (mat as THREE.MeshStandardMaterial).roughness || 0.5
+    } : {
+        color: '#ffffff',
+        metalness: 0,
+        roughness: 0.5
+    };
+    
     if (!mesh.userData.hasCustomMaterial && mat) {
         mat = mat.clone();
         mesh.material = mat;
@@ -1829,8 +1842,25 @@ const paintAtMouse = (event: MouseEvent) => {
         }
     }
     
-    // Panele bildirim gönder
-    paintPanelRef.value.notifyPaint(mesh.name || 'İsimsiz Parça');
+    // Panele bildirim gönder (undo history ile birlikte)
+    paintPanelRef.value.notifyPaint(mesh.name || 'İsimsiz Parça', mesh, previousMaterial);
+};
+
+// Boyama undo handler - materyal bilgisini güncelle ve kaydet
+const handlePaintUndo = (sceneItemId: number, meshName: string, previousMaterial: { color: string; metalness: number; roughness: number }) => {
+    // SceneItem'daki materialConfig'i güncelle
+    const item = sceneItems.value.find(i => i.id === sceneItemId);
+    if (item && item.materialConfig) {
+        // Önceki materyali geri yükle
+        item.materialConfig[meshName] = {
+            color: previousMaterial.color,
+            metalness: previousMaterial.metalness,
+            roughness: previousMaterial.roughness
+        };
+    }
+    
+    // Auto-save tetikle
+    triggerAutoSave(sceneItemId);
 };
 
 const selectItemFromTree = (itemId: number) => {

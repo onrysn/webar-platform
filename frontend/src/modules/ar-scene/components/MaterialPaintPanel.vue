@@ -24,12 +24,25 @@
                         🎨 Boya Modu Aktif
                     </span>
                 </div>
-                <button @click.stop="$emit('close')" class="text-gray-400 hover:text-white transition-colors p-1">
-                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                            d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
+                <div class="flex items-center gap-1">
+                    <button 
+                        @click.stop="undo" 
+                        :disabled="!canUndo"
+                        :title="canUndo ? 'Geri Al (Ctrl+Z)' : 'Geri alınacak işlem yok'"
+                        class="text-gray-400 hover:text-white transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
+                        :class="canUndo ? 'hover:bg-white/10 rounded' : ''">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                        </svg>
+                    </button>
+                    <button @click.stop="$emit('close')" class="text-gray-400 hover:text-white transition-colors p-1">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -135,7 +148,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 
-const emit = defineEmits(['close', 'paint']);
+const emit = defineEmits(['close', 'paint', 'undo']);
 
 const presetColors = [
     '#ffffff', '#000000', '#ef4444', '#3b82f6', '#22c55e',
@@ -157,6 +170,21 @@ const metalness = ref(0);
 const roughness = ref(0.5);
 const lastPaintedMesh = ref<string | null>(null);
 const selectedPreset = ref<number | null>(null);
+
+// Undo history
+interface PaintAction {
+    mesh: any;
+    meshName: string;
+    previousMaterial: {
+        color: string;
+        metalness: number;
+        roughness: number;
+    };
+}
+
+const paintHistory = ref<PaintAction[]>([]);
+const maxHistorySize = 50;
+const canUndo = computed(() => paintHistory.value.length > 0);
 
 const sheetHeight = ref(35);
 const isDragging = ref(false);
@@ -226,13 +254,24 @@ const stopDrag = () => {
     window.removeEventListener('touchend', stopDrag);
 };
 
+// Klavye kısayolları
+const handleKeyPress = (e: KeyboardEvent) => {
+    // Ctrl+Z veya Cmd+Z
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault();
+        undo();
+    }
+};
+
 onMounted(() => {
     checkMobile();
     window.addEventListener('resize', checkMobile);
+    window.addEventListener('keydown', handleKeyPress);
 });
 
 onUnmounted(() => {
     window.removeEventListener('resize', checkMobile);
+    window.removeEventListener('keydown', handleKeyPress);
 });
 
 const updateColor = (color: string) => {
@@ -257,11 +296,58 @@ const onManualRoughnessChange = () => {
 };
 
 // Dışarıdan çağrılacak - mesh boyandığında
-const notifyPaint = (meshName: string) => {
+const notifyPaint = (meshName: string, mesh: any, previousMaterial: { color: string; metalness: number; roughness: number }) => {
     lastPaintedMesh.value = meshName;
+    
+    // History'ye ekle
+    paintHistory.value.push({
+        mesh,
+        meshName,
+        previousMaterial
+    });
+    
+    // Max limit kontrolü
+    if (paintHistory.value.length > maxHistorySize) {
+        paintHistory.value.shift();
+    }
+    
     setTimeout(() => {
         lastPaintedMesh.value = null;
     }, 2000);
+};
+
+// Geri al fonksiyonu
+const undo = () => {
+    if (!canUndo.value) return;
+    
+    const lastAction = paintHistory.value.pop();
+    if (!lastAction) return;
+    
+    const { mesh, previousMaterial } = lastAction;
+    
+    // Materyal'i geri yükle
+    const mat = Array.isArray(mesh.material) ? mesh.material[0] : mesh.material;
+    if (mat) {
+        mat.color.set(previousMaterial.color);
+        mat.metalness = previousMaterial.metalness;
+        mat.roughness = previousMaterial.roughness;
+    }
+    
+    // Mesh'in bağlı olduğu sceneItem'i bul ve save için emit et
+    let parent = mesh.parent;
+    let sceneItemId: number | null = null;
+    while (parent) {
+        if (parent.userData?.itemId) {
+            sceneItemId = parent.userData.itemId;
+            break;
+        }
+        parent = parent.parent;
+    }
+    
+    if (sceneItemId) {
+        // Parent'a kaydetmesi için bildir
+        emit('undo', sceneItemId, mesh.name, previousMaterial);
+    }
 };
 
 // Mevcut malzeme ayarlarını döndür
@@ -276,7 +362,9 @@ const getCurrentMaterial = () => {
 // Parent component'e expose et
 defineExpose({
     getCurrentMaterial,
-    notifyPaint
+    notifyPaint,
+    undo,
+    canUndo
 });
 </script>
 
