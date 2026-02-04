@@ -3,16 +3,15 @@
     <div class="max-w-4xl mx-auto space-y-10">
 
       <div>
-        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Hesap Ayarları</h1>
-        <p class="mt-1 text-sm text-slate-500">Profil bilgilerinizi, güvenliğinizi ve tercihlerinizi buradan
-          yönetebilirsiniz.</p>
+        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">{{ t('settings.title') }}</h1>
+        <p class="mt-1 text-sm text-slate-500">{{ t('settings.subtitle') }}</p>
       </div>
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="md:col-span-1">
-          <h3 class="text-lg font-bold text-slate-900">Profil</h3>
+          <h3 class="text-lg font-bold text-slate-900">{{ t('settings.profile.title') }}</h3>
           <p class="mt-1 text-sm text-slate-500">
-            Kişisel bilgileriniz ve sistemde görünen adınız.
+            {{ t('settings.profile.subtitle') }}
           </p>
         </div>
 
@@ -27,22 +26,22 @@
               <div>
                 <button
                   class="text-sm font-bold text-indigo-600 hover:text-indigo-800 border border-indigo-100 bg-indigo-50 hover:bg-indigo-100 px-4 py-2 rounded-xl transition-colors opacity-50 cursor-not-allowed"
-                  title="Yakında">
-                  Fotoğraf Değiştir
+                  :title="t('common.comingSoon')">
+                  {{ t('settings.profile.changePhoto') }}
                 </button>
-                <p class="text-xs text-slate-400 mt-1">JPG, GIF veya PNG. Max 1MB.</p>
+                <p class="text-xs text-slate-400 mt-1">{{ t('settings.profile.photoHint') }}</p>
               </div>
             </div>
 
             <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div class="col-span-2 sm:col-span-1">
-                <label class="block text-sm font-bold text-slate-700 mb-1.5">Ad Soyad</label>
+                <label class="block text-sm font-bold text-slate-700 mb-1.5">{{ t('settings.profile.name') }}</label>
                 <input v-model="profileForm.name" type="text"
                   class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" />
               </div>
 
               <div class="col-span-2 sm:col-span-1">
-                <label class="block text-sm font-bold text-slate-700 mb-1.5">E-posta</label>
+                <label class="block text-sm font-bold text-slate-700 mb-1.5">{{ t('settings.profile.email') }}</label>
                 <input v-model="profileForm.email" type="email"
                   class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all" />
               </div>
@@ -58,7 +57,7 @@
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                 </path>
               </svg>
-              {{ loadingProfile ? 'Kaydediliyor...' : 'Kaydet' }}
+              {{ loadingProfile ? t('common.saving') : t('common.save') }}
             </button>
           </div>
         </div>
@@ -68,27 +67,27 @@
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="md:col-span-1">
-          <h3 class="text-lg font-bold text-slate-900">Güvenlik</h3>
+          <h3 class="text-lg font-bold text-slate-900">{{ t('settings.security.title') }}</h3>
           <p class="mt-1 text-sm text-slate-500">
-            Hesabınızı korumak için güçlü bir şifre kullanın.
+            {{ t('settings.security.subtitle') }}
           </p>
         </div>
 
         <div class="md:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div class="p-6 space-y-4">
             <div>
-              <label class="block text-sm font-bold text-slate-700 mb-1.5">Mevcut Şifre</label>
-              <input v-model="passwordForm.current" type="password" placeholder="Güvenlik için lütfen giriniz"
+              <label class="block text-sm font-bold text-slate-700 mb-1.5">{{ t('settings.security.currentPassword') }}</label>
+              <input v-model="passwordForm.current" type="password" :placeholder="t('settings.security.currentPasswordPlaceholder')"
                 class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label class="block text-sm font-bold text-slate-700 mb-1.5">Yeni Şifre</label>
+                <label class="block text-sm font-bold text-slate-700 mb-1.5">{{ t('settings.security.newPassword') }}</label>
                 <input v-model="passwordForm.new" type="password"
                   class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
               </div>
               <div>
-                <label class="block text-sm font-bold text-slate-700 mb-1.5">Yeni Şifre (Tekrar)</label>
+                <label class="block text-sm font-bold text-slate-700 mb-1.5">{{ t('settings.security.confirmPassword') }}</label>
                 <input v-model="passwordForm.confirm" type="password"
                   class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" />
               </div>
@@ -103,7 +102,7 @@
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                 </path>
               </svg>
-              Şifreyi Güncelle
+              {{ t('settings.security.updatePassword') }}
             </button>
           </div>
         </div>
@@ -113,9 +112,9 @@
 
       <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div class="md:col-span-1">
-          <h3 class="text-lg font-bold text-slate-900">Bildirimler</h3>
+          <h3 class="text-lg font-bold text-slate-900">{{ t('settings.notifications.title') }}</h3>
           <p class="mt-1 text-sm text-slate-500">
-            Hangi konularda e-posta almak istediğinizi seçin.
+            {{ t('settings.notifications.subtitle') }}
           </p>
         </div>
 
@@ -124,8 +123,8 @@
 
             <div class="p-4 sm:px-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
               <div>
-                <p class="text-sm font-bold text-slate-800">Proje Güncellemeleri</p>
-                <p class="text-xs text-slate-500">Projelerinizdeki değişikliklerden haberdar olun.</p>
+                <p class="text-sm font-bold text-slate-800">{{ t('settings.notifications.projectUpdates') }}</p>
+                <p class="text-xs text-slate-500">{{ t('settings.notifications.projectUpdatesDesc') }}</p>
               </div>
               <button @click="notifications.projects = !notifications.projects"
                 :class="notifications.projects ? 'bg-indigo-600' : 'bg-slate-200'"
@@ -137,8 +136,8 @@
 
             <div class="p-4 sm:px-6 flex items-center justify-between hover:bg-slate-50 transition-colors">
               <div>
-                <p class="text-sm font-bold text-slate-800">Sistem Duyuruları</p>
-                <p class="text-xs text-slate-500">WebAR Studio hakkındaki yenilikler ve bakımlar.</p>
+                <p class="text-sm font-bold text-slate-800">{{ t('settings.notifications.systemAnnouncements') }}</p>
+                <p class="text-xs text-slate-500">{{ t('settings.notifications.systemAnnouncementsDesc') }}</p>
               </div>
               <button @click="notifications.system = !notifications.system"
                 :class="notifications.system ? 'bg-indigo-600' : 'bg-slate-200'"
@@ -158,9 +157,12 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../../store/modules/auth';
 import { userService } from '../../../services/userService';
 import { useToast } from 'vue-toastification';
+
+const { t } = useI18n();
 
 const auth = useAuthStore();
 const toast = useToast();
@@ -212,14 +214,14 @@ const updateProfile = async () => {
       email: profileForm.email
     });
 
-    toast.success("Profil bilgileri güncellendi!");
+    toast.success(t('settings.profile.saveSuccess'));
 
     auth.user.name = profileForm.name;
     auth.user.email = profileForm.email;
 
   } catch (e: any) {
     console.error(e);
-    toast.error(e.response?.data?.message || "Profil güncellenemedi.");
+    toast.error(e.response?.data?.message || t('settings.profile.saveError'));
   } finally {
     loadingProfile.value = false;
   }
@@ -230,12 +232,12 @@ const updatePassword = async () => {
   if (!auth.user?.id) return;
 
   if (!passwordForm.new || passwordForm.new.length < 6) {
-    toast.warning("Şifre en az 6 karakter olmalıdır.");
+    toast.warning(t('settings.security.passwordMinLength'));
     return;
   }
 
   if (passwordForm.new !== passwordForm.confirm) {
-    toast.warning("Yeni şifreler eşleşmiyor.");
+    toast.warning(t('settings.security.passwordMismatch'));
     return;
   }
 
@@ -245,7 +247,7 @@ const updatePassword = async () => {
       password: passwordForm.new
     });
 
-    toast.success("Şifreniz başarıyla değiştirildi.");
+    toast.success(t('settings.security.passwordSuccess'));
 
     // Formu temizle
     passwordForm.current = '';
@@ -253,7 +255,7 @@ const updatePassword = async () => {
     passwordForm.confirm = '';
   } catch (e: any) {
     console.error(e);
-    toast.error(e.response?.data?.message || "Şifre değiştirilemedi.");
+    toast.error(e.response?.data?.message || t('settings.security.passwordError'));
   } finally {
     loadingPass.value = false;
   }

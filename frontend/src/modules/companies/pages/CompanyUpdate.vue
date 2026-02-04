@@ -16,10 +16,9 @@
         <form @submit.prevent="handleUpdate" class="p-8 space-y-6">
 
           <div>
-            <h2 class="text-lg font-bold text-slate-900">Temel Bilgiler</h2>
+            <h2 class="text-lg font-bold text-slate-900">{{ t('companies.form.basicInfo') }}</h2>
             <div class="flex items-center gap-2 mb-6">
-              <p class="text-sm text-slate-500">Şirketinizin görünen adı ve domain ayarlarını buradan
-                güncelleyebilirsiniz.</p>
+              <p class="text-sm text-slate-500">{{ t('companies.form.basicInfoDesc') }}</p>
 
               <span v-if="isSuperAdmin && targetCompanyId"
                 class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700 uppercase">
@@ -29,16 +28,16 @@
           </div>
 
           <div>
-            <label class="block text-sm font-bold text-slate-700 mb-2">Şirket Adı</label>
+            <label class="block text-sm font-bold text-slate-700 mb-2">{{ t('companies.form.name') }}</label>
             <div class="relative">
               <input v-model="form.name" type="text"
                 class="w-full pl-4 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder-slate-400"
-                placeholder="Şirket ismini giriniz" required />
+                :placeholder="t('companies.form.namePlaceholder')" required />
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-bold text-slate-700 mb-2">Alan Adı (Domain)</label>
+            <label class="block text-sm font-bold text-slate-700 mb-2">{{ t('companies.form.domain') }}</label>
             <div class="flex rounded-xl shadow-sm">
               <span
                 class="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-slate-300 bg-slate-100 text-slate-500 text-sm font-mono">
@@ -46,13 +45,13 @@
               </span>
               <input v-model="form.domain" type="text" @blur="sanitizeDomain"
                 class="flex-1 min-w-0 block w-full px-4 py-3 rounded-none rounded-r-xl border border-slate-300 bg-slate-50 text-slate-800 font-medium focus:ring-indigo-500 focus:border-indigo-500 transition-all placeholder-slate-400"
-                placeholder="sirketiniz.com" />
+                :placeholder="t('companies.form.domainPlaceholder')" />
             </div>
-            <p class="text-xs text-slate-400 mt-2">CORS ve güvenlik ayarları için kullanılır (Opsiyonel).</p>
+            <p class="text-xs text-slate-400 mt-2">{{ t('companies.form.domainSecurityHint') }}</p>
           </div>
 
           <div>
-            <label for="logo" class="block text-sm font-bold text-slate-700 mb-2">Şirket Logosu</label>
+            <label for="logo" class="block text-sm font-bold text-slate-700 mb-2">{{ t('companies.form.logo') }}</label>
             <div class="flex items-start gap-4">
               <div v-if="logoPreview || company?.logoUrl" class="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-slate-200">
                 <img :src="logoPreview || company?.logoUrl || ''" alt="Logo" class="w-full h-full object-contain" />
@@ -66,7 +65,7 @@
               <div class="flex-1">
                 <input type="file" id="logo" @change="handleLogoChange" accept="image/*"
                   class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
-                <p class="text-xs text-slate-400 mt-1">PNG, JPG, GIF, WebP veya SVG (Maks. 5MB)</p>
+                <p class="text-xs text-slate-400 mt-1">{{ t('companies.form.logoFormats') }}</p>
               </div>
             </div>
           </div>
@@ -79,16 +78,16 @@
                   d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
                   clip-rule="evenodd" />
               </svg>
-              Abonelik ve Erişim Yönetimi
+              {{ t('companies.form.subscriptionManagement') }}
             </h3>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
               <div class="flex items-center justify-between bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
                 <div>
-                  <label class="text-sm font-bold text-slate-700 block">Şirket Durumu</label>
+                  <label class="text-sm font-bold text-slate-700 block">{{ t('companies.form.companyStatus') }}</label>
                   <span class="text-xs" :class="form.isActive ? 'text-green-600' : 'text-red-500'">
-                    {{ form.isActive ? 'Aktif (Erişilebilir)' : 'Pasif (Erişim Kısıtlı)' }}
+                    {{ form.isActive ? t('companies.form.statusActive') : t('companies.form.statusInactive') }}
                   </span>
                 </div>
 
@@ -102,32 +101,32 @@
               </div>
 
               <div>
-                <label class="block text-sm font-bold text-slate-700 mb-2">Abonelik Bitiş Tarihi</label>
+                <label class="block text-sm font-bold text-slate-700 mb-2">{{ t('companies.form.subscriptionEnd') }}</label>
                 <input type="date" v-model="form.subscriptionEndsAt"
                   class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all cursor-pointer" />
-                <p class="text-xs text-slate-400 mt-1">Bu tarihten sonra erişim kısıtlanır.</p>
+                <p class="text-xs text-slate-400 mt-1">{{ t('companies.form.subscriptionEndHint') }}</p>
               </div>
 
             </div>
 
             <div class="mt-6 grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label class="block text-sm font-bold text-slate-700 mb-2">Maksimum API Key Sayısı</label>
+                <label class="block text-sm font-bold text-slate-700 mb-2">{{ t('companies.form.maxApiKeys') }}</label>
                 <input type="number" min="0" v-model.number="form.maxApiKeys"
                   class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                <p class="text-xs text-slate-400 mt-1">Sınırsız için boş bırakın.</p>
+                <p class="text-xs text-slate-400 mt-1">{{ t('companies.form.unlimitedHint') }}</p>
               </div>
               <div>
-                <label class="block text-sm font-bold text-slate-700 mb-2">Maksimum Depolama (MB)</label>
+                <label class="block text-sm font-bold text-slate-700 mb-2">{{ t('companies.form.maxStorageMB') }}</label>
                 <input type="number" min="0" v-model.number="form.maxStorage"
                   class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                <p class="text-xs text-slate-400 mt-1">Toplam GLB+USDZ şifreli boyut sınırı.</p>
+                <p class="text-xs text-slate-400 mt-1">{{ t('companies.form.maxStorageHint') }}</p>
               </div>
               <div>
-                <label class="block text-sm font-bold text-slate-700 mb-2">Maksimum Sahne Sayısı</label>
+                <label class="block text-sm font-bold text-slate-700 mb-2">{{ t('companies.form.maxScenes') }}</label>
                 <input type="number" min="1" v-model.number="form.maxScenes"
                   class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500" />
-                <p class="text-xs text-slate-400 mt-1">Şirketin oluşturabileceği maksimum sahne sayısı.</p>
+                <p class="text-xs text-slate-400 mt-1">{{ t('companies.form.maxScenesHint') }}</p>
               </div>
             </div>
           </div>
@@ -142,7 +141,7 @@
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                 </path>
               </svg>
-              {{ isSaving ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet' }}
+              {{ isSaving ? t('common.saving') : t('companies.saveChanges') }}
             </button>
           </div>
 
@@ -157,10 +156,12 @@
 import { reactive, ref, onMounted, computed } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../../store/modules/auth';
 import { companyService } from '../../../services/companyService';
 import type { CompanyDto } from '../dto/company.dto';
 
+const { t } = useI18n();
 const toast = useToast();
 const route = useRoute();
 const authStore = useAuthStore();

@@ -4,8 +4,8 @@
 
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
-          <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Şirket Yönetimi</h1>
-          <p class="mt-1 text-sm text-slate-500">Sistemdeki tüm şirketleri görüntüleyin ve yönetin.</p>
+          <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{{ t('companies.title') }}</h1>
+          <p class="mt-1 text-sm text-slate-500">{{ t('companies.subtitle') }}</p>
         </div>
 
         <button @click="goToCreate"
@@ -15,7 +15,7 @@
             stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
           </svg>
-          Yeni Şirket Ekle
+          {{ t('companies.createNew') }}
         </button>
       </div>
 
@@ -39,12 +39,12 @@
               d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
           </svg>
         </div>
-        <h3 class="text-lg font-bold text-slate-900">Henüz şirket bulunmuyor</h3>
-        <p class="text-slate-500 text-sm mt-1 max-w-sm">Yeni bir şirket profili oluşturarak sistemi büyütmeye başlayın.
+        <h3 class="text-lg font-bold text-slate-900">{{ t('companies.noCompanies') }}</h3>
+        <p class="text-slate-500 text-sm mt-1 max-w-sm">{{ t('companies.noCompaniesDesc') }}
         </p>
         <button @click="goToCreate"
           class="mt-6 px-6 py-2 bg-white border border-slate-300 text-slate-700 font-semibold rounded-lg hover:bg-slate-50 transition-colors">
-          Şirket Oluştur
+          {{ t('companies.addCompany') }}
         </button>
       </div>
 
@@ -60,6 +60,7 @@
 <script setup lang="ts">
 import { onMounted, ref, computed } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import CompanyCard from '../components/CompanyCard.vue';
 import { useCompanyStore } from '../../../store/modules/company';
 import type { CompanyDto } from '../dto/company.dto';
@@ -67,6 +68,7 @@ import type { CompanyDto } from '../dto/company.dto';
 const router = useRouter();
 const companyStore = useCompanyStore();
 const loading = ref(true);
+const { t } = useI18n();
 
 const companies = computed<CompanyDto[]>(() => companyStore.companiesList);
 

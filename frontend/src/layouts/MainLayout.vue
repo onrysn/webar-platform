@@ -10,16 +10,17 @@
 
       <div class="h-16 flex items-center px-6 border-b border-slate-800 bg-slate-900 shrink-0 gap-3">
         <!-- Logo: Super Admin değilse ve company logo varsa onu göster -->
-        <div v-if="!isSuperAdmin && auth.user?.company?.logoUrl" 
+        <div v-if="!isSuperAdmin && auth.user?.company?.logoUrl"
           class="w-10 h-10 rounded-lg overflow-hidden bg-white flex items-center justify-center shadow-lg shrink-0">
-          <img :src="auth.user.company.logoUrl" :alt="auth.user.company.name" class="w-full h-full object-contain p-1" />
+          <img :src="auth.user.company.logoUrl" :alt="auth.user.company.name"
+            class="w-full h-full object-contain p-1" />
         </div>
         <div v-else
           class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-indigo-900/50">
           W
         </div>
         <span class="font-bold text-lg text-white tracking-wide">
-          {{ !isSuperAdmin && auth.user?.company?.name ? auth.user.company.name : 'WebAR Admin' }}
+          {{ !isSuperAdmin && auth.user?.company?.name ? auth.user.company.name : t('layout.appName') }}
         </span>
         <button @click="closeSidebar" class="md:hidden ml-auto text-slate-400 hover:text-white transition-colors">
           <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -27,7 +28,7 @@
           </svg>
         </button>
       </div>
-      
+
 
       <nav class="flex-1 flex flex-col space-y-6 px-3 py-6 overflow-y-auto custom-scrollbar">
         <div v-for="(group, index) in navigation" :key="index">
@@ -62,10 +63,10 @@
             {{ userInitials }}
           </div>
           <div class="flex-1 min-w-0">
-            <p class="text-sm font-bold text-white truncate">{{ auth.user?.name || 'Kullanıcı' }}</p>
+            <p class="text-sm font-bold text-white truncate">{{ auth.user?.name || t('layout.sidebar.user') }}</p>
 
             <p class="text-xs text-indigo-400 truncate font-medium">
-              {{ auth.user?.company?.name || 'Bağımsız Hesap' }}
+              {{ auth.user?.company?.name || t('layout.sidebar.independentAccount') }}
             </p>
 
             <p class="text-[10px] text-slate-500 truncate mt-0.5">
@@ -77,33 +78,58 @@
         <div class="grid grid-cols-2 gap-2">
           <router-link to="/dashboard/settings"
             class="flex items-center justify-center p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-colors text-xs font-bold">
-            Ayarlar
+            {{ t('common.settings') }}
           </router-link>
           <button @click="logout"
             class="flex items-center justify-center p-2 rounded-lg bg-slate-800 hover:bg-red-900/30 text-slate-400 hover:text-red-400 transition-colors text-xs font-bold">
-            Çıkış
+            {{ t('common.logout') }}
           </button>
         </div>
       </div>
     </aside>
 
     <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <!-- Desktop Header -->
+      <header
+        class="hidden md:flex bg-white border-b border-slate-200 h-16 items-center justify-between px-6 shrink-0 z-20">
+        <div class="flex items-center gap-4">
+          <h2 class="text-lg font-semibold text-slate-800">{{ t('layout.appName') }}</h2>
+        </div>
+        <div class="flex items-center gap-4">
+          <LanguageSwitcher variant="light" />
+          <div class="flex items-center gap-3 bg-slate-50 px-3 py-1.5 rounded-full border border-slate-200">
+            <div
+              class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-bold text-xs border border-indigo-200">
+              {{ userInitials }}
+            </div>
+            <span class="text-sm font-semibold text-slate-700 pr-2 truncate max-w-[150px]">
+              {{ auth.user?.name || t('layout.sidebar.user') }}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <!-- Mobile Header -->
       <header
         class="md:hidden bg-white border-b border-slate-200 h-16 flex items-center justify-between px-4 shrink-0 z-20">
         <div class="flex items-center gap-2">
-          <div v-if="!isSuperAdmin && auth.user?.company?.logoUrl" 
+          <div v-if="!isSuperAdmin && auth.user?.company?.logoUrl"
             class="w-8 h-8 rounded-lg overflow-hidden bg-white border border-slate-200 flex items-center justify-center shrink-0">
-            <img :src="auth.user.company.logoUrl" :alt="auth.user.company.name" class="w-full h-full object-contain p-0.5" />
+            <img :src="auth.user.company.logoUrl" :alt="auth.user.company.name"
+              class="w-full h-full object-contain p-0.5" />
           </div>
           <span class="font-bold text-lg text-slate-800 tracking-tight">
-            {{ !isSuperAdmin && auth.user?.company?.name ? auth.user.company.name : 'WebAR Admin' }}
+            {{ !isSuperAdmin && auth.user?.company?.name ? auth.user.company.name : t('layout.appName') }}
           </span>
         </div>
-        <button @click="toggleSidebar" class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors">
-          <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
-          </svg>
-        </button>
+        <div class="flex items-center gap-2">
+          <LanguageSwitcher variant="light" />
+          <button @click="toggleSidebar" class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 transition-colors">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+          </button>
+        </div>
       </header>
 
       <main class="flex-1 overflow-y-auto relative w-full custom-scrollbar-light bg-slate-50">
@@ -118,6 +144,10 @@
 import { ref, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useAuthStore } from '../store/modules/auth';
+import { useI18n } from 'vue-i18n';
+import LanguageSwitcher from '../components/LanguageSwitcher.vue';
+
+const { t } = useI18n();
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -151,11 +181,11 @@ const userInitials = computed(() => {
 // Rolü okunabilir string'e çevir
 const formatRole = (role?: string) => {
   switch (role) {
-    case 'SUPER_ADMIN': return 'Süper Yönetici';
-    case 'COMPANY_ADMIN': return 'Şirket Yöneticisi';
-    case 'EDITOR': return 'Editör';
-    case 'MEMBER': return 'İzleyici (Üye)';
-    default: return 'Misafir';
+    case 'SUPER_ADMIN': return t('layout.userRole.superAdmin');
+    case 'COMPANY_ADMIN': return t('layout.userRole.companyAdmin');
+    case 'EDITOR': return t('layout.userRole.editor');
+    case 'MEMBER': return t('layout.userRole.member');
+    default: return t('layout.sidebar.guest');
   }
 };
 
@@ -167,10 +197,10 @@ const logout = () => {
 // --- DİNAMİK NAVİGASYON ---
 const navigation = computed(() => [
   {
-    title: 'Genel Bakış',
+    title: t('layout.sidebar.overview'),
     items: [
       {
-        name: 'Dashboard',
+        name: t('layout.sidebar.dashboard'),
         to: '/dashboard',
         icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z',
         visible: true // Herkes görür
@@ -178,29 +208,28 @@ const navigation = computed(() => [
     ]
   },
   {
-    title: 'AR Studio',
+    title: t('layout.sidebar.arStudio'),
     items: [
       {
-        name: 'Sahnelerim',
+        name: t('layout.sidebar.myScenes'),
         to: '/dashboard/ar-scene',
         icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10',
         visible: true // Herkes görür
       },
       {
-        name: '3D Modeller',
+        name: t('layout.sidebar.models'),
         to: '/dashboard/ar-model',
         icon: 'M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4',
         visible: true // Herkes görür
       },
       {
-        name: 'Model Yükle',
+        name: t('layout.sidebar.uploadModel'),
         to: '/dashboard/ar-model/upload',
         icon: 'M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12',
         visible: canEdit.value // Member göremez
-      }
-      ,
+      },
       {
-        name: 'Dönüştürme Kuyruğu',
+        name: t('layout.sidebar.conversionQueue'),
         to: '/dashboard/ar-model/upload-jobs',
         icon: 'M3 7h18M3 12h18M3 17h18',
         visible: canEdit.value
@@ -208,22 +237,22 @@ const navigation = computed(() => [
     ]
   },
   {
-    title: 'Katalog',
+    title: t('layout.sidebar.catalog'),
     items: [
       {
-        name: 'Kategoriler',
+        name: t('layout.sidebar.categories'),
         to: '/dashboard/catalog/categories',
         icon: 'M4 6h16M4 12h10M4 18h7',
         visible: canEdit.value
       },
       {
-        name: 'Seriler',
+        name: t('layout.sidebar.series'),
         to: '/dashboard/catalog/series',
         icon: 'M4 6a2 2 0 012-2h12a2 2 0 012 2v12a2 2 0 01-2 2H6a2 2 0 01-2-2V6z',
         visible: canEdit.value
       },
       {
-        name: 'Şekiller',
+        name: t('layout.sidebar.shapes'),
         to: '/dashboard/catalog/shapes',
         icon: 'M12 2l9 4-9 4-9-4 9-4zm0 8l9 4-9 4-9-4 9-4zm0 8l9 4-9 4-9-4 9-4z',
         visible: isSuperAdmin.value
@@ -231,28 +260,28 @@ const navigation = computed(() => [
     ]
   },
   {
-    title: 'Yönetim',
+    title: t('layout.sidebar.management'),
     items: [
       {
-        name: 'Şirketim', // Şirket Yöneticisi için
+        name: t('layout.sidebar.myCompany'), // Şirket Yöneticisi için
         to: '/dashboard/my-company',
         icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
         visible: isCompanyAdmin.value
       },
       {
-        name: 'Şirketler', // Sadece Super Admin için
+        name: t('layout.sidebar.companies'), // Sadece Super Admin için
         to: '/dashboard/companies',
         icon: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
         visible: isSuperAdmin.value
       },
       {
-        name: 'Teklif Talepleri',
+        name: t('layout.sidebar.quoteRequests'),
         to: '/dashboard/quote-requests',
         icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
         visible: canEdit.value
       },
       {
-        name: 'PBR Texture Yönetimi',
+        name: t('layout.sidebar.pbrTextures'),
         to: '/dashboard/pbr-textures',
         icon: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
         visible: isSuperAdmin.value

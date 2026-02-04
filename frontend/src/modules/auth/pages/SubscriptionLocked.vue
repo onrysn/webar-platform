@@ -8,24 +8,24 @@
         </svg>
       </div>
 
-      <h1 class="text-2xl font-extrabold text-slate-800 mb-2">Erişim Kısıtlandı</h1>
+      <h1 class="text-2xl font-extrabold text-slate-800 mb-2">{{ t('auth.subscriptionLocked.title') }}</h1>
       
       <p class="text-slate-500 mb-8 leading-relaxed">
-        {{ errorMessage || 'Şirket hesabınızla ilgili bir durumdan dolayı sisteme erişiminiz geçici olarak durdurulmuştur.' }}
+        {{ errorMessage || t('auth.subscriptionLocked.message') }}
       </p>
 
       <div class="space-y-3">
         <a href="mailto:destek@webar.com" class="block w-full py-3 px-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl transition-colors shadow-lg shadow-indigo-200">
-          Destek Ekibiyle İletişime Geç
+          {{ t('auth.subscriptionLocked.contactSupport') }}
         </a>
         
         <button @click="logout" class="block w-full py-3 px-4 bg-white border border-slate-200 text-slate-600 font-bold rounded-xl hover:bg-slate-50 transition-colors">
-          Çıkış Yap
+          {{ t('auth.subscriptionLocked.logout') }}
         </button>
       </div>
       
       <div class="mt-8 pt-6 border-t border-slate-100 text-xs text-slate-400">
-        Hata Kodu: 403_ACCESS_SUSPENDED
+        {{ t('auth.subscriptionLocked.errorCode') }}
       </div>
 
     </div>
@@ -35,8 +35,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../../store/modules/auth';
 
+const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();

@@ -5,13 +5,13 @@
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <div class="flex items-center gap-3">
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">AR Sahnelerim</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">{{ t('scenes.title') }}</h1>
             <span v-if="routeCompanyId"
               class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">
-              Şirket #{{ routeCompanyId }}
+              {{ t('scenes.companyTag') }} #{{ routeCompanyId }}
             </span>
           </div>
-          <p class="mt-1 text-sm text-gray-500">Müşterilerinize sunacağınız 3D ortamları buradan tasarlayın.</p>
+          <p class="mt-1 text-sm text-gray-500">{{ t('scenes.subtitle') }}</p>
         </div>
 
         <div class="flex gap-3 w-full sm:w-auto">
@@ -21,7 +21,7 @@
               stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Şirkete Dön
+            {{ t('scenes.backToCompany') }}
           </button>
 
           <button @click="openCreateModal"
@@ -31,7 +31,7 @@
               viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            Yeni Sahne Oluştur
+            {{ t('scenes.createNew') }}
           </button>
         </div>
       </div>
@@ -43,11 +43,11 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
           </svg>
-          <span class="text-sm font-bold">Şirket Filtrele:</span>
+          <span class="text-sm font-bold">{{ t('scenes.filterByCompany') }}</span>
         </div>
         <select v-model="selectedFilterCompanyId" @change="fetchScenes"
           class="flex-1 w-full sm:w-auto p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block">
-          <option :value="null">Tüm Şirketler</option>
+          <option :value="null">{{ t('scenes.allCompanies') }}</option>
           <option v-for="c in companiesList" :key="c.id" :value="c.id">{{ c.name }}</option>
         </select>
       </div>
@@ -59,12 +59,12 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
           </svg>
-          <span class="text-sm font-bold">Kategori Filtrele:</span>
+          <span class="text-sm font-bold">{{ t('scenes.filterByCategory') }}</span>
         </div>
 
         <select v-model="selectedCategoryId" @change="fetchScenes"
           class="flex-1 w-full sm:w-auto p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block">
-          <option :value="null">Tüm Kategoriler</option>
+          <option :value="null">{{ t('scenes.allCategories') }}</option>
           <option v-for="category in sceneCategories" :key="category.id" :value="category.id">
             {{ category.name }}
           </option>
@@ -72,7 +72,7 @@
 
         <button v-if="selectedCategoryId" @click="clearCategoryFilter"
           class="text-xs text-red-600 font-bold hover:underline">
-          Kategori Filtresini Temizle
+          {{ t('scenes.clearCategoryFilter') }}
         </button>
       </div>
 
@@ -93,14 +93,14 @@
               d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
         </div>
-        <h3 class="mt-2 text-lg font-bold text-gray-900">Henüz hiç sahne yok</h3>
+        <h3 class="mt-2 text-lg font-bold text-gray-900">{{ t('scenes.noScenes') }}</h3>
         <p class="mt-1 text-sm text-gray-500 max-w-sm mx-auto">
-          {{ selectedFilterCompanyId ? 'Bu şirkete ait sahne bulunamadı.' : 'İlk AR sahnenizi oluşturarak başlayın.' }}
+          {{ selectedFilterCompanyId ? t('scenes.noScenesForCompany') : t('scenes.noScenesDesc') }}
         </p>
         <div class="mt-6">
           <button @click="openCreateModal"
             class="inline-flex items-center px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-lg text-blue-700 bg-blue-100 hover:bg-blue-200">
-            Sahne Oluştur
+            {{ t('scenes.createScene') }}
           </button>
         </div>
       </div>
@@ -113,7 +113,7 @@
             class="absolute top-3 right-3 flex gap-2 z-20 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity duration-200">
             <button @click.stop="openEditModal(scene)"
               class="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm text-gray-500 hover:text-blue-600 hover:bg-white transition-colors border border-gray-200"
-              title="Düzenle">
+              :title="t('common.edit')">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -122,7 +122,7 @@
             </button>
             <button @click.stop="deleteScene(scene.id)"
               class="p-2 bg-white/90 backdrop-blur-sm rounded-lg shadow-sm text-gray-500 hover:text-red-600 hover:bg-white transition-colors border border-gray-200"
-              title="Sil">
+              :title="t('common.delete')">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
                 stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -146,21 +146,21 @@
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11V7a4 4 0 10-8 0v4m12 0V7a4 4 0 10-8 0v4m-2 0h12v8a2 2 0 01-2 2H6a2 2 0 01-2-2v-8z" />
                   </svg>
-                  Gizli
+                  {{ t('common.private') }}
                 </span>
                 <span v-else
                   class="px-2 py-1 text-[10px] font-bold rounded-lg bg-green-100/90 text-green-700 border border-green-200 flex items-center gap-1">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a10 10 0 100 20 10 10 0 000-20zm4.5 6.5L10 15l-2.5-2.5" />
                   </svg>
-                  Açık
+                  {{ t('common.public') }}
                 </span>
                 <span v-if="scene.shareToken"
                   class="px-2 py-1 text-[10px] font-bold rounded-lg bg-indigo-100/90 text-indigo-700 border border-indigo-200 flex items-center gap-1">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 015.657 0l.343.343a4 4 0 010 5.657l-3.536 3.536a4 4 0 01-5.657 0l-.343-.343M10.172 13.828a4 4 0 010-5.657l3.536-3.536a4 4 0 015.657 0l.343.343" />
                   </svg>
-                  Paylaşıldı
+                  {{ t('common.shared') }}
                 </span>
               </div>
 
@@ -210,6 +210,9 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 import { arSceneService } from '../../../services/arSceneService';
 import { companyService } from '../../../services/companyService';
 import { categoryService } from '../../../services/categoryService';

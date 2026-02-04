@@ -38,21 +38,21 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11V7a4 4 0 10-8 0v4m12 0V7a4 4 0 10-8 0v4m-2 0h12v8a2 2 0 01-2 2H6a2 2 0 01-2-2v-8z" />
             </svg>
-            Gizli
+            {{ t('common.private') }}
           </span>
           <span v-else
             class="px-2 py-1 text-[10px] font-bold rounded-lg bg-green-100/90 text-green-700 border border-green-200 flex items-center gap-1">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2a10 10 0 100 20 10 10 0 000-20zm4.5 6.5L10 15l-2.5-2.5" />
             </svg>
-            Açık
+            {{ t('common.public') }}
           </span>
           <span v-if="model.shareToken"
             class="px-2 py-1 text-[10px] font-bold rounded-lg bg-indigo-100/90 text-indigo-700 border border-indigo-200 flex items-center gap-1">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 015.657 0l.343.343a4 4 0 010 5.657l-3.536 3.536a4 4 0 01-5.657 0l-.343-.343M10.172 13.828a4 4 0 010-5.657l3.536-3.536a4 4 0 015.657 0l.343.343" />
             </svg>
-            Paylaşıldı
+            {{ t('common.shared') }}
           </span>
         </div>
       </div>
@@ -84,8 +84,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { ARModelDto } from '../dto/arModel.dto';
 import { arModelService } from '../../../services/arModelService';
+
+const { t } = useI18n();
 
 // Props Tanımı (Strict Type)
 const props = defineProps<{

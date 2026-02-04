@@ -10,14 +10,14 @@
             viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
           </svg>
-          Şirket Listesine Dön
+          {{ t('companies.backToList') }}
         </router-link>
       </nav>
 
       <div class="mb-8">
-        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">Yeni Şirket Oluştur</h1>
+        <h1 class="text-2xl font-bold text-slate-900 tracking-tight">{{ t('companies.createNew') }}</h1>
         <p class="mt-2 text-sm text-slate-500">
-          Sisteme yeni bir organizasyon ekleyin. Bu işlem sonrası şirkete özel API anahtarı otomatik oluşturulacaktır.
+          {{ t('companies.createNewDesc') }}
         </p>
       </div>
 
@@ -28,7 +28,7 @@
         <form class="p-6 sm:p-8 space-y-8" @submit.prevent="handleSubmit">
 
           <div>
-            <label for="name" class="block text-sm font-bold text-slate-700 mb-1.5">Şirket Adı</label>
+            <label for="name" class="block text-sm font-bold text-slate-700 mb-1.5">{{ t('companies.form.name') }}</label>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg class="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
@@ -39,12 +39,12 @@
               </div>
               <input v-model="name" type="text" id="name"
                 class="block w-full pl-10 bg-slate-50 border border-slate-300 rounded-xl py-3 text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:text-sm font-medium"
-                placeholder="Örn. Anatolio Teknoloji A.Ş." required />
+                :placeholder="t('companies.form.companyNamePlaceholder')" required />
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-bold text-slate-700 mb-1.5">Alan Adı (Domain)</label>
+            <label class="block text-sm font-bold text-slate-700 mb-1.5">{{ t('companies.form.domain') }}</label>
             <div class="flex rounded-xl shadow-sm">
               <span
                 class="inline-flex items-center px-4 rounded-l-xl border border-r-0 border-slate-300 bg-slate-100 text-slate-500 text-sm font-mono select-none">
@@ -52,26 +52,25 @@
               </span>
               <input v-model="domain" type="text" @blur="sanitizeDomain"
                 class="flex-1 min-w-0 block w-full px-4 py-3 rounded-none rounded-r-xl border border-slate-300 bg-slate-50 text-slate-800 font-medium focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all placeholder-slate-400"
-                placeholder="sirketiniz.com" />
+                :placeholder="t('companies.form.domainPlaceholder')" />
             </div>
             <p class="mt-2 text-xs text-slate-500">
-              Opsiyoneldir. CORS politikaları ve Whitelist işlemleri için kullanılır. 'http://' veya 'https://'
-              yazmanıza gerek yoktur.
+              {{ t('companies.form.domainHint') }}
             </p>
           </div>
 
           <div>
-            <label for="maxScenes" class="block text-sm font-bold text-slate-700 mb-1.5">Maksimum Sahne Sayısı</label>
+            <label for="maxScenes" class="block text-sm font-bold text-slate-700 mb-1.5">{{ t('companies.form.maxScenes') }}</label>
             <input v-model.number="maxScenes" type="number" id="maxScenes" min="1"
               class="block w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all sm:text-sm font-medium"
-              placeholder="Örn. 10" />
+              :placeholder="t('companies.form.maxScenesPlaceholder')" />
             <p class="mt-2 text-xs text-slate-500">
-              Şirketin oluşturabileceği maksimum sahne sayısı.
+              {{ t('companies.form.maxScenesHint') }}
             </p>
           </div>
 
           <div>
-            <label for="logo" class="block text-sm font-bold text-slate-700 mb-1.5">Şirket Logosu (Opsiyonel)</label>
+            <label for="logo" class="block text-sm font-bold text-slate-700 mb-1.5">{{ t('companies.form.logo') }}</label>
             <div class="mt-1 flex items-center gap-4">
               <div v-if="logoPreview" class="relative w-20 h-20 rounded-xl overflow-hidden border-2 border-slate-200">
                 <img :src="logoPreview" alt="Logo önizleme" class="w-full h-full object-contain" />
@@ -86,14 +85,14 @@
                 class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" />
             </div>
             <p class="mt-2 text-xs text-slate-500">
-              PNG, JPG, GIF, WebP veya SVG formatında yükleyebilirsiniz (Maks. 5MB).
+              {{ t('companies.form.logoHint') }}
             </p>
           </div>
 
           <div class="pt-4 flex items-center justify-end gap-4 border-t border-slate-100">
             <button type="button" @click="$router.back()"
               class="px-6 py-2.5 border border-slate-300 rounded-xl text-sm font-bold text-slate-600 bg-white hover:bg-slate-50 hover:text-slate-800 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-200">
-              Vazgeç
+              {{ t('common.cancel') }}
             </button>
 
             <button type="submit" :disabled="isLoading"
@@ -105,7 +104,7 @@
                   d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                 </path>
               </svg>
-              {{ isLoading ? 'Oluşturuluyor...' : 'Şirketi Oluştur' }}
+              {{ isLoading ? t('companies.creating') : t('companies.createCompany') }}
             </button>
           </div>
 
@@ -120,8 +119,10 @@
 import { ref } from 'vue';
 import { useToast } from 'vue-toastification';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useCompanyStore } from '../../../store/modules/company';
 
+const { t } = useI18n();
 const toast = useToast();
 const router = useRouter();
 const companyStore = useCompanyStore();

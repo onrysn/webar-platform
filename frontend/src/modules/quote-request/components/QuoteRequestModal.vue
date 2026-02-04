@@ -9,7 +9,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
               </svg>
-              <h2 class="text-2xl font-bold">Teklif İsteyin</h2>
+              <h2 class="text-2xl font-bold">{{ t('quoteRequest.requestQuote') }}</h2>
             </div>
             <button @click="$emit('close')" class="hover:bg-white/20 rounded-lg p-2 transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -17,7 +17,7 @@
               </svg>
             </button>
           </div>
-          <p class="text-green-100 text-sm mt-2">Bu sahne için fiyat teklifi almak üzere bilgilerinizi girin</p>
+          <p class="text-green-100 text-sm mt-2">{{ t('quoteRequest.enterInfoForQuote') }}</p>
         </div>
 
         <!-- Body -->
@@ -26,54 +26,54 @@
             <!-- Name -->
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-2">
-                Adınız Soyadınız <span class="text-red-500">*</span>
+                {{ t('quoteRequest.yourName') }} <span class="text-red-500">*</span>
               </label>
               <input
                 v-model="form.customerName"
                 type="text"
                 required
                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                placeholder="Ahmet Yılmaz"
+                :placeholder="t('quoteRequest.namePlaceholder')"
               />
             </div>
 
             <!-- Email -->
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-2">
-                E-posta Adresiniz <span class="text-red-500">*</span>
+                {{ t('quoteRequest.yourEmail') }} <span class="text-red-500">*</span>
               </label>
               <input
                 v-model="form.customerEmail"
                 type="email"
                 required
                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                placeholder="ornek@email.com"
+                :placeholder="t('quoteRequest.emailPlaceholder')"
               />
             </div>
 
             <!-- Phone -->
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-2">
-                Telefon Numaranız
+                {{ t('quoteRequest.yourPhone') }}
               </label>
               <input
                 v-model="form.customerPhone"
                 type="tel"
                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
-                placeholder="+90 5XX XXX XX XX"
+                :placeholder="t('quoteRequest.phonePlaceholder')"
               />
             </div>
 
             <!-- Notes -->
             <div>
               <label class="block text-sm font-semibold text-gray-700 mb-2">
-                Notlar / Özel İstekler
+                {{ t('quoteRequest.notes') }}
               </label>
               <textarea
                 v-model="form.notes"
                 rows="4"
                 class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all resize-none"
-                placeholder="Lütfen bu sahne ile ilgili özel isteklerinizi veya sorularınızı buraya yazın..."
+                :placeholder="t('quoteRequest.notesPlaceholder')"
               ></textarea>
             </div>
 
@@ -106,7 +106,7 @@
             type="button"
             class="px-6 py-2.5 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition-colors"
           >
-            İptal
+            {{ t('common.cancel') }}
           </button>
           <button
             @click="handleSubmit"
@@ -117,7 +117,7 @@
               <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" fill="none"></circle>
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
-            <span>{{ loading ? 'Gönderiliyor...' : 'Teklif İste' }}</span>
+            <span>{{ loading ? t('common.sending') : t('quoteRequest.requestQuoteButton') }}</span>
           </button>
         </div>
       </div>
@@ -127,7 +127,10 @@
 
 <script setup lang="ts">
 import { ref, reactive } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { quoteRequestService } from '../../../services/quoteRequestService';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   sceneId: number;
@@ -160,13 +163,13 @@ async function handleSubmit() {
       ...form,
     });
 
-    successMessage.value = 'Teklif talebiniz başarıyla gönderildi! En kısa sürede size dönüş yapılacaktır.';
+    successMessage.value = t('quoteRequest.successMessage');
     
     setTimeout(() => {
       emit('success');
     }, 2000);
   } catch (error: any) {
-    errorMessage.value = error.response?.data?.message || 'Bir hata oluştu. Lütfen tekrar deneyin.';
+    errorMessage.value = error.response?.data?.message || t('common.errorOccurred');
   } finally {
     loading.value = false;
   }

@@ -45,7 +45,7 @@
 
       <div v-if="props.company.subscriptionEndsAt" class="flex items-center gap-1 mb-1.5 text-[10px]">
          <span :class="isExpired ? 'text-red-500 font-bold' : 'text-slate-400'">
-            {{ isExpired ? '⚠️ Süresi Doldu:' : '📅 Bitiş:' }} {{ formatDate(props.company.subscriptionEndsAt) }}
+            {{ isExpired ? `⚠️ ${t('companies.card.expired')}:` : `📅 ${t('companies.card.expiresAt')}:` }} {{ formatDate(props.company.subscriptionEndsAt) }}
          </span>
       </div>
 
@@ -60,7 +60,7 @@
         </div>
 
         <div v-if="props.company._count" class="flex items-center gap-2 pl-3 border-l border-slate-200">
-          <span class="flex items-center text-slate-600" title="Kullanıcı Sayısı">
+          <span class="flex items-center text-slate-600" :title="t('companies.card.userCount')">
             <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z">
@@ -68,7 +68,7 @@
             </svg>
             {{ props.company._count.users || 0 }}
           </span>
-          <span class="flex items-center text-slate-600" title="Sahne Sayısı">
+          <span class="flex items-center text-slate-600" :title="t('companies.card.sceneCount')">
             <svg class="w-3.5 h-3.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                 d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
@@ -93,8 +93,11 @@
 
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import type { CompanyDto } from '../dto/company.dto';
 // Yolunuz değiştiyse burayı güncelleyin:
+
+const { t } = useI18n();
 
 const props = defineProps<{
   company: CompanyDto;
@@ -119,10 +122,10 @@ const isDisabled = computed(() => {
 // Köşedeki Etiket
 const statusBadge = computed(() => {
   if (props.company.isActive === false) {
-    return { text: 'PASİF', classes: 'bg-slate-100 text-slate-500 border-slate-200' };
+    return { text: t('companies.card.inactive'), classes: 'bg-slate-100 text-slate-500 border-slate-200' };
   }
   if (isExpired.value) {
-    return { text: 'SÜRESİ DOLDU', classes: 'bg-red-50 text-red-600 border-red-100' };
+    return { text: t('companies.card.expiredBadge'), classes: 'bg-red-50 text-red-600 border-red-100' };
   }
   return null;
 });

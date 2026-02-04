@@ -4,7 +4,7 @@
     <div v-if="isLoading"
       class="absolute inset-0 z-50 flex flex-col items-center justify-center bg-gray-900 text-white">
       <div class="animate-spin rounded-full h-12 w-12 border-4 border-indigo-500 border-t-transparent mb-4"></div>
-      <p class="text-sm font-medium tracking-wide animate-pulse">AR Deneyimi Hazırlanıyor...</p>
+      <p class="text-sm font-medium tracking-wide animate-pulse">{{ t('common.arExperiencePreparing') }}</p>
     </div>
 
     <div v-else-if="error"
@@ -15,7 +15,7 @@
             d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
         </svg>
       </div>
-      <h1 class="text-2xl font-bold text-gray-900 mb-2">Erişim Sağlanamadı</h1>
+      <h1 class="text-2xl font-bold text-gray-900 mb-2">{{ t('arPublic.accessDenied') }}</h1>
       <p class="text-gray-600 max-w-md">{{ error }}</p>
     </div>
 
@@ -55,7 +55,7 @@
                 d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
             </svg>
           </div>
-          <span class="font-bold tracking-wide text-sm sm:text-base">AR'da Görüntüle</span>
+          <span class="font-bold tracking-wide text-sm sm:text-base">{{ t('models.viewInAR') }}</span>
         </button>
       </div>
 
@@ -66,11 +66,13 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 // Servis ve Component yollarını kendi projene göre ayarla
 import { arModelService } from '../../../services/arModelService';
 import ArPreview from '../components/ArPreview.vue'; // Three.js olan eski component
 
 const route = useRoute();
+const { t } = useI18n();
 const token = route.params.token as string;
 
 // State

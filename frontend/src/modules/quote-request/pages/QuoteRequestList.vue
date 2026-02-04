@@ -4,8 +4,8 @@
       
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 class="text-3xl font-bold tracking-tight text-gray-900">Teklif Talepleri</h1>
-          <p class="text-gray-500 mt-1 text-sm">Müşteri taleplerini yönetin, durumlarını güncelleyin ve analiz edin.</p>
+          <h1 class="text-3xl font-bold tracking-tight text-gray-900">{{ t('quoteRequests.title') }}</h1>
+          <p class="text-gray-500 mt-1 text-sm">{{ t('quoteRequests.subtitle') }}</p>
         </div>
         <button
           @click="exportToExcel"
@@ -14,7 +14,7 @@
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
-          Excel'e Aktar
+          {{ t('common.export') }}
         </button>
       </div>
 
@@ -31,7 +31,7 @@
               @change="loadQuoteRequests"
               class="pl-10 pr-8 py-2.5 bg-gray-50 border-0 rounded-xl text-sm font-medium text-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all w-full md:w-48 cursor-pointer hover:bg-gray-100"
             >
-              <option :value="undefined">Tüm Şirketler</option>
+              <option :value="undefined">{{ t('common.all') }}</option>
               <option v-for="company in companies" :key="company.id" :value="company.id">
                 {{ company.name }}
               </option>
@@ -49,7 +49,7 @@
               @change="loadQuoteRequests"
               class="pl-10 pr-8 py-2.5 bg-gray-50 border-0 rounded-xl text-sm font-medium text-gray-700 focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all w-full md:w-48 cursor-pointer hover:bg-gray-100"
             >
-              <option :value="undefined">Tüm Durumlar</option>
+              <option :value="undefined">{{ t('common.all') }}</option>
               <option v-for="status in statusOptions" :key="status.value" :value="status.value">
                 {{ status.label }}
               </option>
@@ -58,7 +58,7 @@
         </div>
 
         <div class="flex items-center gap-2 text-sm text-gray-500">
-          <span>Sayfa başı:</span>
+          <span>{{ t('quoteRequests.perPage') }}:</span>
           <select
             v-model.number="filter.limit"
             @change="loadQuoteRequests"
@@ -74,7 +74,7 @@
 
       <div v-if="loading" class="flex flex-col items-center justify-center py-20">
         <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
-        <p class="text-gray-500 mt-4 text-sm font-medium">Veriler yükleniyor...</p>
+        <p class="text-gray-500 mt-4 text-sm font-medium">{{ t('common.loading') }}</p>
       </div>
 
       <div v-else-if="!quoteRequests.length" class="bg-white rounded-3xl border border-dashed border-gray-300 p-16 text-center">
@@ -83,8 +83,8 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
           </svg>
         </div>
-        <h3 class="text-xl font-bold text-gray-900 mb-2">Henüz Talep Yok</h3>
-        <p class="text-gray-500 max-w-sm mx-auto">Müşterileriniz sahne görüntüleyiciden teklif oluşturduğunda talepler burada listelenecektir.</p>
+        <h3 class="text-xl font-bold text-gray-900 mb-2">{{ t('quoteRequests.noRequests') }}</h3>
+        <p class="text-gray-500 max-w-sm mx-auto">{{ t('quoteRequests.subtitle') }}</p>
       </div>
 
       <div v-else class="grid gap-6">
@@ -139,13 +139,13 @@
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 mr-2 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
-                <span class="mr-1">Sahne:</span>
+                <span class="mr-1">{{ t('quoteRequests.scene') }}:</span>
                 <strong class="font-semibold text-gray-900 mr-2">{{ quote.sceneName }}</strong>
                 <router-link
                   :to="`/editor/scene/${quote.sceneId}`"
                   class="text-blue-600 hover:text-blue-800 hover:underline"
                 >
-                  (Görüntüle)
+                  ({{ t('quoteRequests.view') }})
                 </router-link>
               </div>
 
@@ -160,7 +160,7 @@
 
           <div v-if="quote.items.length" class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-4">
             <div class="flex-1 w-full overflow-hidden">
-              <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Talep Edilen Ürünler ({{ getTotalQuantity(quote.items) }})</div>
+              <div class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">{{ t('quoteRequests.requestedProducts') }} ({{ getTotalQuantity(quote.items) }})</div>
               <div class="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
                 <router-link
                   v-for="item in groupItems(quote.items)"
@@ -195,7 +195,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                Durum
+                {{ t('common.status') }}
               </button>
               <button
                 @click="deleteQuote(quote.id)"
@@ -204,7 +204,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-                Sil
+                {{ t('common.delete') }}
               </button>
             </div>
           </div>
@@ -242,12 +242,15 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { quoteRequestService, type QuoteRequest, type QuoteStatusType, QuoteStatus } from '../../../services/quoteRequestService';
 import { companyService } from '../../../services/companyService';
 import { arModelService } from '../../../services/arModelService';
 import type { CompanyDto } from '../../companies/dto/company.dto';
 import { useAuthStore } from '../../../store/modules/auth';
 import QuoteStatusModal from '../components/QuoteStatusModal.vue';
+
+const { t } = useI18n();
 
 const authStore = useAuthStore();
 const quoteRequests = ref<QuoteRequest[]>([]);

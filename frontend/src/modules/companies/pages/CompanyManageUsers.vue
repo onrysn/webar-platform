@@ -24,9 +24,8 @@
             <div
               class="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
               👥</div>
-            <h3 class="text-lg font-bold text-slate-900">Henüz kullanıcı yok</h3>
-            <p class="text-sm text-slate-500 mt-1">Sağ taraftaki formu kullanarak şirkete yeni bir ekip üyesi
-              tanımlayın.</p>
+            <h3 class="text-lg font-bold text-slate-900">{{ t('companies.manageUsers.noUsers') }}</h3>
+            <p class="text-sm text-slate-500 mt-1">{{ t('companies.manageUsers.noUsersDesc') }}</p>
           </div>
 
 
@@ -34,37 +33,37 @@
             <template v-if="editingUser">
               <div class="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
                 <div class="bg-white w-full max-w-lg rounded-2xl shadow-xl p-6 border border-slate-200">
-                  <h3 class="text-lg font-bold text-slate-900 mb-4">Kullanıcıyı Düzenle</h3>
+                  <h3 class="text-lg font-bold text-slate-900 mb-4">{{ t('companies.manageUsers.editUser') }}</h3>
                   <div class="space-y-4">
                     <div>
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Ad Soyad</label>
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">{{ t('companies.manageUsers.userName') }}</label>
                       <input v-model="editingUser.name" type="text" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none" />
                     </div>
                     <div>
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">E-posta</label>
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">{{ t('companies.manageUsers.userEmail') }}</label>
                       <input v-model="editingUser.email" type="email" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none" />
                     </div>
                     <div>
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Rol</label>
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">{{ t('companies.manageUsers.userRole') }}</label>
                       <select v-model="editingUser.role" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none">
-                        <option value="MEMBER">Üye</option>
-                        <option value="EDITOR">Editör</option>
-                        <option value="COMPANY_ADMIN" v-if="isSuperAdmin">Yönetici</option>
+                        <option value="MEMBER">{{ t('companies.manageUsers.roles.member') }}</option>
+                        <option value="EDITOR">{{ t('companies.manageUsers.roles.editor') }}</option>
+                        <option value="COMPANY_ADMIN" v-if="isSuperAdmin">{{ t('companies.manageUsers.roles.admin') }}</option>
                       </select>
                     </div>
                     <div>
-                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Yeni Şifre (opsiyonel)</label>
-                      <input v-model="editingUser.password" type="text" minlength="6" placeholder="En az 6 karakter" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none" />
+                      <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">{{ t('companies.manageUsers.newPassword') }}</label>
+                      <input v-model="editingUser.password" type="text" minlength="6" :placeholder="t('companies.manageUsers.passwordMinLength')" class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none" />
                     </div>
                   </div>
                   <div class="flex items-center justify-end gap-3 mt-6">
-                    <button @click="cancelEdit" class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">İptal</button>
+                    <button @click="cancelEdit" class="px-4 py-2 rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50">{{ t('common.cancel') }}</button>
                     <button @click="saveEdit" :disabled="isUpdating" class="px-4 py-2 rounded-lg bg-indigo-600 text-white font-bold hover:bg-indigo-700 disabled:opacity-50">
                       <svg v-if="isUpdating" class="animate-spin h-4 w-4 inline mr-2" viewBox="0 0 24 24">
                         <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                         <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                       </svg>
-                      Kaydet
+                      {{ t('common.save') }}
                     </button>
                   </div>
                 </div>
@@ -72,9 +71,9 @@
             </template>
           <div v-else class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center">
-              <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wider">Ekip Listesi</h3>
+              <h3 class="font-bold text-slate-800 text-sm uppercase tracking-wider">{{ t('companies.manageUsers.teamList') }}</h3>
               <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2 py-1 rounded-md">
-                {{ company.users ? company.users.length : 0 }} Kişi
+                {{ company.users ? company.users.length : 0 }} {{ t('companies.manageUsers.people') }}
               </span>
             </div>
 
@@ -101,7 +100,7 @@
                 <div class="flex items-center gap-2 opacity-0 group-hover:opacity-100 focus:opacity-100">
                   <button @click="openEdit(user)"
                     class="text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 p-2 rounded-lg transition-all"
-                    title="Kullanıcıyı Düzenle">
+                    :title="t('companies.manageUsers.editUser')">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                       <path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" />
                       <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h6a1 1 0 110 2H4v10h10v-6a1 1 0 112 0v6a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" />
@@ -109,7 +108,7 @@
                   </button>
                   <button @click="removeUser(user.id)"
                     class="text-slate-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-all"
-                    title="Kullanıcıyı Çıkar">
+                    :title="t('companies.manageUsers.removeUser')">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                       <path fill-rule="evenodd"
                         d="M9 2a1 1 0 00-.894.553L7.382 4H4a1 1 0 000 2v10a2 2 0 002 2h8a2 2 0 002-2V6a1 1 0 100-2h-3.382l-.724-1.447A1 1 0 0011 2H9zM7 8a1 1 0 012 0v6a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v6a1 1 0 102 0V8a1 1 0 00-1-1z"
@@ -131,36 +130,36 @@
                     d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
                 </svg>
               </span>
-              Yeni Üye Oluştur
+              {{ t('companies.manageUsers.createNewMember') }}
             </h3>
 
             <form @submit.prevent="addUser" class="space-y-4">
 
               <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Ad Soyad</label>
-                <input v-model="form.name" type="text" placeholder="Örn: Ahmet Yılmaz" required
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">{{ t('companies.manageUsers.userName') }}</label>
+                <input v-model="form.name" type="text" :placeholder="t('companies.manageUsers.namePlaceholder')" required
                   class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all">
               </div>
 
               <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">E-posta</label>
-                <input v-model="form.email" type="email" placeholder="ahmet@sirket.com" required
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">{{ t('companies.manageUsers.userEmail') }}</label>
+                <input v-model="form.email" type="email" :placeholder="t('companies.manageUsers.emailPlaceholder')" required
                   class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all">
               </div>
 
               <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Geçici Şifre</label>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">{{ t('companies.manageUsers.tempPassword') }}</label>
                 <input v-model="form.password" type="text" placeholder="******" required minlength="6"
                   class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none transition-all">
               </div>
 
               <div>
-                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">Rol</label>
+                <label class="block text-xs font-bold text-slate-500 uppercase mb-1.5 ml-1">{{ t('companies.manageUsers.userRole') }}</label>
                 <div class="relative">
                   <select v-model="form.role"
                     class="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-slate-700 text-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none appearance-none transition-all cursor-pointer">
-                    <option value="MEMBER">Member (Üye)</option>
-                    <option value="EDITOR">Editor (Düzenleyici)</option>
+                    <option value="MEMBER">{{ t('companies.manageUsers.roles.member') }}</option>
+                    <option value="EDITOR">{{ t('companies.manageUsers.roles.editor') }}</option>
                   </select>
                   <div class="absolute right-3 top-3 pointer-events-none text-slate-500">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -181,7 +180,7 @@
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                   </path>
                 </svg>
-                {{ isAdding ? 'Oluşturuluyor...' : 'Kullanıcıyı Oluştur' }}
+                {{ isAdding ? t('companies.manageUsers.creating') : t('companies.manageUsers.createUser') }}
               </button>
             </form>
           </div>
@@ -196,6 +195,7 @@
 import { ref, onMounted, reactive, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from 'vue-toastification';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../../store/modules/auth'; // Auth Store
 import { companyService } from '../../../services/companyService';
 import { userService } from '../../../services/userService';
@@ -204,6 +204,7 @@ import type { CompanyDto } from '../dto/company.dto';
 
 const route = useRoute();
 const toast = useToast();
+const { t } = useI18n();
 const authStore = useAuthStore();
 const companyStore = useCompanyStore();
 
@@ -377,10 +378,10 @@ const getRoleBadgeClass = (role: string) => {
 
 const getRoleLabel = (role: string) => {
   switch (role) {
-    case 'COMPANY_ADMIN': return 'Yönetici';
-    case 'EDITOR': return 'Editör';
-    case 'MEMBER': return 'Üye';
-    case 'SUPER_ADMIN': return 'Sistem Yöneticisi';
+    case 'COMPANY_ADMIN': return t('companies.manageUsers.roles.admin');
+    case 'EDITOR': return t('companies.manageUsers.roles.editor');
+    case 'MEMBER': return t('companies.manageUsers.roles.member');
+    case 'SUPER_ADMIN': return t('companies.manageUsers.roles.superAdmin');
     default: return role;
   }
 }

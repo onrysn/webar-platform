@@ -19,9 +19,9 @@
                     <div>
                         <h3 id="scene-modal-title"
                             class="font-extrabold text-xl text-slate-800 tracking-tight leading-none">
-                            {{ mode === 'create' ? 'Yeni Sahne Tasarla' : 'Sahneyi Düzenle' }}
+                            {{ mode === 'create' ? t('scenes.creator.title') : t('scenes.creator.editTitle') }}
                         </h3>
-                        <p class="text-xs text-slate-500 mt-1.5 font-medium">AR deneyiminiz için sınırları belirleyin
+                        <p class="text-xs text-slate-500 mt-1.5 font-medium">{{ t('scenes.creator.subtitle') }}
                         </p>
                     </div>
                 </div>
@@ -41,18 +41,18 @@
 
                     <div v-if="showSidebar" class="md:hidden w-full flex justify-center mb-2 -mt-2">
                         <div @mousedown.prevent.stop="startSheetDrag" @touchstart.prevent.stop="startSheetDrag"
-                            role="button" aria-label="Sürükle"
+                            role="button" :aria-label="t('common.drag')"
                             style="touch-action: none; -webkit-user-select: none; user-select: none;"
                             :class="['w-16 h-2 rounded-full bg-slate-200 pt-4 pb-2', isDraggingSheet ? 'cursor-grabbing' : 'cursor-grab']">
                         </div>
                     </div>
                     <div class="flex items-center justify-between md:hidden mb-4">
-                        <h4 class="text-sm font-black">Ayarlar</h4>
+                        <h4 class="text-sm font-black">{{ t('common.settings') }}</h4>
                         <div class="flex items-center gap-2">
-                            <button @click="toggleSidebar" aria-label="Kapat ayarlar"
+                            <button @click="toggleSidebar" :aria-label="t('common.close')"
                                 class="p-2 text-slate-600 text-xl">&times;</button>
-                            <button @click="toggleSidebar" aria-label="Tamam"
-                                class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold">Tamam</button>
+                            <button @click="toggleSidebar" :aria-label="t('common.confirm')"
+                                class="px-3 py-2 rounded-lg bg-indigo-600 text-white text-sm font-bold">{{ t('common.confirm') }}</button>
                         </div>
                     </div>
 
@@ -60,10 +60,10 @@
 
                     <section class="space-y-4">
                         <div class="flex items-center justify-between">
-                            <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Genel Bilgiler
+                            <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{{ t('scenes.creator.generalInfo') }}
                             </h4>
                             <div class="bg-indigo-100/50 border border-indigo-100 px-3 py-1 rounded-lg">
-                                <span class="text-[10px] font-bold text-indigo-400 uppercase mr-1">Alan:</span>
+                                <span class="text-[10px] font-bold text-indigo-400 uppercase mr-1">{{ t('scenes.creator.area') }}:</span>
                                 <span class="text-xs font-black text-indigo-700">{{ calculatedArea }} m²</span>
                             </div>
                         </div>
@@ -71,18 +71,17 @@
                             <div
                                 class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm focus-within:border-indigo-500 transition-all group">
                                 <label
-                                    class="block text-[10px] font-bold text-slate-400 uppercase mb-1 group-focus-within:text-indigo-500 transition-colors">Sahne
-                                    Adı</label>
-                                <input v-model="form.name" type="text" placeholder="Örn: Oturma Odası"
+                                    class="block text-[10px] font-bold text-slate-400 uppercase mb-1 group-focus-within:text-indigo-500 transition-colors">{{ t('scenes.creator.sceneName') }}</label>
+                                <input v-model="form.name" type="text" :placeholder="t('scenes.creator.sceneNamePlaceholder')"
                                     class="w-full bg-transparent text-sm font-bold text-slate-700 outline-none placeholder:font-normal">
                             </div>
                             <div
                                 class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm focus-within:border-indigo-500 transition-all group">
                                 <label
-                                    class="block text-[10px] font-bold text-slate-400 uppercase mb-1 group-focus-within:text-indigo-500 transition-colors">Kategori</label>
+                                    class="block text-[10px] font-bold text-slate-400 uppercase mb-1 group-focus-within:text-indigo-500 transition-colors">{{ t('common.category') }}</label>
                                 <select v-model="form.categoryId"
                                     class="w-full bg-transparent text-sm font-bold text-slate-700 outline-none">
-                                    <option :value="null">Kategori Seçiniz</option>
+                                    <option :value="null">{{ t('scenes.creator.selectCategory') }}</option>
                                     <option v-for="cat in sceneCategories" :key="cat.id" :value="cat.id">
                                         {{ cat.name }}
                                     </option>
@@ -90,8 +89,7 @@
                             </div>
                             <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
                                 <div class="flex justify-between mb-3">
-                                    <label class="text-[10px] font-bold text-slate-400 uppercase">Duvar
-                                        Yüksekliği</label>
+                                    <label class="text-[10px] font-bold text-slate-400 uppercase">{{ t('scenes.creator.wallHeight') }}</label>
                                     <span
                                         class="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100">{{
                                             form.wallHeight }}m</span>
@@ -103,7 +101,7 @@
                     </section>
 
                     <section class="space-y-4">
-                        <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Oda Geometrisi</h4>
+                        <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{{ t('scenes.creator.roomGeometry') }}</h4>
                         <div class="grid grid-cols-2 gap-3">
                             <button v-for="shape in shapes" :key="shape.id" @click="setShape(shape.id)"
                                 class="relative border-2 rounded-2xl p-3 text-center transition-all flex flex-col items-center gap-2 group"
@@ -120,20 +118,18 @@
                             class="animate-in fade-in slide-in-from-bottom-2 duration-300">
                             <div v-if="form.shapeType === 'circle'"
                                 class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
-                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Çap (m)</label>
+                                <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">{{ t('scenes.creator.diameter') }}</label>
                                 <input v-model.number="form.width" type="number" min="1" step="0.1"
                                     class="w-full text-center text-lg font-black text-slate-700 outline-none">
                             </div>
                             <div v-else class="grid grid-cols-2 gap-3">
                                 <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
-                                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Genişlik
-                                        (m)</label>
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">{{ t('scenes.creator.width') }}</label>
                                     <input v-model.number="form.width" type="number" min="1" step="0.1"
                                         class="w-full text-center text-lg font-black text-slate-700 outline-none">
                                 </div>
                                 <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm text-center">
-                                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">Derinlik
-                                        (m)</label>
+                                    <label class="block text-[10px] font-bold text-slate-400 uppercase mb-1">{{ t('scenes.creator.depth') }}</label>
                                     <input v-model.number="form.depth" type="number" min="1" step="0.1"
                                         class="w-full text-center text-lg font-black text-slate-700 outline-none">
                                 </div>
@@ -141,14 +137,13 @@
                         </div>
                         <div v-else
                             class="bg-slate-800 p-4 rounded-2xl text-white shadow-lg relative overflow-hidden group">
-                            <p class="text-[10px] font-black uppercase opacity-80 mb-1">Serbest Çizim Modu</p>
-                            <p class="text-[11px] font-medium leading-relaxed text-slate-300">Sağ taraftaki alana
-                                tıklayarak odanızın köşelerini belirleyin.</p>
+                            <p class="text-[10px] font-black uppercase opacity-80 mb-1">{{ t('scenes.creator.freeDrawMode') }}</p>
+                            <p class="text-[11px] font-medium leading-relaxed text-slate-300">{{ t('scenes.creator.freeDrawModeDesc') }}</p>
                         </div>
                     </section>
 
                     <section class="space-y-4">
-                        <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Malzeme ve Renk
+                        <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{{ t('scenes.creator.materialAndColor') }}
                         </h4>
                         <div class="space-y-4">
                             <div class="grid grid-cols-4 gap-2">
@@ -171,8 +166,7 @@
                             <div v-if="selectedTexture"
                                 class="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100 space-y-2">
                                 <label
-                                    class="block text-[10px] font-black text-indigo-400 uppercase tracking-wider">Doku
-                                    Ölçeği</label>
+                                    class="block text-[10px] font-black text-indigo-400 uppercase tracking-wider">{{ t('scenes.creator.textureScale') }}</label>
                                 <div class="flex gap-2">
                                     <button v-for="val in [1, 2, 4, 8]" :key="val" @click="form.textureScale = val"
                                         class="flex-1 py-1.5 rounded-lg text-[10px] font-bold border transition-all"
@@ -183,7 +177,7 @@
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div class="p-3 bg-white rounded-2xl border border-slate-200 relative">
-                                    <span class="text-[9px] font-black uppercase text-slate-400">Zemin</span>
+                                    <span class="text-[9px] font-black uppercase text-slate-400">{{ t('scenes.creator.floor') }}</span>
                                     <div class="flex items-center gap-2 mt-2">
                                         <div class="w-6 h-6 rounded-full border border-slate-200"
                                             :style="{ backgroundColor: form.floorColor }"></div>
@@ -192,7 +186,7 @@
                                     </div>
                                 </div>
                                 <div class="p-3 bg-white rounded-2xl border border-slate-200 relative">
-                                    <span class="text-[9px] font-black uppercase text-slate-400">Arka Plan</span>
+                                    <span class="text-[9px] font-black uppercase text-slate-400">{{ t('scenes.creator.background') }}</span>
                                     <div class="flex items-center gap-2 mt-2">
                                         <div class="w-6 h-6 rounded-full border border-slate-200"
                                             :style="{ backgroundColor: form.bgColor }"></div>
@@ -207,11 +201,10 @@
                     <section class="space-y-4 border-t border-slate-200 pt-5">
 
                         <div class="flex justify-between items-end">
-                            <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Zemin
-                                İşaretleri</h4>
+                            <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{{ t('scenes.creator.floorMarkers') }}</h4>
                             <button @click="openToolLibrary"
                                 class="text-[10px] font-bold text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 px-2 py-1 rounded-lg transition-colors flex items-center gap-1">
-                                Tümünü Gör <span>→</span>
+                                {{ t('common.view') }} <span>→</span>
                             </button>
                         </div>
 
@@ -246,7 +239,7 @@
                                 ✏️
                             </div>
                             <div class="flex-1">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Serbest Çizim</p>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ t('scenes.creator.freehandDrawing') }}</p>
                                 <p class="text-xs font-bold">
                                     {{ freehandPoints.length === 0 ? 'Tıklayarak nokta ekleyin...' : 
                                        freehandPoints.length < 3 ? `${freehandPoints.length} nokta (Min: 3)` :
@@ -262,9 +255,9 @@
                                 {{shapeLibrary.find(t => t.id === activeTool)?.icon}}
                             </div>
                             <div class="flex-1">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mod Aktif</p>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ t('scenes.creator.modeActive') }}</p>
                                 <p class="text-xs font-bold">{{shapeLibrary.find(t => t.id === activeTool)?.label}}
-                                    çiziliyor...</p>
+                                    {{ t('scenes.creator.drawing') }}</p>
                             </div>
                             <button @click="cancelTool" class="text-slate-400 hover:text-white px-2">✕</button>
                         </div>
@@ -277,20 +270,20 @@
 
                             <div class="flex justify-between items-center border-b border-slate-100 pb-3 relative z-10">
                                 <div class="flex flex-col">
-                                    <label class="text-[9px] font-bold text-slate-400 uppercase">Obje Adı</label>
+                                    <label class="text-[9px] font-bold text-slate-400 uppercase">{{ t('scenes.creator.objectName') }}</label>
                                     <input type="text" v-model="layers.find(l => l.id === selectedLayerId)!.name"
                                         class="bg-transparent text-sm font-black text-slate-700 outline-none w-32 focus:text-indigo-600 border-b border-transparent focus:border-indigo-200 transition-colors" />
                                 </div>
                                 <div class="flex gap-1 bg-slate-50 p-1 rounded-lg border border-slate-100">
-                                    <button @click="bringToFront" title="Öne Getir"
+                                    <button @click="bringToFront" :title="t('scenes.creator.bringToFront')"
                                         class="w-7 h-7 flex items-center justify-center bg-white rounded shadow-sm text-slate-400 hover:text-indigo-600 hover:shadow transition-all">
                                         ▲
                                     </button>
-                                    <button @click="sendToBack" title="Arkaya Gönder"
+                                    <button @click="sendToBack" :title="t('scenes.creator.sendToBack')"
                                         class="w-7 h-7 flex items-center justify-center bg-white rounded shadow-sm text-slate-400 hover:text-amber-600 hover:shadow transition-all">
                                         ▼
                                     </button>
-                                    <button @click="removeLayer" title="Sil"
+                                    <button @click="removeLayer" :title="t('scenes.creator.deleteLayer')"
                                         class="w-7 h-7 flex items-center justify-center bg-white rounded shadow-sm text-slate-400 hover:text-red-500 hover:shadow transition-all">
                                         🗑
                                     </button>
@@ -300,16 +293,14 @@
                             <div class="grid grid-cols-2 gap-3 relative z-10">
                                 <div
                                     class="bg-slate-50 p-2 rounded-xl border border-slate-100 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
-                                    <label class="text-[8px] font-bold text-slate-400 uppercase block mb-1">Genişlik
-                                        (m)</label>
+                                    <label class="text-[8px] font-bold text-slate-400 uppercase block mb-1">{{ t('scenes.creator.width') }}</label>
                                     <input type="number" step="0.1"
                                         v-model.number="layers.find(l => l.id === selectedLayerId)!.width"
                                         class="w-full bg-transparent text-sm font-black text-slate-700 outline-none">
                                 </div>
                                 <div
                                     class="bg-slate-50 p-2 rounded-xl border border-slate-100 focus-within:border-indigo-300 focus-within:ring-2 focus-within:ring-indigo-100 transition-all">
-                                    <label class="text-[8px] font-bold text-slate-400 uppercase block mb-1">Yükseklik
-                                        (m)</label>
+                                    <label class="text-[8px] font-bold text-slate-400 uppercase block mb-1">{{ t('scenes.creator.height') }}</label>
                                     <input type="number" step="0.1"
                                         v-model.number="layers.find(l => l.id === selectedLayerId)!.height"
                                         class="w-full bg-transparent text-sm font-black text-slate-700 outline-none">
@@ -318,7 +309,7 @@
 
                             <div
                                 class="flex items-center justify-between bg-slate-50 p-2 rounded-xl border border-slate-100 relative z-10">
-                                <span class="text-[10px] font-bold text-slate-500 pl-1">Renk</span>
+                                <span class="text-[10px] font-bold text-slate-500 pl-1">{{ t('scenes.creator.color') }}</span>
                                 <div class="flex items-center gap-2 relative">
                                     <span class="text-[10px] font-mono text-slate-400 uppercase">{{layers.find(l =>
                                         l.id === selectedLayerId)?.color}}</span>
@@ -361,7 +352,7 @@
                             <!-- Layer Texture Section -->
                             <div class="border-t border-slate-100 pt-3 space-y-2">
                                 <div class="flex justify-between items-center">
-                                    <span class="text-[10px] font-bold text-slate-500 uppercase">Doku</span>
+                                    <span class="text-[10px] font-bold text-slate-500 uppercase">{{ t('scenes.creator.texture') }}</span>
                                     <button v-if="selectedLayer?.texture" @click="clearLayerTexture(selectedLayerId!)"
                                         class="text-[9px] text-red-500 hover:text-red-600 font-bold">
                                         Temizle
@@ -377,7 +368,7 @@
                                     </button>
                                 </div>
                                 <div v-if="selectedLayer?.texture" class="bg-indigo-50 p-2 rounded-xl">
-                                    <label class="text-[9px] font-bold text-indigo-600 uppercase block mb-1">Ölçek</label>
+                                    <label class="text-[9px] font-bold text-indigo-600 uppercase block mb-1">{{ t('scenes.creator.scale') }}</label>
                                     <div class="flex gap-1">
                                         <button v-for="val in [1, 2, 4, 8]" :key="val" 
                                             @click="selectedLayer.texture!.scale = val"
@@ -395,7 +386,7 @@
                             <div v-if="selectedLayer?.geometryType === 'freehand' && selectedLayer.points" 
                                 class="border-t border-slate-100 pt-3 space-y-3">
                                 <div class="flex justify-between items-center">
-                                    <h5 class="text-[10px] font-bold text-slate-500 uppercase">Köşe Düzenleme</h5>
+                                    <h5 class="text-[10px] font-bold text-slate-500 uppercase">{{ t('scenes.creator.cornerEdit') }}</h5>
                                     <span class="text-[9px] text-slate-400">{{selectedLayer.points.length}} nokta</span>
                                 </div>
                                 
@@ -409,7 +400,7 @@
                                     </div>
                                     <div>
                                         <div class="flex justify-between items-center mb-1">
-                                            <label class="text-[9px] font-bold text-indigo-600 uppercase">Pah Yarıçapı</label>
+                                            <label class="text-[9px] font-bold text-indigo-600 uppercase">{{ t('scenes.creator.chamferRadius') }}</label>
                                             <span class="text-[10px] font-mono font-bold text-indigo-700">
                                                 {{(selectedPoint.fillet?.radius || 0).toFixed(2)}}m 
                                                 <span class="text-slate-400 font-normal">/ {{maxFilletRadius.toFixed(2)}}m</span>
@@ -447,7 +438,7 @@
                                 class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                                 <div class="bg-white rounded-3xl shadow-2xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
                                     <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
-                                        <h3 class="text-lg font-black text-slate-800">Doku Seç</h3>
+                                        <h3 class="text-lg font-black text-slate-800">{{ t('scenes.creator.selectTexture') }}</h3>
                                         <button @click="closeLayerTexturePicker" class="text-slate-400 hover:text-slate-600 text-2xl">
                                             ×
                                         </button>
@@ -470,9 +461,9 @@
                                 {{shapeLibrary.find(t => t.id === activeTool)?.icon}}
                             </div>
                             <div class="flex-1">
-                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mod Aktif</p>
+                                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">{{ t('scenes.creator.modeActive') }}</p>
                                 <p class="text-xs font-bold">{{shapeLibrary.find(t => t.id === activeTool)?.label}}
-                                    çiziliyor...</p>
+                                    {{ t('scenes.creator.drawing') }}</p>
                             </div>
                             <button @click="cancelTool" class="text-slate-400 hover:text-white px-2">✕</button>
                         </div>
@@ -496,7 +487,7 @@
                                         <div class="flex-1 relative mt-2 md:mt-0">
                                             <span
                                                 class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
-                                            <input v-model="toolSearch" placeholder="Şekil veya ikon ara..." autofocus
+                                            <input v-model="toolSearch" :placeholder="t('scenes.creator.searchShapeOrIcon')" autofocus
                                                 class="w-full bg-slate-100 border-none rounded-xl pl-10 pr-4 py-3 text-sm font-bold text-slate-700 placeholder:font-normal focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all" />
                                         </div>
                                         <button @click="closeToolLibrary"
@@ -538,7 +529,7 @@
                                             <div v-if="libraryTools.length === 0"
                                                 class="h-full flex flex-col items-center justify-center text-slate-400 min-h-[200px]">
                                                 <span class="text-4xl mb-2">🤔</span>
-                                                <p class="text-sm">Sonuç bulunamadı.</p>
+                                                <p class="text-sm">{{ t('messages.info.noResults') }}</p>
                                             </div>
 
                                             <div
@@ -565,10 +556,9 @@
                     </section>
                     <section class="space-y-4 border-t border-slate-200 pt-4">
                         <div class="flex justify-between items-center">
-                            <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">Çevre
-                                Katmanları</h4>
+                            <h4 class="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em]">{{ t('scenes.creator.perimeterLayers') }}</h4>
                             <div class="flex gap-2">
-                                <button @click="addPerimeterLayer('sidewalk')" title="Kaldırım Ekle"
+                                <button @click="addPerimeterLayer('sidewalk')" :title="t('scenes.creator.addSidewalk')"
                                     class="w-6 h-6 bg-slate-100 hover:bg-indigo-100 text-slate-500 rounded text-xs">+</button>
                             </div>
                         </div>
@@ -585,10 +575,10 @@
                                         '🌿' : '🚶' }}</span>
                                     <select v-model="layer.type"
                                         class="text-[10px] font-bold bg-transparent outline-none cursor-pointer">
-                                        <option value="wall">Duvar</option>
-                                        <option value="sidewalk">Kaldırım</option>
-                                        <option value="curb">Bordür</option>
-                                        <option value="grass">Çim</option>
+                                        <option value="wall">{{ t('scenes.creator.wall') }}</option>
+                                        <option value="sidewalk">{{ t('scenes.creator.sidewalk') }}</option>
+                                        <option value="curb">{{ t('scenes.creator.curb') }}</option>
+                                        <option value="grass">{{ t('scenes.creator.grass') }}</option>
                                     </select>
                                     <span class="text-[9px] text-slate-400 bg-slate-50 px-1.5 rounded">#{{ index + 1
                                     }}</span>
@@ -596,14 +586,12 @@
 
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
-                                        <label class="text-[8px] font-bold text-slate-400 uppercase block">Genişlik
-                                            (m)</label>
+                                        <label class="text-[8px] font-bold text-slate-400 uppercase block">{{ t('scenes.creator.width') }}</label>
                                         <input type="number" v-model.number="layer.width" step="0.1"
                                             class="w-full bg-slate-50 text-[10px] font-bold p-1 rounded border border-transparent focus:border-indigo-300 outline-none">
                                     </div>
                                     <div>
-                                        <label class="text-[8px] font-bold text-slate-400 uppercase block">Yükseklik
-                                            (m)</label>
+                                        <label class="text-[8px] font-bold text-slate-400 uppercase block">{{ t('scenes.creator.height') }}</label>
                                         <input type="number" v-model.number="layer.height" step="0.1"
                                             class="w-full bg-slate-50 text-[10px] font-bold p-1 rounded border border-transparent focus:border-indigo-300 outline-none">
                                     </div>
@@ -613,7 +601,7 @@
                                         <div
                                             class="flex-1 bg-slate-50 p-1.5 rounded-lg border border-slate-100 flex flex-col justify-between">
                                             <label
-                                                class="text-[8px] font-bold text-slate-400 uppercase block mb-1">Renk</label>
+                                                class="text-[8px] font-bold text-slate-400 uppercase block mb-1">{{ t('scenes.creator.color') }}</label>
                                             <div class="flex items-center gap-2 relative">
                                                 <div class="w-full h-6 rounded border border-slate-200"
                                                     :style="{ backgroundColor: layer.color }"></div>
@@ -624,8 +612,7 @@
 
                                         <div
                                             class="flex-1 bg-slate-50 p-1.5 rounded-lg border border-slate-100 flex flex-col justify-between relative">
-                                            <label class="text-[8px] font-bold text-slate-400 uppercase block mb-1">Doku
-                                                / Desen</label>
+                                            <label class="text-[8px] font-bold text-slate-400 uppercase block mb-1">{{ t('scenes.creator.texture') }}</label>
 
                                             <button
                                                 @click="activeTextureLayerIndex = (activeTextureLayerIndex === index ? null : index)"
@@ -636,7 +623,7 @@
                                                     class="w-full h-full object-cover">
                                                 <img v-else-if="layer.textureId" :src="getLayerTextureThumbnail(layer.textureId)"
                                                     class="w-full h-full object-cover">
-                                                <span v-else class="text-xs">Seç +</span>
+                                                <span v-else class="text-xs">{{ t('scenes.creator.selectPlus') }}</span>
                                             </button>
 
                                             <div v-if="activeTextureLayerIndex === index"
@@ -660,7 +647,7 @@
 
                                                 <div v-if="layer.textureUrl || layer.textureId" class="border-t border-slate-100 pt-2">
                                                     <label
-                                                        class="text-[8px] font-bold text-slate-400 uppercase block mb-1">Ölçek:
+                                                        class="text-[8px] font-bold text-slate-400 uppercase block mb-1">{{ t('scenes.creator.scale') }}:
                                                         {{ layer.textureScale }}x</label>
                                                     <input type="range" v-model.number="layer.textureScale" min="0.5"
                                                         max="5" step="0.5"
@@ -669,7 +656,7 @@
 
                                                 <div class="text-center mt-1">
                                                     <button @click="activeTextureLayerIndex = null"
-                                                        class="text-[9px] text-indigo-600 font-bold hover:underline">Tamam</button>
+                                                        class="text-[9px] text-indigo-600 font-bold hover:underline">{{ t('common.confirm') }}</button>
                                                 </div>
                                             </div>
 
@@ -917,19 +904,19 @@
                     </div>
 
                     <!-- Mobile: floating settings button (moved to avoid overlap with footer save) -->
-                    <button v-if="!showSidebar" @click="openSidebar" aria-label="Ayarlar"
-                        class="md:hidden fixed bottom-20 right-4 z-50 bg-indigo-600 text-white px-4 py-3 rounded-2xl shadow-lg">Ayarlar</button>
+                    <button v-if="!showSidebar" @click="openSidebar" :aria-label="t('common.settings')"
+                        class="md:hidden fixed bottom-20 right-4 z-50 bg-indigo-600 text-white px-4 py-3 rounded-2xl shadow-lg">{{ t('common.settings') }}</button>
                 </div>
             </div>
 
             <div
                 class="px-4 md:px-8 py-4 bg-white border-t border-slate-100 flex flex-col md:flex-row justify-end gap-3 items-center">
                 <button @click="close"
-                    class="w-full md:w-auto px-6 py-3 text-[12px] font-black text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all uppercase tracking-[0.15em]">Vazgeç</button>
+                    class="w-full md:w-auto px-6 py-3 text-[12px] font-black text-slate-600 hover:text-slate-800 hover:bg-slate-50 rounded-xl transition-all uppercase tracking-[0.15em]">{{ t('common.cancel') }}</button>
                 <button @click="handleSave"
                     :disabled="!form.name || (form.shapeType === 'custom' && customPoints.length < 3)"
                     class="w-full md:w-auto px-6 py-4 md:py-3 bg-slate-900 hover:bg-indigo-600 disabled:bg-slate-100 disabled:text-slate-300 text-white rounded-xl text-[12px] font-black uppercase tracking-[0.15em] shadow-lg hover:shadow-indigo-200 transition-all flex items-center justify-center gap-3 group">
-                    <span>{{ mode === 'create' ? 'Sahneyi Yayınla' : 'Kaydet' }}</span>
+                    <span>{{ mode === 'create' ? t('scenes.creator.publishScene') : t('common.save') }}</span>
                     <span class="text-base group-hover:translate-x-1 transition-transform">→</span>
                 </button>
             </div>
@@ -939,6 +926,7 @@
 
 <script setup lang="ts">
 import { ref, reactive, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { arSceneService } from '../../../services/arSceneService';
 import { categoryService } from '../../../services/categoryService';
 import type { FloorLayer, LayerPoint, LayerTexture } from '../../../types/geometry';
@@ -950,6 +938,9 @@ import { isNearPoint } from '../../../utils/geometryEngine';
 // --- SABİTLER ---
 // --- NEW: Dynamic Shape Library from backend ---
 import { shapesStore } from '../../../store/modules/shapes';
+
+const { t } = useI18n();
+
 const shapeLibrary = computed(() => shapesStore.items.map(s => ({ id: s.code, label: s.labelTR || s.labelEN || s.code, icon: s.icon, path: s.svgPath, category: s.category })));
 // Ensure shapes are loaded when component mounts
 onMounted(async () => {

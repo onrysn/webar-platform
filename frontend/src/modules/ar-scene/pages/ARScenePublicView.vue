@@ -56,7 +56,7 @@
                                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                             </path>
                         </svg>
-                        <span class="hidden sm:inline font-medium">Hazırlanıyor...</span>
+                        <span class="hidden sm:inline font-medium">{{ t('common.preparing') }}</span>
                     </span>
                     <template v-else>
                         <div class="relative w-5 h-5">
@@ -66,7 +66,7 @@
                                     d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
                             </svg>
                         </div>
-                        <span class="font-bold tracking-wide text-sm sm:text-base text-center">AR'da Görüntüle</span>
+                        <span class="font-bold tracking-wide text-sm sm:text-base text-center">{{ t('models.viewInAR') }}</span>
                     </template>
                 </button>
                 <!-- 🆕 Ekran Görüntüsü Al Butonu (sadece web / sm+ ekranlarda) -->
@@ -75,7 +75,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16v16H4V4zm4 8h8m-4-4v8" />
                     </svg>
-                    <span class="font-bold text-xs sm:text-sm whitespace-nowrap">Ekran Görüntüsü Al</span>
+                    <span class="font-bold text-xs sm:text-sm whitespace-nowrap">{{ t('scenes.editor.takeScreenshot') }}</span>
                 </button>
                 <!-- Teklif İste Butonu -->
                 <button @click="showQuoteModal = true"
@@ -83,7 +83,7 @@
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    <span class="font-bold text-xs sm:text-sm whitespace-nowrap">Teklif İste</span>
+                    <span class="font-bold text-xs sm:text-sm whitespace-nowrap">{{ t('scenes.editor.requestQuote') }}</span>
                 </button>
             </div>
         </div>
@@ -102,6 +102,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, nextTick, markRaw, computed } from 'vue';
 import { useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
@@ -129,6 +130,7 @@ const shapeLibrary = computed(() =>
 
 // --- STATE ---
 const route = useRoute();
+const { t } = useI18n();
 const shareToken = route.params.token as string;
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 

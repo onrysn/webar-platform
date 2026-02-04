@@ -17,12 +17,12 @@
 
     <div v-else-if="!company" class="flex flex-col items-center justify-center h-[50vh] text-center px-4">
       <div class="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center text-3xl mb-4">🔍</div>
-      <h2 class="text-lg font-bold text-slate-900">Şirket Bulunamadı</h2>
-      <p class="text-slate-500 text-sm mt-1">Aradığınız şirket silinmiş veya erişim izniniz yok.</p>
+      <h2 class="text-lg font-bold text-slate-900">{{ t('companies.notFound') }}</h2>
+      <p class="text-slate-500 text-sm mt-1">{{ t('companies.notFoundDesc') }}</p>
 
       <router-link v-if="isSuperAdmin" to="/dashboard/companies"
         class="mt-4 text-indigo-600 font-bold text-sm hover:underline">
-        Listeye Dön
+        {{ t('companies.backToList') }}
       </router-link>
     </div>
 
@@ -39,7 +39,7 @@
                 viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
               </svg>
-              Şirket Listesine Dön
+              {{ t('companies.backToList') }}
             </router-link>
           </nav>
 
@@ -83,7 +83,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              Genel Ayarlar
+              {{ t('companies.tabs.settings') }}
             </router-link>
 
             <router-link :to="getTabRoute('manage-users')"
@@ -94,7 +94,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
               </svg>
-              Kullanıcılar
+              {{ t('companies.tabs.users') }}
               <span
                 :class="$route.path.includes('manage-users') ? 'bg-indigo-200 text-indigo-800' : 'bg-slate-100 text-slate-600'"
                 class="px-1.5 py-0.5 rounded-full text-[10px] font-mono ml-1 transition-colors">
@@ -110,7 +110,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
               </svg>
-              API Entegrasyonu
+              {{ t('companies.tabs.apiKey') }}
             </router-link>
 
           </div>
@@ -133,9 +133,12 @@
 <script setup lang="ts">
 import { onMounted, ref, watch, nextTick, computed } from 'vue';
 import { useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../../store/modules/auth';
 import { useCompanyStore } from '../../../store/modules/company';
 import type { CompanyDto } from '../dto/company.dto';
+
+const { t } = useI18n();
 
 const route = useRoute();
 const companyStore = useCompanyStore();

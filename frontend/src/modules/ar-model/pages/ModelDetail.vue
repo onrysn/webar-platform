@@ -10,13 +10,13 @@
               <path fill-rule="evenodd" d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z" clip-rule="evenodd" />
             </svg>
           </div>
-          Geri Dön
+          {{ t('models.detail.backToList') }}
         </button>
         
         <div v-if="modelData" class="flex items-center gap-3">
             <span class="px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wide border"
                 :class="modelData.isPrivate ? 'bg-slate-100 text-slate-600 border-slate-200' : 'bg-green-50 text-green-700 border-green-200'">
-                {{ modelData.isPrivate ? '🔒 Gizli Model' : '🌍 Herkese Açık' }}
+                {{ modelData.isPrivate ? '🔒 ' + t('common.private') : '🌍 ' + t('common.public') }}
             </span>
             <div class="text-xs font-mono text-gray-400 bg-gray-100 px-2 py-1 rounded">
                 ID: #{{ modelData.id }}
@@ -26,7 +26,7 @@
 
       <div v-if="isLoading" class="flex flex-col items-center justify-center h-96 bg-white rounded-3xl shadow-sm border border-gray-100">
         <div class="animate-spin rounded-full h-12 w-12 border-4 border-blue-50 border-t-blue-600 mb-4"></div>
-        <span class="text-gray-500 font-medium">Model detayları yükleniyor...</span>
+        <span class="text-gray-500 font-medium">{{ t('common.loading') }}</span>
       </div>
 
       <div v-else-if="error" class="bg-red-50 p-8 rounded-3xl text-center border border-red-100">
@@ -35,10 +35,10 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
-        <h3 class="text-lg font-bold text-gray-900">Bir Hata Oluştu</h3>
+        <h3 class="text-lg font-bold text-gray-900">{{ t('messages.error.general') }}</h3>
         <p class="text-gray-600 mt-2">{{ error }}</p>
         <button @click="loadPageData" class="mt-4 text-blue-600 hover:text-blue-800 font-medium text-sm hover:underline">
-          Tekrar Dene
+          {{ t('common.refresh') }}
         </button>
       </div>
 
@@ -63,7 +63,7 @@
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                <span class="text-white/40 text-sm font-medium">Model yükleniyor...</span>
+                <span class="text-white/40 text-sm font-medium">{{ t('common.loading') }}</span>
              </div>
           </div>
         </div>
@@ -78,20 +78,20 @@
                     </svg>
                 </div>
 
-                <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Model Yönetimi</h2>
+                <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">{{ t('models.detail.title') }}</h2>
 
                 <div class="flex items-center justify-between mb-6 pb-6 border-b border-gray-100">
                     <div class="pr-2">
-                        <div class="font-bold text-sm text-gray-800">Model Gizliliği</div>
-                        <div v-if="modelData.isPrivate" class="text-xs text-gray-500 mt-1">Model gizli olarak ayarlandı.</div>
-                        <div v-else class="text-xs text-gray-500 mt-1">Model herkese açık olarak ayarlandı.</div>
+                        <div class="font-bold text-sm text-gray-800">{{ t('common.private') }}</div>
+                        <div v-if="modelData.isPrivate" class="text-xs text-gray-500 mt-1">{{ t('common.private') }}</div>
+                        <div v-else class="text-xs text-gray-500 mt-1">{{ t('common.public') }}</div>
                     </div>
                     <button 
                         @click="togglePrivacy" 
                         class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
                         :class="modelData.isPrivate ? 'bg-slate-300' : 'bg-green-500'"
                     >
-                        <span class="sr-only">Gizlilik Ayarı</span>
+                        <span class="sr-only">{{ t('common.settings') }}</span>
                         <span 
                             aria-hidden="true" 
                             class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
@@ -102,14 +102,14 @@
 
                 <div>
                     <div class="flex items-center justify-between mb-3">
-                        <div class="font-bold text-sm text-gray-800">Müşteri Paylaşımı</div>
-                        <span v-if="modelData.shareToken" class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100 uppercase">AKTİF</span>
+                        <div class="font-bold text-sm text-gray-800">{{ t('common.shared') }}</div>
+                        <span v-if="modelData.shareToken" class="text-[10px] font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded border border-green-100 uppercase">{{ t('common.active') }}</span>
                     </div>
 
                     <div v-if="!modelData.shareToken" class="bg-indigo-50 rounded-xl p-4 text-center border border-indigo-100 border-dashed">
-                        <p class="text-xs text-indigo-800 mb-3">Müşterileriniz için benzersiz bir görüntüleme linki oluşturun.</p>
+                        <p class="text-xs text-indigo-800 mb-3">{{ t('models.shareLink') }}</p>
                         <button @click="generateToken" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold py-2 px-4 rounded-lg transition-colors">
-                            Link Oluştur
+                            {{ t('common.create') }}
                         </button>
                     </div>
 
@@ -128,38 +128,38 @@
                             </a>
                         </div>
                         <button @click="revokeToken" class="w-full text-center text-xs text-red-500 hover:text-red-700 hover:underline">
-                            Linki İptal Et (Erişimi Kes)
+                            {{ t('common.cancel') }}
                         </button>
                     </div>
                 </div>
             </div>
 
             <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-200">
-              <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Katalog</h2>
-              <p class="text-[11px] text-gray-500 mb-3">Bu modeli isteğe bağlı olarak kategori ve seriye bağlayın.</p>
+              <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">{{ t('models.uploadModel.catalog') }}</h2>
+              <p class="text-[11px] text-gray-500 mb-3">{{ t('models.uploadModel.catalogDesc') }}</p>
               <div class="space-y-3">
                 <div>
-                  <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1">Kategori</label>
+                  <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1">{{ t('common.category') }}</label>
                   <select v-model="editCategoryId" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-                    <option :value="null">Seçili değil</option>
+                    <option :value="null">{{ t('models.uploadModel.notSelected') }}</option>
                     <option v-for="c in categoriesList" :key="c.id" :value="c.id">{{ c.name }}</option>
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1">Seri</label>
+                  <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1">{{ t('series.title') }}</label>
                   <select v-model="editSeriesId" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none">
-                    <option :value="null">Seçili değil</option>
+                    <option :value="null">{{ t('models.uploadModel.notSelected') }}</option>
                     <option v-for="s in seriesList" :key="s.id" :value="s.id">{{ s.name }}<span v-if="s.code"> ({{ s.code }})</span></option>
                   </select>
                 </div>
               </div>
               <div class="mt-4 flex justify-end">
-                <button @click="saveCatalog" :disabled="processing" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">Kaydet</button>
+                <button @click="saveCatalog" :disabled="processing" class="px-4 py-2 rounded-xl bg-indigo-600 text-white text-xs font-bold disabled:opacity-50">{{ t('common.save') }}</button>
               </div>
             </div>
 
           <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-200">
-            <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Dosya İndir</h2>
+            <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">{{ t('common.download') }}</h2>
 
             <div class="space-y-3">
               <button @click="downloadFile('glb')" :disabled="isDownloading"
@@ -168,7 +168,7 @@
                   <span class="font-bold text-sm">GLB</span>
                 </div>
                 <div class="ml-4 flex-1">
-                    <p class="text-sm font-bold text-gray-900 group-hover:text-blue-700">Android & Web</p>
+                    <p class="text-sm font-bold text-gray-900 group-hover:text-blue-700">{{ t('models.detail.androidWeb') }}</p>
                     <p class="text-xs text-gray-500 mt-0.5">{{ formatBytes(modelData.files.glb.size) }}</p>
                 </div>
                 <div class="mr-2">
@@ -184,7 +184,7 @@
                   <span class="font-bold text-sm">USDZ</span>
                 </div>
                 <div class="ml-4 flex-1">
-                    <p class="text-sm font-bold text-gray-900 group-hover:text-indigo-700">iOS (AR Quick Look)</p>
+                    <p class="text-sm font-bold text-gray-900 group-hover:text-indigo-700">{{ t('models.detail.iosArQuickLook') }}</p>
                     <p class="text-xs text-gray-500 mt-0.5">{{ formatBytes(modelData.files.usdz.size) }}</p>
                 </div>
                 <div class="mr-2">
@@ -195,13 +195,13 @@
               </button>
               
               <div v-else class="p-4 rounded-2xl bg-gray-50 border border-dashed border-gray-300 flex items-center justify-center text-center">
-                 <span class="text-xs text-gray-400">iOS (USDZ) versiyonu mevcut değil.</span>
+                 <span class="text-xs text-gray-400">{{ t('models.detail.iosUsdz') }} {{ t('common.noData') }}</span>
               </div>
             </div>
           </div>
 
           <div class="bg-white p-5 rounded-3xl shadow-sm border border-gray-200">
-            <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Detaylar</h2>
+            <h2 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">{{ t('common.details') }}</h2>
             
             <div class="space-y-4">
               <div class="flex items-start">
@@ -211,7 +211,7 @@
                   </svg>
                 </div>
                 <div class="ml-3">
-                  <p class="text-xs text-gray-500">Yükleyen Kullanıcı</p>
+                  <p class="text-xs text-gray-500">{{ t('models.detail.uploadedAt') }}</p>
                   <p class="text-sm font-medium text-gray-900">{{ modelData.uploadedBy }}</p>
                 </div>
               </div>
@@ -223,7 +223,7 @@
                   </svg>
                 </div>
                 <div class="ml-3">
-                  <p class="text-xs text-gray-500">Oluşturulma Tarihi</p>
+                  <p class="text-xs text-gray-500">{{ t('common.date') }}</p>
                   <p class="text-sm font-medium text-gray-900">{{ formatDate(modelData.createdAt) }}</p>
                 </div>
               </div>
@@ -235,14 +235,14 @@
                   </svg>
                 </div>
                 <div class="ml-3">
-                  <p class="text-xs text-gray-500">Açıklama</p>
-                  <p class="text-sm font-medium text-gray-900 leading-snug">{{ modelData.description || 'Açıklama girilmemiş.' }}</p>
+                  <p class="text-xs text-gray-500">{{ t('common.description') }}</p>
+                  <p class="text-sm font-medium text-gray-900 leading-snug">{{ modelData.description || t('common.noData') }}</p>
                 </div>
               </div>
             </div>
 
             <div v-if="modelData.thumbnailUrl" class="mt-6 pt-6 border-t border-gray-100">
-               <p class="text-xs text-gray-400 mb-2">Referans Görseli</p>
+               <p class="text-xs text-gray-400 mb-2">{{ t('models.detail.referenceImage') }}</p>
                <img :src="getThumbnailUrl(modelData.thumbnailUrl)" class="w-20 h-20 object-cover rounded-lg border border-gray-200" alt="Thumbnail" />
             </div>
 
@@ -258,13 +258,16 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from 'vue';
 import { useRoute } from 'vue-router';
-import { useToast } from 'vue-toastification'; // Toast kütüphanesini ekleyin (kurulu değilse alert kullanın)
-import type { ModelDetailDto } from '../dto/arModel.dto'; // DTO dosyanızın yolu
-import { arModelService } from '../../../services/arModelService'; // Service dosyanızın yolu
+import { useI18n } from 'vue-i18n';
+import { useToast } from 'vue-toastification';
+import type { ModelDetailDto } from '../dto/arModel.dto';
+import { arModelService } from '../../../services/arModelService';
 import ArPreview from "../components/ArPreview.vue";
 import { categoryService, type CategoryDto } from '../../../services/categoryService';
 import { seriesService, type SeriesDto } from '../../../services/seriesService';
 import { useAuthStore } from '../../../store/modules/auth';
+
+const { t } = useI18n();
 
 const route = useRoute();
 const toast = useToast();

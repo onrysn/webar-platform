@@ -4,14 +4,14 @@
 
       <div class="mb-8 flex items-center justify-between">
         <div>
-          <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Yeni Model Yükle</h1>
+          <h1 class="text-3xl font-bold text-gray-900 tracking-tight">{{ t('models.uploadModel.title') }}</h1>
           <p class="mt-2 text-gray-500 text-sm">
-            Modelinizi yükleyin, önizleyin ve yayınlayın. FBX ve STEP dosyaları otomatik dönüştürülür.
+            {{ t('models.uploadModel.subtitle') }}
           </p>
         </div>
         <div v-if="targetCompanyId"
           class="px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-lg border border-amber-200">
-          ADMIN MODU: Şirket #{{ targetCompanyId }}
+          ADMIN: {{ t('companies.title') }} #{{ targetCompanyId }}
         </div>
       </div>
 
@@ -23,12 +23,12 @@
             </svg>
           </div>
           <div class="flex-1">
-            <label class="block text-sm font-bold text-amber-900 mb-2">Yükleme Yapılacak Şirketi Seçin</label>
-            <p class="text-xs text-amber-700/80 mb-3">Super Admin olduğunuz için, bu modelin hangi şirkete ait olacağını belirtmelisiniz.</p>
+            <label class="block text-sm font-bold text-amber-900 mb-2">{{ t('models.uploadModel.selectCompany') }}</label>
+            <p class="text-xs text-amber-700/80 mb-3">{{ t('models.uploadModel.selectCompanyDesc') }}</p>
             
             <select v-model="selectedCompanyId" 
               class="w-full p-3 bg-white border border-amber-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition-all font-medium text-gray-700">
-              <option :value="null" disabled>Lütfen bir şirket seçiniz...</option>
+              <option :value="null" disabled>{{ t('models.uploadModel.selectCompanyPlaceholder') }}</option>
               <option v-for="c in companiesList" :key="c.id" :value="c.id">{{ c.name }} ({{ c.domain || 'No Domain' }})</option>
             </select>
           </div>
@@ -51,15 +51,15 @@
           </div>
 
           <div>
-            <p class="text-gray-900 font-bold text-lg md:text-xl">Dosyayı buraya bırakın</p>
-            <p class="text-gray-500 text-sm mt-1">veya tarayıcıyı açmak için tıklayın</p>
+            <p class="text-gray-900 font-bold text-lg md:text-xl">{{ t('models.uploadModel.dragDrop') }}</p>
+            <p class="text-gray-500 text-sm mt-1">{{ t('models.uploadModel.or') }} {{ t('models.uploadModel.browse') }}</p>
           </div>
 
           <div class="flex flex-wrap justify-center gap-2 mt-2">
-            <span class="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-lg shadow-sm border border-blue-200">FBX (Otomatik)</span>
-            <span class="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded-lg shadow-sm border border-orange-200">STEP (Otomatik)</span>
-            <span class="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg border border-gray-200">GLB</span>
-            <span class="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg border border-gray-200">USDZ</span>
+            <span class="px-3 py-1 bg-blue-100 text-blue-700 text-xs font-bold rounded-lg shadow-sm border border-blue-200">{{ t('models.formats.fbxAuto') }}</span>
+            <span class="px-3 py-1 bg-orange-100 text-orange-700 text-xs font-bold rounded-lg shadow-sm border border-orange-200">{{ t('models.formats.stepAuto') }}</span>
+            <span class="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg border border-gray-200">{{ t('models.formats.glb') }}</span>
+            <span class="px-3 py-1 bg-gray-100 text-gray-600 text-xs font-medium rounded-lg border border-gray-200">{{ t('models.formats.usdz') }}</span>
           </div>
         </div>
 
@@ -71,9 +71,9 @@
         class="mb-8 bg-white p-6 rounded-2xl shadow-lg border border-gray-100 relative overflow-hidden">
         <div class="flex justify-between items-end mb-2 relative z-10">
           <div>
-            <span class="text-lg font-bold text-gray-900 block">Dosya Yükleniyor</span>
+            <span class="text-lg font-bold text-gray-900 block">{{ t('models.uploadModel.uploading') }}</span>
             <span class="text-sm text-gray-500">
-              {{ progress === 100 ? 'İşleniyor, lütfen bekleyin...' : `${uploadedChunks}/${totalChunks} parça yüklendi` }}
+              {{ progress === 100 ? t('models.uploadModel.processing') : `${uploadedChunks}/${totalChunks} ${t('models.uploadQueue.progress')}` }}
             </span>
           </div>
           <span class="text-2xl font-black text-blue-600">{{ progress }}%</span>
@@ -93,7 +93,7 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Duraklat
+            {{ t('models.uploadModel.pause') }}
           </button>
           
           <button 
@@ -104,7 +104,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            Devam Et
+            {{ t('models.uploadModel.resume') }}
           </button>
           
           <button 
@@ -114,7 +114,7 @@
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
             </svg>
-            İptal
+            {{ t('common.cancel') }}
           </button>
         </div>
         
@@ -127,7 +127,7 @@
                <div class="h-64 md:h-96 w-full">
                   <ArPreview ref="previewRef" :src="previewUrl" v-if="previewUrl" />
                   <div v-else class="w-full h-full flex items-center justify-center text-gray-500">
-                     <span class="text-sm">Önizleme hazırlanamadı</span>
+                     <span class="text-sm">{{ t('models.uploadModel.previewNotAvailable') }}</span>
                   </div>
                </div>
             <div v-if="queueStatus?.status && (queueStatus.status === 'QUEUED' || queueStatus.status === 'CONVERTING')" class="absolute bottom-4 left-4 right-4 bg-black/60 backdrop-blur-md text-white px-4 py-3 rounded-lg text-xs font-medium border border-white/10">
@@ -143,18 +143,18 @@
                   <svg class="w-4 h-4 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
                   </svg>
-                  Bu açı kapak fotoğrafı olacak
+                  {{ t('models.uploadModel.thumbnailNote') }}
                </div>
             </div>
 
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
-               <label class="block text-sm font-bold text-gray-700 mb-2">Model Adı</label>
-               <input v-model="modelName" type="text" class="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 focus:bg-white" placeholder="Örn: Modern Ahşap Sandalye">
+               <label class="block text-sm font-bold text-gray-700 mb-2">{{ t('models.modelName') }}</label>
+               <input v-model="modelName" type="text" class="w-full pl-4 pr-10 py-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none transition bg-gray-50 focus:bg-white" :placeholder="t('models.uploadModel.modelNamePlaceholder')">
             </div>
          </div>
 
          <div class="lg:col-span-5 space-y-4">
-            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">Gerekli Dosyalar</h3>
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2 px-1">{{ t('models.uploadModel.requiredFiles') }}</h3>
             
             <div class="relative rounded-2xl p-4 transition-all duration-300 border" :class="tempData.glb ? 'bg-white border-blue-200 shadow-sm' : 'bg-gray-50 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer'" @click="!tempData.glb ? triggerFileSelect('glb') : null" @drop.prevent="(e) => !tempData?.glb && handleDrop(e, 'glb')" @dragover.prevent>
                <div class="flex items-center gap-4">
@@ -164,11 +164,11 @@
                   <div class="flex-1 min-w-0">
                      <div v-if="tempData.glb">
                         <p class="text-sm font-bold text-gray-900 truncate">{{ tempData.glb.filename }}</p>
-                        <p class="text-xs text-green-600 flex items-center mt-0.5">Yüklendi ({{ formatBytes(tempData.glb.size) }})</p>
+                        <p class="text-xs text-green-600 flex items-center mt-0.5">{{ t('models.uploadModel.uploaded') }} ({{ formatBytes(tempData.glb.size) }})</p>
                      </div>
                      <div v-else>
-                        <p class="text-sm font-bold text-gray-600">GLB Dosyası</p>
-                        <p class="text-xs text-gray-400">Android ve Web için zorunlu</p>
+                        <p class="text-sm font-bold text-gray-600">{{ t('models.uploadModel.glbFile') }}</p>
+                        <p class="text-xs text-gray-400">{{ t('models.uploadModel.glbRequired') }}</p>
                      </div>
                   </div>
                </div>
@@ -183,11 +183,11 @@
                   <div class="flex-1 min-w-0">
                      <div v-if="tempData.usdz">
                         <p class="text-sm font-bold text-gray-900 truncate">{{ tempData.usdz.filename }}</p>
-                        <p class="text-xs text-green-600 flex items-center mt-0.5">Yüklendi ({{ formatBytes(tempData.usdz.size) }})</p>
+                        <p class="text-xs text-green-600 flex items-center mt-0.5">{{ t('models.uploadModel.uploaded') }} ({{ formatBytes(tempData.usdz.size) }})</p>
                      </div>
                      <div v-else>
-                        <p class="text-sm font-bold text-gray-600">USDZ Dosyası</p>
-                        <p class="text-xs text-gray-400">iOS (iPhone/iPad) için zorunlu</p>
+                        <p class="text-sm font-bold text-gray-600">{{ t('models.uploadModel.usdzFile') }}</p>
+                        <p class="text-xs text-gray-400">{{ t('models.uploadModel.usdzRequired') }}</p>
                      </div>
                   </div>
                </div>
@@ -198,27 +198,27 @@
                <svg class="w-5 h-5 text-amber-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                </svg>
-              <p class="text-xs text-amber-800 font-medium">Modeli yayınlayabilmek için hem GLB hem de USDZ dosyasının eksiksiz yüklenmesi gerekmektedir. FBX/STEP yüklediyseniz dönüşüm tamamlandığında aşağıda görünecek.</p>
+              <p class="text-xs text-amber-800 font-medium">{{ t('models.uploadModel.requiredFilesInfo') }}</p>
             </div>
 
             <hr class="border-gray-200 my-4" />
 
             <!-- [YENİ] Katalog Alanları (Opsiyonel) -->
             <div class="bg-white p-4 rounded-2xl shadow-sm border border-gray-200">
-              <h3 class="text-sm font-bold text-gray-800 mb-3">Katalog</h3>
-              <p class="text-[11px] text-gray-500 mb-3">İsteğe bağlı olarak bu modeli bir kategori ve seriye bağlayabilirsiniz.</p>
+              <h3 class="text-sm font-bold text-gray-800 mb-3">{{ t('models.uploadModel.catalog') }}</h3>
+              <p class="text-[11px] text-gray-500 mb-3">{{ t('models.uploadModel.catalogDesc') }}</p>
               <div class="space-y-3">
                 <div>
-                  <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1">Kategori (Opsiyonel)</label>
+                  <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1">{{ t('common.category') }} ({{ t('common.optional') }})</label>
                   <select v-model="selectedCategoryId" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
-                    <option :value="null">Seçili değil</option>
+                    <option :value="null">{{ t('models.uploadModel.notSelected') }}</option>
                     <option v-for="c in categoriesList" :key="c.id" :value="c.id">{{ c.name }}</option>
                   </select>
                 </div>
                 <div>
-                  <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1">Seri (Opsiyonel)</label>
+                  <label class="block text-[11px] font-bold text-gray-400 uppercase mb-1">{{ t('series.title') }} ({{ t('common.optional') }})</label>
                   <select v-model="selectedSeriesId" class="w-full p-2.5 bg-gray-50 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
-                    <option :value="null">Seçili değil</option>
+                    <option :value="null">{{ t('models.uploadModel.notSelected') }}</option>
                     <option v-for="s in seriesList" :key="s.id" :value="s.id">{{ s.name }}<span v-if="s.code"> ({{ s.code }})</span></option>
                   </select>
                 </div>
@@ -231,9 +231,9 @@
                      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                   </svg>
-                  <span v-else>Kaydet ve Yayınla</span>
+                  <span v-else>{{ t('models.uploadModel.saveAndPublish') }}</span>
                </button>
-               <button @click="cancelProcess" :disabled="finalizing" class="w-full py-3 px-6 rounded-xl font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50">Vazgeç ve Sil</button>
+               <button @click="cancelProcess" :disabled="finalizing" class="w-full py-3 px-6 rounded-xl font-semibold text-gray-600 bg-white border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50">{{ t('models.uploadModel.cancelAndDelete') }}</button>
             </div>
          </div>
       </div>
@@ -253,6 +253,7 @@
 <script lang="ts" setup>
 import { ref, computed, onMounted, watch, onBeforeUnmount } from "vue";
 import { useRoute, useRouter, onBeforeRouteLeave } from "vue-router";
+import { useI18n } from 'vue-i18n';
 import { useToast } from "vue-toastification";
 import ArPreview from "../components/ArPreview.vue";
 import type { TempModelResponse } from "../dto/arModel.dto";
@@ -268,6 +269,7 @@ const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const authStore = useAuthStore();
+const { t } = useI18n();
 
 // --- Refs ---
 const mainInput = ref<HTMLInputElement | null>(null);
@@ -637,7 +639,7 @@ onBeforeRouteLeave(async (_to, _from, next) => {
 const handleBeforeUnload = (e: BeforeUnloadEvent) => {
   if (uploading.value && (uploadStatus.value === 'uploading' || uploadStatus.value === 'paused')) {
     e.preventDefault();
-    e.returnValue = 'Model yükleme işlemi devam ediyor. Sayfayı yenilerseniz yükleme iptal edilecek.';
+    e.returnValue = t('models.uploadModel.uploadInProgress');
     return e.returnValue;
   }
 };
@@ -649,7 +651,7 @@ const finalizeUpload = async () => {
   const finalCompanyId = targetCompanyId.value || selectedCompanyId.value || undefined;
   
   if (isSuperAdmin.value && !finalCompanyId) {
-    toast.warning("Lütfen bir şirket seçiniz.");
+    toast.warning(t('models.uploadModel.selectCompanyPlaceholder'));
     return;
   }
 
@@ -671,7 +673,7 @@ const finalizeUpload = async () => {
       seriesId: selectedSeriesId.value === null ? undefined : selectedSeriesId.value || undefined,
     });
 
-    toast.success("Model ve thumbnail başarıyla yayınlandı!");
+    toast.success(t('models.uploadModel.uploadSuccess'));
     
     setTimeout(() => {
         if (finalCompanyId) {
@@ -685,7 +687,7 @@ const finalizeUpload = async () => {
 
   } catch (err: any) {
     console.error(err);
-    const msg = err.response?.data?.message || "Kaydetme başarısız.";
+    const msg = err.response?.data?.message || t('models.uploadModel.uploadError');
     error.value = msg;
     try { toast.error(msg); } catch (_) {}
     finalizing.value = false;
@@ -693,7 +695,7 @@ const finalizeUpload = async () => {
 };
 
 const cancelProcess = async () => {
-    if(confirm("Yükleme iptal edilecek, emin misiniz?")) {
+    if(confirm(t('messages.confirm.deleteWarning'))) {
         // Aktif upload varsa iptal et
         if (currentUploader && (uploadStatus.value === 'uploading' || uploadStatus.value === 'paused')) {
             await currentUploader.cancel();

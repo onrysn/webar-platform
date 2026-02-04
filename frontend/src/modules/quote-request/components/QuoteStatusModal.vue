@@ -5,7 +5,7 @@
         <!-- Header -->
         <div class="bg-gradient-to-r from-blue-600 to-blue-700 p-6 text-white rounded-t-xl">
           <div class="flex items-center justify-between">
-            <h2 class="text-xl font-bold">Durum Güncelle</h2>
+            <h2 class="text-xl font-bold">{{ t('quoteRequest.updateStatus') }}</h2>
             <button @click="$emit('close')" class="hover:bg-white/20 rounded-lg p-2 transition-colors">
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -16,7 +16,7 @@
 
         <!-- Body -->
         <div class="p-6">
-          <label class="block text-sm font-semibold text-gray-700 mb-3">Yeni Durum</label>
+          <label class="block text-sm font-semibold text-gray-700 mb-3">{{ t('quoteRequest.newStatus') }}</label>
           <div class="space-y-2">
             <label
               v-for="status in statusOptions"
@@ -48,14 +48,14 @@
             @click="$emit('close')"
             class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 font-medium hover:bg-gray-100 transition-colors"
           >
-            İptal
+            {{ t('common.cancel') }}
           </button>
           <button
             @click="handleUpdate"
             :disabled="loading || selectedStatus === currentStatus"
             class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {{ loading ? 'Güncelleniyor...' : 'Güncelle' }}
+            {{ loading ? t('common.updating') : t('common.update') }}
           </button>
         </div>
       </div>
@@ -64,8 +64,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { quoteRequestService, QuoteStatus, type QuoteStatusType } from '../../../services/quoteRequestService';
+
+const { t } = useI18n();
 
 const props = defineProps<{
   quoteRequestId: number;
@@ -80,13 +83,13 @@ const emit = defineEmits<{
 const selectedStatus = ref<QuoteStatusType>(props.currentStatus);
 const loading = ref(false);
 
-const statusOptions = [
-  { value: QuoteStatus.NEW, label: 'Yeni' },
-  { value: QuoteStatus.IN_PROGRESS, label: 'İşlemde' },
-  { value: QuoteStatus.QUOTE_SENT, label: 'Teklif Gönderildi' },
-  { value: QuoteStatus.CANCELLED, label: 'İptal Edildi' },
-  { value: QuoteStatus.SALE_COMPLETED, label: 'Satış Tamamlandı' },
-];
+const statusOptions = computed(() => [
+  { value: QuoteStatus.NEW, label: t('quoteRequest.status.new') },
+  { value: QuoteStatus.IN_PROGRESS, label: t('quoteRequest.status.inProgress') },
+  { value: QuoteStatus.QUOTE_SENT, label: t('quoteRequest.status.quoteSent') },
+  { value: QuoteStatus.CANCELLED, label: t('quoteRequest.status.cancelled') },
+  { value: QuoteStatus.SALE_COMPLETED, label: t('quoteRequest.status.saleCompleted') },
+]);
 
 function getStatusBadgeClass(status: QuoteStatusType): string {
   const color = quoteRequestService.getStatusColor(status);
@@ -110,7 +113,7 @@ async function handleUpdate() {
     emit('close');
   } catch (error) {
     console.error('Error updating status:', error);
-    alert('Durum güncellenirken bir hata oluştu');
+    alert(t('quoteRequest.updateError'));
   } finally {
     loading.value = false;
   }

@@ -21,14 +21,14 @@
                 <div class="flex items-center gap-2 overflow-hidden">
                     <div class="w-3 h-3 rounded-full bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)] animate-pulse"></div>
                     <span class="text-xs font-bold text-gray-100 uppercase tracking-wider truncate">
-                        🎨 Boya Modu Aktif
+                        🎨 {{ t('scenes.editor.paintMode.title') }}
                     </span>
                 </div>
                 <div class="flex items-center gap-1">
                     <button 
                         @click.stop="undo" 
                         :disabled="!canUndo"
-                        :title="canUndo ? 'Geri Al (Ctrl+Z)' : 'Geri alınacak işlem yok'"
+                        :title="canUndo ? t('scenes.editor.paintMode.undo') + ' (Ctrl+Z)' : t('scenes.editor.paintMode.noUndoActions')"
                         class="text-gray-400 hover:text-white transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed"
                         :class="canUndo ? 'hover:bg-white/10 rounded' : ''">
                         <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -57,26 +57,26 @@
                         </svg>
                     </div>
                     <div class="flex flex-col text-xs space-y-1">
-                        <p class="text-white font-semibold">Nasıl Kullanılır?</p>
+                        <p class="text-white font-semibold">{{ t('scenes.editor.paintMode.howToUse') }}</p>
                         <!-- Web kontrolleri -->
                         <ul class="hidden md:block text-gray-300 space-y-0.5 text-[11px] leading-relaxed">
-                            <li>• <strong>Sol Tıkla/Sürükle:</strong> Parçaları boya</li>
-                            <li>• <strong>Sağ Tıkla:</strong> Kamerayı döndür</li>
-                            <li>• <strong>Space + Sürükle:</strong> Sahneyi kaydır</li>
-                            <li>• <strong>Scroll:</strong> Yakınlaş/Uzaklaş</li>
+                            <li>• <strong>{{ t('scenes.editor.paintMode.leftClickDrag') }}:</strong> {{ t('scenes.editor.paintMode.paintParts') }}</li>
+                            <li>• <strong>{{ t('scenes.editor.paintMode.rightClick') }}:</strong> {{ t('scenes.editor.paintMode.rotateCamera') }}</li>
+                            <li>• <strong>{{ t('scenes.editor.paintMode.spaceDrag') }}:</strong> {{ t('scenes.editor.paintMode.panScene') }}</li>
+                            <li>• <strong>{{ t('scenes.editor.paintMode.scroll') }}:</strong> {{ t('scenes.editor.paintMode.zoomInOut') }}</li>
                         </ul>
                         <!-- Mobil kontrolleri -->
                         <ul class="md:hidden text-gray-300 space-y-0.5 text-[11px] leading-relaxed">
-                            <li>• <strong>Tek Tıklama:</strong> Parçayı boya</li>
-                            <li>• <strong>Tek Parmak Sürükle:</strong> Döndür</li>
-                            <li>• <strong>İki Parmak:</strong> Zoom/Kaydır</li>
+                            <li>• <strong>{{ t('scenes.editor.paintMode.singleTap') }}:</strong> {{ t('scenes.editor.paintMode.paintPart') }}</li>
+                            <li>• <strong>{{ t('scenes.editor.paintMode.singleFingerDrag') }}:</strong> {{ t('scenes.editor.paintMode.rotate') }}</li>
+                            <li>• <strong>{{ t('scenes.editor.paintMode.twoFingers') }}:</strong> {{ t('scenes.editor.paintMode.zoomPan') }}</li>
                         </ul>
                     </div>
                 </div>
             </div>
 
             <div>
-                <label class="text-xs font-bold text-gray-400 mb-2 block">Yüzey Rengi</label>
+                <label class="text-xs font-bold text-gray-400 mb-2 block">{{ t('scenes.editor.paintMode.surfaceColor') }}</label>
                 <div class="flex overflow-x-auto pb-2 gap-2 mb-2 md:grid md:grid-cols-5 md:pb-0 scrollbar-hide">
                     <button v-for="color in presetColors" :key="color" @click="updateColor(color)"
                         class="w-9 h-9 md:w-10 md:h-10 rounded-full border-2 transition-transform hover:scale-110 focus:ring-2 ring-offset-2 ring-offset-gray-800 shrink-0"
@@ -95,7 +95,7 @@
 
             <!-- Materyal Preset'leri -->
             <div>
-                <label class="text-xs font-bold text-gray-400 mb-2 block">Materyal Türü</label>
+                <label class="text-xs font-bold text-gray-400 mb-2 block">{{ t('scenes.editor.paintMode.materialType') }}</label>
                 <div class="grid grid-cols-2 gap-2 mb-3">
                     <button 
                         v-for="(preset, index) in materialPresets" 
@@ -118,7 +118,7 @@
             <div class="space-y-4 pb-10 md:pb-0">
                 <div>
                     <div class="flex justify-between mb-2">
-                        <label class="text-xs font-bold text-gray-400">Metalik (Manuel)</label>
+                        <label class="text-xs font-bold text-gray-400">{{ t('scenes.editor.paintMode.metallicManual') }}</label>
                         <span class="text-xs text-purple-400">{{ Math.round(metalness * 100) }}%</span>
                     </div>
                     <input type="range" min="0" max="1" step="0.01" v-model.number="metalness" 
@@ -127,7 +127,7 @@
                 </div>
                 <div>
                     <div class="flex justify-between mb-2">
-                        <label class="text-xs font-bold text-gray-400">Pürüzlülük (Manuel)</label>
+                        <label class="text-xs font-bold text-gray-400">{{ t('scenes.editor.paintMode.roughnessManual') }}</label>
                         <span class="text-xs text-purple-400">{{ Math.round(roughness * 100) }}%</span>
                     </div>
                     <input type="range" min="0" max="1" step="0.01" v-model.number="roughness" 
@@ -138,7 +138,7 @@
 
             <div v-if="lastPaintedMesh" class="bg-green-500/10 border border-green-500/20 p-2 rounded-lg">
                 <p class="text-xs text-green-300">
-                    ✓ Son boyanan: <strong>{{ lastPaintedMesh }}</strong>
+                    ✓ {{ t('scenes.editor.paintMode.lastPainted') }}: <strong>{{ lastPaintedMesh }}</strong>
                 </p>
             </div>
         </div>
@@ -147,7 +147,9 @@
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 
+const { t } = useI18n();
 const emit = defineEmits(['close', 'paint', 'undo']);
 
 const presetColors = [

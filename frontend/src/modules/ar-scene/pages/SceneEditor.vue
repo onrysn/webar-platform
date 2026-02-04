@@ -35,7 +35,7 @@
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
                     </path>
                 </svg>
-                <span class="text-xs text-gray-300 font-medium whitespace-nowrap">Kaydediliyor...</span>
+                <span class="text-xs text-gray-300 font-medium whitespace-nowrap">{{ t('scenes.editor.saving') }}</span>
             </div>
 
             <div v-if="saveStatus === 'saved'"
@@ -43,7 +43,7 @@
                 <svg class="h-3 w-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                 </svg>
-                <span class="text-xs text-green-100 font-medium whitespace-nowrap">Kaydedildi</span>
+                <span class="text-xs text-green-100 font-medium whitespace-nowrap">{{ t('scenes.editor.saved') }}</span>
             </div>
 
             <div v-if="saveStatus === 'error'"
@@ -52,7 +52,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span class="text-xs text-white font-medium whitespace-nowrap">Kayıt Hatası</span>
+                <span class="text-xs text-white font-medium whitespace-nowrap">{{ t('messages.error.saveError') }}</span>
             </div>
         </div>
 
@@ -70,9 +70,9 @@
                 <div>
                     <h1
                         class="font-bold text-sm text-white leading-tight truncate max-w-[150px] sm:max-w-xs flex items-center gap-2">
-                        {{ sceneData?.name || 'Yükleniyor...' }}
+                        {{ sceneData?.name || t('common.loading') }}
                         <span v-if="!canEdit"
-                            class="text-[10px] bg-gray-700 px-1.5 py-0.5 rounded text-gray-300 font-normal">Sadece İzleme</span>
+                            class="text-[10px] bg-gray-700 px-1.5 py-0.5 rounded text-gray-300 font-normal">{{ t('common.view') }}</span>
                     </h1>
                     <p v-if="sceneData?.settings" class="text-[10px] text-gray-400">
                         {{ sceneData.settings.width }}m x {{ sceneData.settings.depth }}m
@@ -95,7 +95,7 @@
                     <button @click="showLightingPanel = !showLightingPanel"
                         class="p-3 bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-lg text-white hover:bg-black/20 transition-colors"
                         :class="showLightingPanel ? 'bg-yellow-600/80 border-yellow-500' : ''"
-                        title="Aydınlatma Ayarları">
+                        :title="t('scenes.editor.lightingSettings')">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
                             stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -113,7 +113,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                         </svg>
-                        Paylaş
+                        {{ t('scenes.share') }}
                     </button>
                     <button @click="showQuoteModal = true"
                         class="flex items-center gap-2 px-4 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl shadow-lg font-bold text-sm transition-all">
@@ -122,7 +122,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        Teklif İste
+                        {{ t('scenes.editor.requestQuote') }}
                     </button>
                     <div class="relative">
                         <button @click="showDownloadMenu = !showDownloadMenu" :disabled="isExporting"
@@ -142,7 +142,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                 </svg>
-                                Dışa Aktar
+                                {{ t('common.export') }}
                             </span>
                         </button>
 
@@ -166,7 +166,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4h16v16H4V4zm4 8h8m-4-4v8" />
                         </svg>
-                        Ekran Görüntüsü Al
+                        {{ t('scenes.editor.takeScreenshot') }}
                     </button>
                 </div>
 
@@ -177,7 +177,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6h.01M12 12h.01M12 18h.01" />
                         </svg>
-                        Aksiyonlar
+                        {{ t('common.actions') }}
                     </button>
 
                     <div v-if="showMobileActions"
@@ -189,7 +189,7 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                                 </svg>
-                                Paylaş
+                                {{ t('scenes.share') }}
                             </button>
                             <button @click="showMobileActions = false; showQuoteModal = true"
                                 class="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-gray-800 text-left">
@@ -197,19 +197,19 @@
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                 </svg>
-                                Teklif İste
+                                {{ t('scenes.editor.requestQuote') }}
                             </button>
                             <div class="py-1">
-                                <p class="px-3 pb-1 text-[10px] uppercase tracking-wide text-gray-400">Dışa Aktar</p>
+                                <p class="px-3 pb-1 text-[10px] uppercase tracking-wide text-gray-400">{{ t('common.export') }}</p>
                                 <button @click="showMobileActions = false; handleExport('glb')" :disabled="isExporting"
                                     class="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-gray-800 text-left disabled:opacity-50 disabled:cursor-not-allowed">
                                     <span class="w-2 h-2 rounded-full bg-green-500"></span>
-                                    <span class="flex-1">Android (GLB)</span>
+                                    <span class="flex-1">{{ t('scenes.editor.exportAndroid') }}</span>
                                 </button>
                                 <button @click="showMobileActions = false; handleExport('usdz')" :disabled="isExporting"
                                     class="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-gray-800 text-left disabled:opacity-50 disabled:cursor-not-allowed">
                                     <span class="w-2 h-2 rounded-full bg-blue-500"></span>
-                                    <span class="flex-1">iOS (USDZ)</span>
+                                    <span class="flex-1">{{ t('scenes.editor.exportIos') }}</span>
                                 </button>
                             </div>
                         </div>
@@ -224,7 +224,7 @@
                 class="absolute top-20 left-4 bottom-24 w-64 md:w-72 bg-gray-800/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-30 flex flex-col overflow-hidden transform transition-transform">
 
                 <div class="p-4 border-b border-white/10 flex justify-between items-center">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Sahne Objeleri</span>
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">{{ t('scenes.editor.sceneObjects') }}</span>
                     <span class="bg-gray-700 text-xs px-2 py-0.5 rounded text-gray-300">{{ sceneItems.length }}</span>
                 </div>
 
@@ -235,8 +235,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path>
                         </svg>
-                        <span v-if="canEdit">Model ekleyerek başlayın.</span>
-                        <span v-else>Sahnede obje yok.</span>
+                        <span v-if="canEdit">{{ t('scenes.editor.startByAddingModel') }}</span>
+                        <span v-else>{{ t('scenes.editor.noObjectsInScene') }}</span>
                     </div>
 
                     <div v-for="item in sceneItems" :key="item.id" @click="selectItemFromTree(item.id)"
@@ -267,7 +267,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                         </svg>
-                        Model Ekle
+                        {{ t('scenes.editor.addModel') }}
                     </button>
                 </div>
             </div>
@@ -281,7 +281,7 @@
                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16" />
                 </svg>
-                <span class="text-[10px] font-bold">Taşı</span>
+                <span class="text-[10px] font-bold">{{ t('scenes.editor.transform.move') }}</span>
             </button>
 
             <button @click="setTransformMode('rotate')"
@@ -291,7 +291,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
-                <span class="text-[10px] font-bold">Döndür</span>
+                <span class="text-[10px] font-bold">{{ t('scenes.editor.transform.rotate') }}</span>
             </button>
 
             <button @click="setTransformMode('scale')"
@@ -301,7 +301,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                 </svg>
-                <span class="text-[10px] font-bold">Ölçekle</span>
+                <span class="text-[10px] font-bold">{{ t('scenes.editor.transform.scale') }}</span>
             </button>
 
             <div class="w-px h-8 bg-white/20 mx-1"></div>
@@ -310,7 +310,7 @@
                 class="p-3 rounded-xl transition-all flex flex-col items-center gap-1 min-w-[60px]"
                 :class="isPaintMode ? 'bg-purple-600 text-white shadow-lg ring-2 ring-purple-400 ring-offset-2 ring-offset-black' : 'text-gray-400 hover:text-white hover:bg-white/10'">
                 <span class="text-xl">🎨</span>
-                <span class="text-[10px] font-bold">Boya</span>
+                <span class="text-[10px] font-bold">{{ t('scenes.editor.paintMode.title') }}</span>
             </button>
 
             <button @click="deleteSelectedItem" :disabled="!selectedItemId"
@@ -319,7 +319,7 @@
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
-                <span class="text-[10px] font-bold">Sil</span>
+                <span class="text-[10px] font-bold">{{ t('common.delete') }}</span>
             </button>
         </div>
 
@@ -327,7 +327,7 @@
             class="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
             <div class="bg-white rounded-2xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col max-h-[85vh]">
                 <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
-                    <h3 class="font-bold text-lg text-gray-800">Kütüphaneden Ekle</h3>
+                    <h3 class="font-bold text-lg text-gray-800">{{ t('scenes.editor.addFromLibrary') }}</h3>
                     <button @click="showModelSelector = false"
                         class="p-2 hover:bg-gray-200 rounded-full transition-colors text-gray-500">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -343,11 +343,11 @@
                             <img v-if="model.thumbnailPath" :src="getThumbnailUrl(model.thumbnailPath)"
                                 class="w-full h-full object-cover transform group-hover:scale-110 transition-transform duration-500">
                             <div v-else class="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                                Görsel Yok</div>
+                                {{ t('common.noData') }}</div>
                             <div
                                 class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <span
-                                    class="bg-white/90 text-blue-600 px-3 py-1 rounded-full text-xs font-bold shadow-sm">Ekle
+                                    class="bg-white/90 text-blue-600 px-3 py-1 rounded-full text-xs font-bold shadow-sm">{{ t('common.add') }}
                                     +</span>
                             </div>
                         </div>
@@ -367,7 +367,7 @@
 
             <div class="p-5 border-b border-gray-800 flex justify-between items-center bg-gray-800/50">
                 <h3 class="font-bold text-lg text-white flex items-center gap-2">
-                    🌍 Sahne Ayarları & Paylaşım
+                    🌍 {{ t('scenes.editor.shareSettings') }}
                 </h3>
                 <button @click="showShareModal = false"
                     class="text-gray-400 hover:text-white transition-colors">✕</button>
@@ -379,8 +379,8 @@
                 <div v-if="authStore.user?.role !== 'MEMBER'" class="space-y-4">
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-bold text-white">🔒 Gizli Sahne</p>
-                            <p class="text-xs text-gray-400">Liste ekranında sadece yöneticiler görebilir.</p>
+                            <p class="text-sm font-bold text-white">🔒 {{ t('scenes.editor.privateScene') }}</p>
+                            <p class="text-xs text-gray-400">{{ t('scenes.editor.privateSceneDesc') }}</p>
                         </div>
                         <button @click="togglePrivacy"
                             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
@@ -392,8 +392,8 @@
 
                     <div class="flex items-center justify-between">
                         <div>
-                            <p class="text-sm font-bold text-white">👥 Ekip Düzenleyebilir</p>
-                            <p class="text-xs text-gray-400">Member rolündekiler değişiklik yapabilir.</p>
+                            <p class="text-sm font-bold text-white">👥 {{ t('scenes.editor.teamCanEdit') }}</p>
+                            <p class="text-xs text-gray-400">{{ t('scenes.editor.teamCanEditDesc') }}</p>
                         </div>
                         <button @click="toggleMemberEdit"
                             class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none"
@@ -407,33 +407,33 @@
                 <div class="h-px bg-gray-800 w-full"></div>
 
                 <div class="space-y-3">
-                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Public Erişim Linki</p>
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">{{ t('scenes.editor.publicAccessLink') }}</p>
 
                     <div v-if="publicShareUrl" class="bg-black/40 p-3 rounded-xl border border-gray-700 space-y-3">
                         <div class="flex items-center gap-2 bg-gray-800 p-2 rounded-lg border border-gray-700">
                             <input readonly :value="publicShareUrl"
                                 class="bg-transparent text-xs text-gray-300 w-full outline-none font-mono" />
                             <button @click="copyLink"
-                                class="text-blue-400 hover:text-blue-300 text-xs font-bold px-2">Kopyala</button>
+                                class="text-blue-400 hover:text-blue-300 text-xs font-bold px-2">{{ t('companies.apiKey.copy') }}</button>
                         </div>
 
                         <div class="flex gap-2">
                             <a :href="publicShareUrl" target="_blank"
                                 class="flex-1 py-2 text-center text-xs font-bold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors">
-                                Test Et ↗
+                                {{ t('scenes.editor.testLink') }} ↗
                             </a>
                             <button @click="revokeLink"
                                 class="px-3 py-2 text-xs font-bold text-red-400 hover:bg-red-500/10 border border-red-500/30 rounded-lg transition-colors">
-                                Linki İptal Et
+                                {{ t('scenes.editor.revokeLink') }}
                             </button>
                         </div>
                     </div>
 
                     <div v-else class="text-center py-4 bg-gray-800/30 rounded-xl border border-gray-800 border-dashed">
-                        <p class="text-sm text-gray-400 mb-3">Bu sahne henüz paylaşıma açılmadı.</p>
+                        <p class="text-sm text-gray-400 mb-3">{{ t('scenes.editor.sceneNotShared') }}</p>
                         <button @click="generateLink"
                             class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white text-xs font-bold rounded-lg transition-colors">
-                            🔗 Paylaşım Linki Oluştur
+                            🔗 {{ t('scenes.editor.createShareLink') }}
                         </button>
                     </div>
                 </div>
@@ -456,7 +456,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
                     </svg>
-                    Aydınlatma Ayarları
+                    {{ t('scenes.editor.lightingSettings') }}
                 </h3>
                 <button @click="showLightingPanel = false"
                     class="text-gray-400 hover:text-white transition-colors">
@@ -473,11 +473,11 @@
                 <div class="space-y-3 p-4 bg-gray-800/50 rounded-xl border border-gray-700">
                     <div class="flex items-center gap-2 mb-3">
                         <div class="w-2 h-2 rounded-full bg-blue-400"></div>
-                        <h4 class="text-sm font-bold text-white">Ortam Işığı (Ambient)</h4>
+                        <h4 class="text-sm font-bold text-white">{{ t('scenes.editor.lighting.ambient') }}</h4>
                     </div>
                     
                     <div class="space-y-2">
-                        <label class="text-xs text-gray-400 block">Yoğunluk</label>
+                        <label class="text-xs text-gray-400 block">{{ t('scenes.editor.lighting.intensity') }}</label>
                         <div class="flex items-center gap-3">
                             <input type="range" min="0" max="2" step="0.1" 
                                 :value="lightingSettings.ambientIntensity"
@@ -488,7 +488,7 @@
                     </div>
                     
                     <div class="space-y-2">
-                        <label class="text-xs text-gray-400 block">Renk</label>
+                        <label class="text-xs text-gray-400 block">{{ t('scenes.editor.lighting.color') }}</label>
                         <div class="flex items-center gap-3">
                             <input type="color" 
                                 :value="lightingSettings.ambientColor"
@@ -503,11 +503,11 @@
                 <div class="space-y-3 p-4 bg-gray-800/50 rounded-xl border border-gray-700">
                     <div class="flex items-center gap-2 mb-3">
                         <div class="w-2 h-2 rounded-full bg-yellow-400"></div>
-                        <h4 class="text-sm font-bold text-white">Yönlü Işık (Directional)</h4>
+                        <h4 class="text-sm font-bold text-white">{{ t('scenes.editor.lighting.directional') }}</h4>
                     </div>
                     
                     <div class="space-y-2">
-                        <label class="text-xs text-gray-400 block">Yoğunluk</label>
+                        <label class="text-xs text-gray-400 block">{{ t('scenes.editor.lighting.intensity') }}</label>
                         <div class="flex items-center gap-3">
                             <input type="range" min="0" max="3" step="0.1" 
                                 :value="lightingSettings.directionalIntensity"
@@ -518,7 +518,7 @@
                     </div>
                     
                     <div class="space-y-2">
-                        <label class="text-xs text-gray-400 block">Renk</label>
+                        <label class="text-xs text-gray-400 block">{{ t('scenes.editor.lighting.color') }}</label>
                         <div class="flex items-center gap-3">
                             <input type="color" 
                                 :value="lightingSettings.directionalColor"
@@ -529,7 +529,7 @@
                     </div>
                     
                     <div class="space-y-2">
-                        <label class="text-xs text-gray-400 block">Pozisyon X</label>
+                        <label class="text-xs text-gray-400 block">{{ t('scenes.editor.lighting.positionX') }}</label>
                         <div class="flex items-center gap-3">
                             <input type="range" min="-50" max="50" step="1" 
                                 :value="lightingSettings.directionalX"
@@ -540,7 +540,7 @@
                     </div>
                     
                     <div class="space-y-2">
-                        <label class="text-xs text-gray-400 block">Pozisyon Y (Yükseklik)</label>
+                        <label class="text-xs text-gray-400 block">{{ t('scenes.editor.lighting.positionY') }}</label>
                         <div class="flex items-center gap-3">
                             <input type="range" min="5" max="100" step="1" 
                                 :value="lightingSettings.directionalY"
@@ -551,7 +551,7 @@
                     </div>
                     
                     <div class="space-y-2">
-                        <label class="text-xs text-gray-400 block">Pozisyon Z</label>
+                        <label class="text-xs text-gray-400 block">{{ t('scenes.editor.lighting.positionZ') }}</label>
                         <div class="flex items-center gap-3">
                             <input type="range" min="-50" max="50" step="1" 
                                 :value="lightingSettings.directionalZ"
@@ -569,7 +569,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
-                    Varsayılana Sıfırla
+                    {{ t('scenes.editor.lighting.resetToDefault') }}
                 </button>
             </div>
         </div>
@@ -612,6 +612,7 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount, nextTick, markRaw, computed } from 'vue';
 import { useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { TransformControls } from 'three/examples/jsm/controls/TransformControls.js';
@@ -643,6 +644,7 @@ const shapeLibrary = computed(() =>
 
 // --- STATE ---
 const route = useRoute();
+const { t } = useI18n();
 const authStore = useAuthStore();
 const sceneId = Number(route.params.id);
 const canvasRef = ref<HTMLCanvasElement | null>(null);

@@ -1,22 +1,22 @@
 <template>
   <div class="pbr-texture-list">
     <div class="header">
-      <h1>PBR Texture Yönetimi</h1>
+      <h1>{{ t('pbrTextures.title') }}</h1>
       <button @click="goToCreate" class="btn btn-primary">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <line x1="12" y1="5" x2="12" y2="19"></line>
           <line x1="5" y1="12" x2="19" y2="12"></line>
         </svg>
-        Yeni Texture
+        {{ t('pbrTextures.uploadNew') }}
       </button>
     </div>
 
     <!-- Filters -->
     <div class="filters">
       <div class="filter-group">
-        <label>Kategori:</label>
+        <label>{{ t('pbrTextures.filterCategory') }}</label>
         <select v-model="filters.category" @change="fetchTextures">
-          <option value="">Tümü</option>
+          <option value="">{{ t('common.all') }}</option>
           <option v-for="cat in categories" :key="cat" :value="cat">
             {{ cat }}
           </option>
@@ -24,20 +24,20 @@
       </div>
 
       <div class="filter-group">
-        <label>Tip:</label>
+        <label>{{ t('pbrTextures.filterType') }}</label>
         <select v-model="filters.type" @change="fetchTextures">
-          <option value="">Tümü</option>
-          <option value="SIMPLE">Simple</option>
-          <option value="PBR">PBR</option>
+          <option value="">{{ t('common.all') }}</option>
+          <option value="SIMPLE">{{ t('pbrTextures.typeSimple') }}</option>
+          <option value="PBR">{{ t('pbrTextures.typePBR') }}</option>
         </select>
       </div>
 
       <div class="filter-group">
-        <label>Durum:</label>
+        <label>{{ t('pbrTextures.filterStatus') }}</label>
         <select v-model="filters.isActive" @change="fetchTextures">
-          <option value="">Tümü</option>
-          <option value="true">Aktif</option>
-          <option value="false">Pasif</option>
+          <option value="">{{ t('common.all') }}</option>
+          <option value="true">{{ t('common.active') }}</option>
+          <option value="false">{{ t('common.inactive') }}</option>
         </select>
       </div>
     </div>
@@ -45,7 +45,7 @@
     <!-- Loading -->
     <div v-if="loading" class="loading">
       <div class="spinner"></div>
-      <p>Texture'lar yükleniyor...</p>
+      <p>{{ t('pbrTextures.loading') }}</p>
     </div>
 
     <!-- Texture Grid -->
@@ -72,19 +72,19 @@
         </div>
 
         <div class="texture-actions">
-          <button @click="goToEdit(texture.id)" class="btn btn-sm btn-secondary" title="Düzenle">
+          <button @click="goToEdit(texture.id)" class="btn btn-sm btn-secondary" :title="t('common.edit')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
             </svg>
-            Düzenle
+            {{ t('common.edit') }}
           </button>
-          <button @click="confirmDelete(texture)" class="btn btn-sm btn-danger" title="Sil">
+          <button @click="confirmDelete(texture)" class="btn btn-sm btn-danger" :title="t('common.delete')">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="3 6 5 6 21 6"></polyline>
               <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
             </svg>
-            Sil
+            {{ t('common.delete') }}
           </button>
         </div>
       </div>
@@ -97,22 +97,21 @@
         <circle cx="8.5" cy="8.5" r="1.5"></circle>
         <polyline points="21 15 16 10 5 21"></polyline>
       </svg>
-      <p>Henüz texture eklenmemiş</p>
-      <button @click="goToCreate" class="btn btn-primary">İlk Texture'ı Ekle</button>
+      <p>{{ t('pbrTextures.noTextures') }}</p>
+      <button @click="goToCreate" class="btn btn-primary">{{ t('pbrTextures.noTexturesDesc') }}</button>
     </div>
 
     <!-- Delete Confirmation Modal -->
     <div v-if="deleteModal.show" class="modal-overlay" @click="closeDeleteModal">
       <div class="modal" @click.stop>
-        <h3>Texture Sil</h3>
+        <h3>{{ t('pbrTextures.deleteTexture') }}</h3>
         <p>
-          <strong>{{ deleteModal.texture?.name }}</strong> texture'ını silmek istediğinize emin misiniz?
-          Bu işlem geri alınamaz.
+          <strong>{{ deleteModal.texture?.name }}</strong> {{ t('pbrTextures.deleteConfirm') }}
         </p>
         <div class="modal-actions">
-          <button @click="closeDeleteModal" class="btn btn-secondary">İptal</button>
+          <button @click="closeDeleteModal" class="btn btn-secondary">{{ t('common.cancel') }}</button>
           <button @click="deleteTexture" class="btn btn-danger" :disabled="deleteModal.deleting">
-            {{ deleteModal.deleting ? 'Siliniyor...' : 'Sil' }}
+            {{ deleteModal.deleting ? t('common.deleting') : t('common.delete') }}
           </button>
         </div>
       </div>
@@ -123,9 +122,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { pbrTextureService, type PbrTexture } from '../../../services/pbrTextureService';
 
 const router = useRouter();
+const { t } = useI18n();
 
 const textures = ref<PbrTexture[]>([]);
 const categories = ref<string[]>([]);

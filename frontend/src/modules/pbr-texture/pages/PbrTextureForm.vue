@@ -6,9 +6,9 @@
           <line x1="19" y1="12" x2="5" y2="12"></line>
           <polyline points="12 19 5 12 12 5"></polyline>
         </svg>
-        Geri
+        {{ t('common.back') }}
       </button>
-      <h1>{{ isEdit ? 'Texture Düzenle' : 'Yeni Texture Ekle' }}</h1>
+      <h1>{{ isEdit ? t('pbrTextures.form.editTitle') : t('pbrTextures.form.title') }}</h1>
     </div>
 
     <div class="content">
@@ -17,31 +17,31 @@
         <form @submit.prevent="handleSubmit">
           <!-- Basic Info -->
           <div class="form-group">
-            <label>Texture Adı *</label>
+            <label>{{ t('pbrTextures.form.name') }} *</label>
             <input
               v-model="form.name"
               type="text"
               required
-              placeholder="örn: Asfalt, Beton, Ahşap"
+              :placeholder="t('pbrTextures.textureNamePlaceholder')"
             />
           </div>
 
           <div class="form-row">
             <div class="form-group">
-              <label>Tip *</label>
+              <label>{{ t('pbrTextures.form.type') }} *</label>
               <select v-model="form.type" required>
-                <option value="PBR">PBR</option>
-                <option value="SIMPLE">Simple</option>
+                <option value="PBR">{{ t('pbrTextures.typePBR') }}</option>
+                <option value="SIMPLE">{{ t('pbrTextures.typeSimple') }}</option>
               </select>
             </div>
 
             <div class="form-group">
-              <label>Kategori</label>
+              <label>{{ t('pbrTextures.form.category') }}</label>
               <input
                 v-model="form.category"
                 type="text"
                 list="categories"
-                placeholder="wood, stone, metal, fabric..."
+                :placeholder="t('pbrTextures.form.categoryPlaceholder')"
               />
               <datalist id="categories">
                 <option v-for="cat in existingCategories" :key="cat" :value="cat" />
@@ -51,10 +51,10 @@
 
           <!-- PBR Maps -->
           <div v-if="form.type === 'PBR'" class="pbr-maps">
-            <h3>PBR Texture Katmanları</h3>
+            <h3>{{ t('pbrTextures.form.layers') }}</h3>
             
             <div class="form-group">
-              <label>Base Color / Albedo *</label>
+              <label>{{ t('pbrTextures.form.baseColor') }} *</label>
               <input
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp"
@@ -62,66 +62,66 @@
                 :required="form.type === 'PBR' && !isEdit"
               />
               <small v-if="form.baseColorUrl" class="file-info">
-                Mevcut: {{ form.baseColorUrl }}
+                {{ t('pbrTextures.form.current') }} {{ form.baseColorUrl }}
               </small>
             </div>
 
             <div class="form-group">
-              <label>Normal Map</label>
+              <label>{{ t('pbrTextures.form.normalMap') }}</label>
               <input
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp"
                 @change="handleFileChange($event, 'normal')"
               />
               <small v-if="form.normalUrl" class="file-info">
-                Mevcut: {{ form.normalUrl }}
+                {{ t('pbrTextures.form.current') }} {{ form.normalUrl }}
               </small>
             </div>
 
             <div class="form-group">
-              <label>Roughness Map</label>
+              <label>{{ t('pbrTextures.form.roughnessMap') }}</label>
               <input
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp"
                 @change="handleFileChange($event, 'roughness')"
               />
               <small v-if="form.roughnessUrl" class="file-info">
-                Mevcut: {{ form.roughnessUrl }}
+                {{ t('pbrTextures.form.current') }} {{ form.roughnessUrl }}
               </small>
             </div>
 
             <div class="form-group">
-              <label>Metallic Map</label>
+              <label>{{ t('pbrTextures.form.metallicMap') }}</label>
               <input
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp"
                 @change="handleFileChange($event, 'metallic')"
               />
               <small v-if="form.metallicUrl" class="file-info">
-                Mevcut: {{ form.metallicUrl }}
+                {{ t('pbrTextures.form.current') }} {{ form.metallicUrl }}
               </small>
             </div>
 
             <div class="form-group">
-              <label>Ambient Occlusion</label>
+              <label>{{ t('pbrTextures.form.aoMap') }}</label>
               <input
                 type="file"
                 accept="image/jpeg,image/jpg,image/png,image/webp"
                 @change="handleFileChange($event, 'ao')"
               />
               <small v-if="form.aoUrl" class="file-info">
-                Mevcut: {{ form.aoUrl }}
+                {{ t('pbrTextures.form.current') }} {{ form.aoUrl }}
               </small>
             </div>
           </div>
 
           <!-- PBR Settings -->
           <div v-if="form.type === 'PBR'" class="pbr-settings">
-            <h3>PBR Ayarları</h3>
+            <h3>{{ t('pbrTextures.form.settings') }}</h3>
 
             <div class="form-row">
               <div class="form-group">
-                <label>Scale ({{ form.defaultScale }})</label>
+                <label>{{ t('pbrTextures.form.scale') }} ({{ form.defaultScale }})</label>
                 <input
                   v-model.number="form.defaultScale"
                   type="range"
@@ -132,7 +132,7 @@
               </div>
 
               <div class="form-group">
-                <label>Roughness ({{ form.roughnessValue }})</label>
+                <label>{{ t('pbrTextures.form.roughness') }} ({{ form.roughnessValue }})</label>
                 <input
                   v-model.number="form.roughnessValue"
                   type="range"
@@ -145,7 +145,7 @@
 
             <div class="form-row">
               <div class="form-group">
-                <label>Metalness ({{ form.metalnessValue }})</label>
+                <label>{{ t('pbrTextures.form.metalness') }} ({{ form.metalnessValue }})</label>
                 <input
                   v-model.number="form.metalnessValue"
                   type="range"
@@ -156,7 +156,7 @@
               </div>
 
               <div class="form-group">
-                <label>AO Intensity ({{ form.aoIntensity }})</label>
+                <label>{{ t('pbrTextures.form.aoIntensity') }} ({{ form.aoIntensity }})</label>
                 <input
                   v-model.number="form.aoIntensity"
                   type="range"
@@ -168,7 +168,7 @@
             </div>
 
             <div class="form-group">
-              <label>Normal Scale ({{ form.normalScale }})</label>
+              <label>{{ t('pbrTextures.form.normalScale') }} ({{ form.normalScale }})</label>
               <input
                 v-model.number="form.normalScale"
                 type="range"
@@ -181,13 +181,13 @@
 
           <!-- Tags -->
           <div class="form-group">
-            <label>Etiketler (virgülle ayırın)</label>
+            <label>{{ t('pbrTextures.form.tags') }}</label>
             <input
               v-model="tagsInput"
               type="text"
-              placeholder="outdoor, road, urban"
+              :placeholder="t('pbrTextures.form.tagsPlaceholder')"
             />
-            <small>Örnek: outdoor, road, urban</small>
+            <small>{{ t('pbrTextures.form.tagsExample') }}</small>
           </div>
 
           <!-- Settings -->
@@ -195,12 +195,12 @@
             <div class="form-group">
               <label>
                 <input v-model="form.isActive" type="checkbox" />
-                Aktif
+                {{ t('pbrTextures.form.active') }}
               </label>
             </div>
 
             <div class="form-group">
-              <label>Sıralama</label>
+              <label>{{ t('pbrTextures.form.order') }}</label>
               <input
                 v-model.number="form.sortOrder"
                 type="number"
@@ -212,10 +212,10 @@
           <!-- Actions -->
           <div class="form-actions">
             <button type="button" @click="goBack" class="btn btn-secondary">
-              İptal
+              {{ t('common.cancel') }}
             </button>
             <button type="submit" class="btn btn-primary" :disabled="submitting">
-              {{ submitting ? 'Kaydediliyor...' : (isEdit ? 'Güncelle' : 'Oluştur') }}
+              {{ submitting ? t('common.saving') : (isEdit ? t('common.update') : t('common.create')) }}
             </button>
           </div>
         </form>
@@ -223,7 +223,7 @@
 
       <!-- Live Preview -->
       <div class="preview-section">
-        <h3>Canlı Önizleme</h3>
+        <h3>{{ t('pbrTextures.form.livePreview') }}</h3>
         <PbrTexturePreview
           v-if="form.type === 'PBR'"
           :base-color-url="form.baseColorUrl"
@@ -243,7 +243,7 @@
             <circle cx="8.5" cy="8.5" r="1.5"></circle>
             <polyline points="21 15 16 10 5 21"></polyline>
           </svg>
-          <p>PBR texture için önizleme görünecek</p>
+          <p>{{ t('pbrTextures.form.previewPlaceholder') }}</p>
         </div>
       </div>
     </div>
@@ -253,11 +253,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { pbrTextureService } from '../../../services/pbrTextureService';
 import PbrTexturePreview from '../../../components/PbrTexturePreview.vue';
 
 const router = useRouter();
 const route = useRoute();
+const { t } = useI18n();
 
 const isEdit = computed(() => !!route.params.id);
 const existingCategories = ref<string[]>([]);

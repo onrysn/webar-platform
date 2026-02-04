@@ -5,14 +5,14 @@
       <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
         <div>
           <div class="flex items-center gap-3">
-            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">3D Kütüphanesi</h1>
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">{{ t('models.title') }}</h1>
             <span v-if="routeCompanyId"
               class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200">
-              Şirket #{{ routeCompanyId }}
+              {{ t('companies.title') }} #{{ routeCompanyId }}
             </span>
           </div>
           <p class="mt-1 text-sm text-gray-500">
-            Yüklenen tüm AR modellerini buradan yönetebilirsiniz.
+            {{ t('models.subtitle') }}
           </p>
         </div>
 
@@ -23,7 +23,7 @@
               stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            Şirkete Dön
+            {{ t('scenes.backToCompany') }}
           </button>
 
           <button v-if="canUpload" @click="goToUpload"
@@ -33,7 +33,7 @@
               viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            Yeni Model Yükle
+            {{ t('models.uploadNew') }}
           </button>
         </div>
       </div>
@@ -45,12 +45,12 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
           </svg>
-          <span class="text-sm font-bold">Şirket Filtrele:</span>
+          <span class="text-sm font-bold">{{ t('models.filterByCompany') }}:</span>
         </div>
 
         <select v-model="selectedFilterCompanyId" @change="fetchModels"
           class="flex-1 w-full sm:w-auto p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block">
-          <option :value="null">Tüm Şirketler (Hepsi)</option>
+          <option :value="null">{{ t('models.allCompanies') }}</option>
           <option v-for="company in companiesList" :key="company.id" :value="company.id">
             {{ company.name }}
           </option>
@@ -58,7 +58,7 @@
 
         <button v-if="selectedFilterCompanyId" @click="clearFilter"
           class="text-xs text-red-600 font-bold hover:underline">
-          Filtreyi Temizle
+          {{ t('common.filter') }} {{ t('common.remove') }}
         </button>
       </div>
 
@@ -69,12 +69,12 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
               d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
           </svg>
-          <span class="text-sm font-bold">Kategori Filtrele:</span>
+          <span class="text-sm font-bold">{{ t('models.filterByCategory') }}:</span>
         </div>
 
         <select v-model="selectedCategoryId" @change="fetchModels"
           class="flex-1 w-full sm:w-auto p-2.5 bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block">
-          <option :value="null">Tüm Kategoriler</option>
+          <option :value="null">{{ t('models.allCategories') }}</option>
           <option v-for="category in modelCategories" :key="category.id" :value="category.id">
             {{ category.name }}
           </option>
@@ -82,7 +82,7 @@
 
         <button v-if="selectedCategoryId" @click="clearCategoryFilter"
           class="text-xs text-red-600 font-bold hover:underline">
-          Kategori Filtresini Temizle
+          {{ t('scenes.clearCategoryFilter') }}
         </button>
       </div>
 
@@ -101,10 +101,10 @@
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
           </svg>
         </div>
-        <h3 class="text-lg font-medium text-red-900">Modeller Yüklenemedi</h3>
+        <h3 class="text-lg font-medium text-red-900">{{ t('models.uploadModel.uploadError') }}</h3>
         <p class="mt-2 text-sm text-red-500">{{ error }}</p>
         <button @click="fetchModels" class="mt-4 text-sm font-medium text-red-600 hover:text-red-500 underline">
-          Tekrar Dene
+          {{ t('common.refresh') }}
         </button>
       </div>
 
@@ -116,14 +116,14 @@
               d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
         </div>
-        <h3 class="mt-2 text-lg font-medium text-gray-900">Henüz hiç model yok</h3>
+        <h3 class="mt-2 text-lg font-medium text-gray-900">{{ t('models.noModels') }}</h3>
         <p class="mt-1 text-sm text-gray-500">
-          {{ selectedFilterCompanyId ? 'Bu şirkete ait model bulunamadı.' : 'Sistemde henüz model yok.' }}
+          {{ selectedFilterCompanyId ? t('models.noModelsDesc') : t('models.noModelsDesc') }}
         </p>
         <div class="mt-6">
           <button @click="goToUpload"
             class="inline-flex items-center px-6 py-3 border border-transparent shadow-sm text-sm font-bold rounded-xl text-blue-700 bg-blue-100 hover:bg-blue-200 transition-colors">
-            Model Yükle
+            {{ t('models.uploadModel.title') }}
           </button>
         </div>
       </div>
@@ -139,6 +139,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, watch } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { arModelService } from '../../../services/arModelService';
 import { companyService } from '../../../services/companyService';
 import { categoryService } from '../../../services/categoryService';
@@ -151,6 +152,7 @@ import type { CategoryDto } from '../../../services/categoryService';
 const router = useRouter();
 const route = useRoute();
 const authStore = useAuthStore();
+const { t } = useI18n();
 
 // STATE
 const models = ref<ARModelDto[]>([]);

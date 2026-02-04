@@ -5,18 +5,18 @@
     <!-- Loading Overlay -->
     <div v-if="isLoading" class="loading-overlay">
       <div class="spinner"></div>
-      <p>Texture yükleniyor...</p>
+      <p>{{ t('pbrTextures.preview.loading') }}</p>
     </div>
     
     <!-- Controls -->
     <div class="controls">
-      <button @click="resetCamera" class="control-btn" title="Kamerayı Sıfırla">
+      <button @click="resetCamera" class="control-btn" :title="t('pbrTextures.preview.resetCamera')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
           <path d="M21 3v5h-5"/>
         </svg>
       </button>
-      <button @click="toggleRotation" class="control-btn" :title="autoRotate ? 'Otomatik Dönüşü Durdur' : 'Otomatik Dönüş'">
+      <button @click="toggleRotation" class="control-btn" :title="autoRotate ? t('pbrTextures.preview.stopAutoRotate') : t('pbrTextures.preview.autoRotate')">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <circle cx="12" cy="12" r="10"/>
           <path v-if="autoRotate" d="M12 6v6l4 2"/>
@@ -28,8 +28,11 @@
 
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
+
+const { t } = useI18n();
 
 interface PbrTextureProps {
   baseColorUrl?: string;

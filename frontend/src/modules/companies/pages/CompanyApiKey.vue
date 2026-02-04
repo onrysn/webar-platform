@@ -12,20 +12,20 @@
         <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
           <div class="p-6 flex items-center justify-between">
             <div class="flex items-center gap-2">
-              <h3 class="text-base font-bold text-slate-800">API Anahtarları</h3>
+              <h3 class="text-base font-bold text-slate-800">{{ t('companies.apiKey.title') }}</h3>
               <span v-if="isSuperAdmin && targetCompanyId"
-                class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700">ADMIN MODU</span>
+                class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-100 text-indigo-700">{{ t('common.adminMode') }}</span>
             </div>
             <button @click="createKey" :disabled="!canCreate"
               class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold rounded-lg disabled:opacity-50 disabled:cursor-not-allowed">
-              Yeni API Key Oluştur
+              {{ t('companies.apiKey.createNew') }}
             </button>
           </div>
 
-          <div class="px-6 pb-4 text-xs text-slate-500">Maksimum anahtar: {{ maxApiKeysDisplay }}</div>
+          <div class="px-6 pb-4 text-xs text-slate-500">{{ t('companies.apiKey.maxKeys') }}: {{ maxApiKeysDisplay }}</div>
 
           <div class="p-6 pt-0">
-            <div v-if="keys.length === 0" class="text-sm text-slate-500">Henüz bir anahtar yok.</div>
+            <div v-if="keys.length === 0" class="text-sm text-slate-500">{{ t('companies.apiKey.noKeys') }}</div>
 
             <div v-else class="space-y-3">
               <div v-for="k in keys" :key="k.id" class="border border-slate-200 rounded-xl p-4">
@@ -35,7 +35,7 @@
                     <div class="mt-1 text-xs text-slate-500 font-mono">{{ k.key.substring(0, 16) + '...' }}</div>
                   </div>
                   <div class="flex items-center gap-3">
-                    <label class="text-xs font-bold text-slate-600">Aktif</label>
+                    <label class="text-xs font-bold text-slate-600">{{ t('common.active') }}</label>
                     <button @click="toggleActive(k)" :class="k.isActive ? 'bg-green-600' : 'bg-slate-300'"
                       class="relative inline-flex h-6 w-11 rounded-full transition-colors">
                       <span :class="k.isActive ? 'translate-x-5' : 'translate-x-0'"
@@ -43,9 +43,9 @@
                     </button>
                   </div>
                   <div class="flex items-center gap-2">
-                    <button @click="copy(k.key)" class="px-2 py-1 text-xs bg-slate-100 border rounded">Kopyala</button>
-                    <button @click="save(k)" class="px-3 py-1 text-xs bg-indigo-600 text-white rounded">Kaydet</button>
-                    <button @click="remove(k)" class="px-3 py-1 text-xs bg-red-600 text-white rounded">Sil</button>
+                    <button @click="copy(k.key)" class="px-2 py-1 text-xs bg-slate-100 border rounded">{{ t('companies.apiKey.copy') }}</button>
+                    <button @click="save(k)" class="px-3 py-1 text-xs bg-indigo-600 text-white rounded">{{ t('common.save') }}</button>
+                    <button @click="remove(k)" class="px-3 py-1 text-xs bg-red-600 text-white rounded">{{ t('common.delete') }}</button>
                   </div>
                 </div>
               </div>
@@ -62,12 +62,14 @@
 import { ref, onMounted, computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { useToast } from 'vue-toastification';
+import { useI18n } from 'vue-i18n';
 import { useAuthStore } from '../../../store/modules/auth';
 import { companyService } from '../../../services/companyService';
 import type { ApiKeyDto, CompanyDto } from '../dto/company.dto';
 
 const route = useRoute();
 const toast = useToast();
+const { t } = useI18n();
 const authStore = useAuthStore();
 
 // STATE
@@ -81,7 +83,7 @@ const canCreate = computed(() => {
   if (maxApiKeys.value == null) return true;
   return keys.value.length < maxApiKeys.value;
 });
-const maxApiKeysDisplay = computed(() => maxApiKeys.value ?? 'Sınırsız');
+const maxApiKeysDisplay = computed(() => maxApiKeys.value ?? t('companies.apiKey.unlimited'));
 
 async function load() {
   loading.value = true;

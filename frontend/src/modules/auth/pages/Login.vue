@@ -9,9 +9,9 @@
       <div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl"></div>
 
       <div class="relative z-10 text-center px-12">
-        <h2 class="text-4xl font-extrabold text-white mb-6 tracking-tight">WebAR Admin Studio</h2>
+        <h2 class="text-4xl font-extrabold text-white mb-6 tracking-tight">{{ t('auth.login.hero.title') }}</h2>
         <p class="text-slate-400 text-lg leading-relaxed">
-          Artırılmış gerçeklik deneyimlerinizi tek bir yerden yönetin, tasarlayın ve yayınlayın.
+          {{ t('auth.login.hero.subtitle') }}
         </p>
         <div class="mt-12 flex justify-center">
           <div
@@ -22,18 +22,23 @@
       </div>
     </div>
 
-    <div class="w-full lg:w-1/2 flex items-center justify-center p-8 bg-slate-50">
+    <div class="w-full lg:w-1/2 flex items-center justify-center p-8 bg-slate-50 relative">
+      <!-- Language Switcher -->
+      <div class="absolute top-4 right-4 z-10">
+        <LanguageSwitcher variant="light" />
+      </div>
+
       <div class="w-full max-w-md bg-white p-8 rounded-2xl shadow-xl border border-slate-100">
 
         <div class="text-center mb-10">
-          <h1 class="text-2xl font-bold text-slate-900">Hoş Geldiniz</h1>
-          <p class="text-slate-500 text-sm mt-2">Devam etmek için hesabınıza giriş yapın.</p>
+          <h1 class="text-2xl font-bold text-slate-900">{{ t('auth.login.title') }}</h1>
+          <p class="text-slate-500 text-sm mt-2">{{ t('auth.login.subtitle') }}</p>
         </div>
 
         <form @submit.prevent="handleLogin" class="space-y-6">
 
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1.5">E-posta Adresi</label>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ t('auth.login.email') }}</label>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg class="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
@@ -42,14 +47,14 @@
                   <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z" />
                 </svg>
               </div>
-              <input v-model="email" type="email" placeholder="ornek@sirket.com"
+              <input v-model="email" type="email" :placeholder="t('auth.login.emailPlaceholder')"
                 class="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out sm:text-sm"
                 required />
             </div>
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700 mb-1.5">Şifre</label>
+            <label class="block text-sm font-medium text-slate-700 mb-1.5">{{ t('auth.login.password') }}</label>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <svg class="h-5 w-5 text-slate-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"
@@ -59,7 +64,7 @@
                     clip-rule="evenodd" />
                 </svg>
               </div>
-              <input v-model="password" type="password" placeholder="••••••••"
+              <input v-model="password" type="password" :placeholder="t('auth.login.passwordPlaceholder')"
                 class="block w-full pl-10 pr-3 py-3 border border-slate-300 rounded-xl leading-5 bg-slate-50 placeholder-slate-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out sm:text-sm"
                 required />
             </div>
@@ -69,10 +74,10 @@
             <div class="flex items-center">
               <input id="remember_me" type="checkbox"
                 class="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded">
-              <label for="remember_me" class="ml-2 block text-sm text-slate-600">Beni hatırla</label>
+              <label for="remember_me" class="ml-2 block text-sm text-slate-600">{{ t('auth.login.rememberMe') }}</label>
             </div>
             <div class="text-sm">
-              <a href="#" class="font-medium text-indigo-600 hover:text-indigo-500">Şifremi unuttum?</a>
+              <a href="#" class="font-medium text-indigo-600 hover:text-indigo-500">{{ t('auth.login.forgotPassword') }}</a>
             </div>
           </div>
 
@@ -94,22 +99,22 @@
                 d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
               </path>
             </svg>
-            {{ isLoading ? 'Giriş Yapılıyor...' : 'Giriş Yap' }}
+            {{ isLoading ? t('auth.login.loggingIn') : t('auth.login.loginButton') }}
           </button>
         </form>
 
         <div class="mt-8 text-center border-t border-slate-100 pt-6">
           <p class="text-sm text-slate-500">
-            Hesabınız yok mu?
+            {{ t('auth.login.noAccount') }}
             <router-link to="/register" class="font-bold text-indigo-600 hover:text-indigo-500 transition-colors">
-              Hemen Kayıt Olun
+              {{ t('auth.login.registerNow') }}
             </router-link>
           </p>
         </div>
 
         <div class="mt-4 text-center">
           <p class="text-xs text-slate-400">
-            &copy; 2025 WebAR Admin Panel. Tüm hakları saklıdır.
+            {{ t('auth.login.copyright') }}
           </p>
         </div>
 
@@ -122,7 +127,10 @@
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { useAuthStore } from '../../../store/modules/auth';
+import { useI18n } from 'vue-i18n';
+import LanguageSwitcher from '../../../components/LanguageSwitcher.vue';
 
+const { t } = useI18n();
 const auth = useAuthStore();
 const router = useRouter();
 
@@ -145,7 +153,7 @@ const handleLogin = async () => {
     // Başarılı giriş sonrası yönlendirme
     router.push('/dashboard');
   } catch (err: any) {
-    error.value = err.message || 'Giriş başarısız. Lütfen bilgilerinizi kontrol edin.';
+    error.value = err.message || t('auth.login.error');
   } finally {
     isLoading.value = false;
   }

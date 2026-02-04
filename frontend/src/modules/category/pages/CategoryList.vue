@@ -12,14 +12,14 @@
               </svg>
             </div>
             <div>
-              <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">Kategoriler</h1>
-              <p class="text-sm text-slate-500 mt-0.5">Model ve sahne kategorilerinizi yönetin</p>
+              <h1 class="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">{{ t('categories.title') }}</h1>
+              <p class="text-sm text-slate-500 mt-0.5">{{ t('categories.subtitle') }}</p>
             </div>
           </div>
         </div>
         <div class="flex items-center gap-3">
           <div class="relative">
-            <input v-model="search" type="text" placeholder="Kategori ara..." 
+            <input v-model="search" type="text" :placeholder="t('common.search') + '...'" 
               class="pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm bg-white shadow-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-64 transition-all" />
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -30,7 +30,7 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
             </svg>
-            Yeni Kategori
+            {{ t('categories.createNew') }}
           </button>
         </div>
       </div>
@@ -42,16 +42,16 @@
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
             </svg>
-            <span class="text-sm font-bold">Şirket:</span>
+            <span class="text-sm font-bold">{{ t('scenes.filterByCompany') }}</span>
           </div>
           <select v-model="selectedFilterCompanyId" @change="refetch" 
             class="flex-1 p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all">
-            <option :value="null">Tüm Şirketler</option>
+            <option :value="null">{{ t('scenes.allCompanies') }}</option>
             <option v-for="c in companiesList" :key="c.id" :value="c.id">{{ c.name }}</option>
           </select>
           <button v-if="selectedFilterCompanyId" @click="clearFilter" 
             class="px-3 py-2 text-xs text-red-600 font-bold hover:bg-red-50 rounded-lg transition-all">
-            Temizle
+            {{ t('common.remove') }}
           </button>
         </div>
       </div>
@@ -66,7 +66,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
               </svg>
-              Model Kategorileri
+              {{ t('categories.tabs.models') }}
               <span class="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600">
                 {{ modelCategories.length }}
               </span>
@@ -80,7 +80,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
               </svg>
-              Sahne Kategorileri
+              {{ t('categories.tabs.scenes') }}
               <span class="px-2 py-0.5 rounded-full text-xs bg-slate-100 text-slate-600">
                 {{ sceneCategories.length }}
               </span>
@@ -122,10 +122,10 @@
               </svg>
             </div>
             <h3 class="text-xl font-bold text-slate-900 mb-2 animate-in slide-in-from-bottom-4 duration-500 delay-200">
-              {{ activeTab === 'MODEL' ? 'Model kategorisi yok' : 'Sahne kategorisi yok' }}
+              {{ activeTab === 'MODEL' ? t('categories.noCategories') : t('categories.noCategories') }}
             </h3>
             <p class="text-sm text-slate-500 mb-6 max-w-sm mx-auto animate-in slide-in-from-bottom-4 duration-500 delay-300">
-              {{ activeTab === 'MODEL' ? '3D modellerinizi düzenlemek için kategoriler oluşturun' : 'AR sahnelerinizi organize etmek için kategoriler oluşturun' }}
+              {{ activeTab === 'MODEL' ? t('categories.noCategoriesModel') : t('categories.noCategoriesScene') }}
             </p>
             <button @click="openCreate" 
               class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all animate-in slide-in-from-bottom-4 duration-500 delay-400"
@@ -133,7 +133,7 @@
               <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
               </svg>
-              {{ activeTab === 'MODEL' ? 'Model Kategorisi Oluştur' : 'Sahne Kategorisi Oluştur' }}
+              {{ t('categories.addCategory') }}
             </button>
           </div>
           
@@ -174,7 +174,7 @@
                 <div>
                   <h3 class="font-bold text-slate-900 text-lg">{{ c.name }}</h3>
                   <p v-if="c.description" class="text-sm text-slate-500 mt-1 line-clamp-2">{{ c.description }}</p>
-                  <p v-else class="text-sm text-slate-400 italic mt-1">Açıklama yok</p>
+                  <p v-else class="text-sm text-slate-400 italic mt-1">{{ t('common.description') }} {{ t('common.noData').toLowerCase() }}</p>
                 </div>
 
                 <div class="flex flex-wrap gap-2">
@@ -214,8 +214,8 @@
                 </svg>
               </div>
               <div>
-                <h2 class="text-2xl font-bold text-white">{{ editing ? 'Kategoriyi Düzenle' : 'Yeni Kategori Oluştur' }}</h2>
-                <p class="text-indigo-100 text-sm mt-1">{{ editing ? 'Kategori bilgilerini güncelleyin' : 'Yeni bir kategori ekleyin' }}</p>
+                <h2 class="text-2xl font-bold text-white">{{ editing ? t('categories.editCategory') : t('categories.addCategory') }}</h2>
+                <p class="text-indigo-100 text-sm mt-1">{{ editing ? t('categories.editCategory') : t('categories.addCategory') }}</p>
               </div>
             </div>
           </div>
@@ -225,7 +225,7 @@
             
             <!-- Category Type Selection -->
             <div class="space-y-2">
-              <label class="block text-sm font-bold text-slate-700 mb-3">Kategori Tipi</label>
+              <label class="block text-sm font-bold text-slate-700 mb-3">{{ t('categories.type') }}</label>
               <div class="grid grid-cols-2 gap-4">
                 <button @click="form.categoryType = 'MODEL'" type="button"
                   :class="['relative p-4 rounded-2xl border-2 transition-all duration-200 group', 
@@ -245,9 +245,9 @@
                     </div>
                     <div class="text-center">
                       <div :class="['font-bold text-sm', form.categoryType === 'MODEL' ? 'text-indigo-700' : 'text-slate-700']">
-                        Model
+                        {{ t('categories.typeModel') }}
                       </div>
-                      <div class="text-xs text-slate-500 mt-0.5">3D modeller için</div>
+                      <div class="text-xs text-slate-500 mt-0.5">{{ t('categories.forModels') }}</div>
                     </div>
                   </div>
                   <div v-if="form.categoryType === 'MODEL'" 
@@ -276,9 +276,9 @@
                     </div>
                     <div class="text-center">
                       <div :class="['font-bold text-sm', form.categoryType === 'SCENE' ? 'text-purple-700' : 'text-slate-700']">
-                        Sahne
+                        {{ t('categories.typeScene') }}
                       </div>
-                      <div class="text-xs text-slate-500 mt-0.5">AR sahneler için</div>
+                      <div class="text-xs text-slate-500 mt-0.5">{{ t('categories.forScenes') }}</div>
                     </div>
                   </div>
                   <div v-if="form.categoryType === 'SCENE'" 
@@ -294,10 +294,10 @@
             <!-- Name Input -->
             <div class="space-y-2">
               <label class="block text-sm font-bold text-slate-700">
-                Kategori Adı <span class="text-red-500">*</span>
+                {{ t('categories.categoryName') }} <span class="text-red-500">*</span>
               </label>
               <div class="relative">
-                <input v-model="form.name" type="text" placeholder="Örn: Mobilya, Oturma Odaları..." 
+                <input v-model="form.name" type="text" :placeholder="t('categories.categoryNamePlaceholder')" 
                   class="w-full px-4 py-3 pl-12 border-2 border-slate-200 rounded-xl bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-slate-900 placeholder:text-slate-400" />
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
@@ -307,18 +307,18 @@
 
             <!-- Description Input -->
             <div class="space-y-2">
-              <label class="block text-sm font-bold text-slate-700">Açıklama</label>
-              <textarea v-model="form.description" rows="3" placeholder="Kategori açıklaması (opsiyonel)" 
+              <label class="block text-sm font-bold text-slate-700">{{ t('common.description') }}</label>
+              <textarea v-model="form.description" rows="3" :placeholder="t('categories.descriptionPlaceholder')" 
                 class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-slate-900 placeholder:text-slate-400 resize-none"></textarea>
             </div>
 
             <!-- Parent Category Selection -->
             <div class="space-y-2">
-              <label class="block text-sm font-bold text-slate-700">Üst Kategori</label>
+              <label class="block text-sm font-bold text-slate-700">{{ t('common.category') }}</label>
               <div class="relative">
                 <select v-model="form.parentId" 
                   class="w-full px-4 py-3 pl-12 border-2 border-slate-200 rounded-xl bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-100 outline-none transition-all text-slate-900 appearance-none cursor-pointer">
-                  <option :value="undefined">Ana Kategori (Üst yok)</option>
+                  <option :value="undefined">{{ t('categories.parentCategoryNone') }}</option>
                   <option v-for="cat in parentCategoryOptions" :key="cat.id" :value="cat.id">
                     {{ cat.name }} (#{{ cat.id }})
                   </option>
@@ -337,14 +337,14 @@
           <div class="px-8 py-5 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
             <button @click="close" 
               class="px-6 py-2.5 rounded-xl border-2 border-slate-200 text-slate-700 font-bold hover:bg-white hover:border-slate-300 transition-all">
-              İptal
+              {{ t('common.cancel') }}
             </button>
             <button @click="save" :disabled="!form.name.trim()"
               :class="['px-6 py-2.5 rounded-xl font-bold transition-all shadow-lg', 
                 form.name.trim() 
                   ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white hover:shadow-xl hover:scale-105' 
                   : 'bg-slate-200 text-slate-400 cursor-not-allowed']">
-              {{ editing ? 'Güncelle' : 'Oluştur' }}
+              {{ editing ? t('common.update') : t('common.create') }}
             </button>
           </div>
         </div>
@@ -356,6 +356,9 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, computed } from 'vue';
 import { useToast } from 'vue-toastification';
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 import { categoriesStore } from '../../../store/modules/categories';
 import { useAuthStore } from '../../../store/modules/auth';
 import { companyService } from '../../../services/companyService';
