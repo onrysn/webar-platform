@@ -1016,28 +1016,47 @@ function downloadSceneScreenshot() {
         alert('Sahne tam yüklenmeden ekran görüntüsü alınamaz.');
         return;
     }
-    // --- Yüksek çözünürlük için geçici olarak pixelRatio ve boyut artır ---
-    const scale = 3; // 2 veya 3 önerilir
-    const origWidth = renderer.domElement.width;
-    const origHeight = renderer.domElement.height;
-    const origPixelRatio = renderer.getPixelRatio();
-
-    renderer.setPixelRatio(scale * origPixelRatio);
-    renderer.setSize(origWidth, origHeight, false);
-    renderer.render(scene, camera);
-
+    
     const canvas = canvasRef.value;
-    const image = canvas.toDataURL('image/png');
+    
+    // --- Mevcut ayarları kaydet ---
+    const origPixelRatio = renderer.getPixelRatio();
+    const origWidth = canvas.clientWidth;
+    const origHeight = canvas.clientHeight;
+    
+    // --- Yüksek çözünürlük için ayarları değiştir ---
+    const scale = 2; // Mac Retina ekranlar için optimize
+    renderer.setPixelRatio(scale);
+    renderer.setSize(origWidth, origHeight, false);
+    
+    // --- Kamera aspect ratio'sunu güncelle ---
+    if (camera.isPerspectiveCamera) {
+        camera.aspect = origWidth / origHeight;
+        camera.updateProjectionMatrix();
+    }
+    
+    // --- Sahneyi render et ---
+    renderer.render(scene, camera);
+    
+    // --- Screenshot al ---
+    const image = canvas.toDataURL('image/png', 1.0);
     const link = document.createElement('a');
     link.href = image;
     link.download = (sceneData.value?.name || 'ar-scene') + '_screenshot.png';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-
-    // --- Eski çözünürlüğe geri dön ---
+    
+    // --- Eski ayarlara geri dön ---
     renderer.setPixelRatio(origPixelRatio);
     renderer.setSize(origWidth, origHeight, false);
+    
+    // --- Kamera aspect ratio'sunu geri yükle ---
+    if (camera.isPerspectiveCamera) {
+        camera.aspect = origWidth / origHeight;
+        camera.updateProjectionMatrix();
+    }
+    
     renderer.render(scene, camera);
 }
 </script>
