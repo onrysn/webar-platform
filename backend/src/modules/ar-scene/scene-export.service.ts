@@ -179,7 +179,7 @@ export class SceneExportService {
                 },
             };
 
-            // 7. Optional USDZ conversion
+            // 7. Optional USDZ conversion (uses uncompressed GLB — converter doesn't support Draco)
             if (options.convertToUsdz) {
                 try {
                     const usdz = await this.convertGlbToUsdz(
@@ -196,6 +196,21 @@ export class SceneExportService {
                     this.logger.error('USDZ conversion failed:', err);
                     result.usdzError = 'USDZ dönüşümü başarısız oldu.';
                 }
+            }
+
+            // 8. Apply Draco compression to the final GLB for smaller file size
+            try {
+                execSync(`gltf-transform draco "${outputGlbPath}" "${outputGlbPath}"`, {
+                    timeout: 120000,
+                    stdio: 'pipe',
+                });
+                const compressedBuffer = fs.readFileSync(outputGlbPath);
+                this.logger.log(
+                    `Draco compressed: ${(glbBuffer.length / 1024 / 1024).toFixed(2)} MB → ${(compressedBuffer.length / 1024 / 1024).toFixed(2)} MB`,
+                );
+                result.glb.size = compressedBuffer.length;
+            } catch (err) {
+                this.logger.warn('Draco compression failed, using uncompressed GLB:', err?.message || err);
             }
 
             // 8. Expiry metadata (1 hour)
