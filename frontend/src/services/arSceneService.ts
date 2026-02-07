@@ -9,7 +9,8 @@ import type {
   SceneItemDto,
   FloorTextureDto,
   CreateFloorTextureDto,
-  ShareSceneResponse
+  ShareSceneResponse,
+  SceneExportResponse
 } from "../modules/ar-scene/dto/arScene.dto";
 
 export const arSceneService = {
@@ -121,5 +122,42 @@ export const arSceneService = {
       responseType: 'blob'
     });
     return res.data;
-  }
+  },
+
+  // =================================================================
+  // 5. SCENE EXPORT - Frontend GLB upload + Backend USDZ dönüşümü
+  // =================================================================
+
+  /**
+   * Backend'den sahneyi GLB olarak export etmesini ister.
+   * Backend Three.js ile sahneyi sıfırdan oluşturur, opsiyonel olarak USDZ'ye dönüştürür.
+   * Mobil cihazlardaki export yükünü tamamen sunucuya alır.
+   */
+  async exportSceneForAR(
+    token: string,
+    sceneName: string,
+    convertToUsdz: boolean = true,
+  ): Promise<SceneExportResponse> {
+    const params: any = { sceneName };
+    if (!convertToUsdz) params.convertToUsdz = 'false';
+
+    const res = await apiService.get<SceneExportResponse>(
+      `/shared/ar-scene/${token}/export`,
+      {
+        params,
+        timeout: 120000, // 2dk timeout - sahne oluşturma + USDZ dönüşümü uzun sürebilir
+      },
+    );
+    return res.data;
+  },
+
+  /**
+   * Backend tarafından dönen relative URL'yi tam URL'ye çevirir
+   */
+  getExportFileUrl(relativePath?: string): string {
+    if (!relativePath) return '';
+    if (relativePath.startsWith('http')) return relativePath;
+    const path = relativePath.startsWith('/') ? relativePath : `/${relativePath}`;
+    return `${window.location.origin}${path}`;
+  },
 };

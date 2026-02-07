@@ -5,6 +5,7 @@ import { ARSceneService } from './ar-scene.service';
 import { ActivityLogModule } from '../activity-log/activity-log.module';
 import { ARSceneSharedController } from './ar-scene.shared.controller';
 import { ARModelModule } from '../ar-model/ar-model.module';
+import { SceneExportService } from './scene-export.service';
 
 @Module({
     imports: [
@@ -15,6 +16,6 @@ import { ARModelModule } from '../ar-model/ar-model.module';
             ARSceneController,
             ARSceneSharedController
         ],
-    providers: [ARSceneService],
+    providers: [ARSceneService, SceneExportService],
 })
 export class ARSceneModule { }

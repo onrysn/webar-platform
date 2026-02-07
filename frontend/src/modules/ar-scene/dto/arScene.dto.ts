@@ -235,3 +235,19 @@ export interface ShareSceneResponse {
     shareToken: string;
     url: string;
 }
+
+// 6. Backend Scene Export Response
+export interface SceneExportFileInfo {
+    fileName: string;
+    url: string;
+    size: number;
+    sizeFormatted?: string;
+}
+
+export interface SceneExportResponse {
+    exportId: string;
+    sceneName: string;
+    glb?: SceneExportFileInfo;
+    usdz?: SceneExportFileInfo;
+    usdzError?: string;
+}

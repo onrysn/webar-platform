@@ -653,12 +653,11 @@ const isLoading = ref(true);
 const loadingMessage = ref('3D Sahne Hazırlanıyor...');
 const loadingProgress = ref(0);
 
-// AR Export Composable
+// AR Export Composable (Backend tarafında sahne oluşturma)
 const { 
     exportProgress, 
     isExporting, 
-    exportSceneToGLB, 
-    convertToUSDZ,
+    exportSceneFromBackend,
     resetExport 
 } = useARExport();
 
@@ -1044,44 +1043,54 @@ const buildPerimeterLayers = async (targetScene: THREE.Scene, settings: any) => 
 // =======================================================
 
 const handleExport = async (format: 'glb' | 'usdz') => {
-    if (isExporting.value) return;
+    if (isExporting.value || !scene) return;
     showDownloadMenu.value = false;
 
     try {
-        // Scene'i GLB olarak export et
-        const glbBlob = await exportSceneToGLB(
-            scene,
-            sceneData.value?.settings,
-            {
-                buildPerimeterLayers,
-                isMobile: false // Editor'da mobil optimizasyonu yapmayız
-            }
-        );
-        
+        // Sahne share token'ı kontrol et, yoksa oluştur
+        let token = sceneData.value?.shareToken;
+        if (!token) {
+            // Geçici bir share token oluştur
+            const res = await arSceneService.generateShareToken(sceneId);
+            token = res.shareToken;
+            if (sceneData.value) sceneData.value.shareToken = token;
+            publicShareUrl.value = res.url || `${window.location.origin}/view/scene/${token}`;
+        }
+
         const fileName = sceneData.value?.name || 'sahne';
         const safeFileName = fileName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        const convertToUsdz = format === 'usdz';
 
-        if (format === 'glb') {
+        // Backend'den sahneyi export et (tüm iş sunucuda yapılır)
+        const exportResult = await exportSceneFromBackend(token, {
+            sceneName: fileName,
+            convertToUsdz,
+        });
+
+        if (format === 'glb' && exportResult.glb) {
             // GLB'yi indir
+            const fullUrl = arSceneService.getExportFileUrl(exportResult.glb.url);
             const link = document.createElement('a');
-            link.href = URL.createObjectURL(glbBlob);
+            link.href = fullUrl;
             link.download = `${safeFileName}.glb`;
+            document.body.appendChild(link);
             link.click();
-            URL.revokeObjectURL(link.href);
+            document.body.removeChild(link);
             
-            console.log("✅ GLB indirildi!");
-        } else {
-            // USDZ'ye çevir ve indir
-            const usdzUrl = await convertToUSDZ(glbBlob, `${safeFileName}.glb`);
-            
+            console.log(`✅ GLB indirildi! (${exportResult.glb.sizeFormatted})`);
+        } else if (format === 'usdz' && exportResult.usdz) {
+            // USDZ'yi indir
+            const fullUrl = arSceneService.getExportFileUrl(exportResult.usdz.url);
             const link = document.createElement('a');
-            link.href = usdzUrl;
+            link.href = fullUrl;
             link.download = `${safeFileName}.usdz`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             
-            console.log("✅ USDZ indirildi!");
+            console.log(`✅ USDZ indirildi! (${exportResult.usdz.sizeFormatted})`);
+        } else {
+            throw new Error(`${format.toUpperCase()} dosyası oluşturulamadı.`);
         }
         
         // Export state'i sıfırla

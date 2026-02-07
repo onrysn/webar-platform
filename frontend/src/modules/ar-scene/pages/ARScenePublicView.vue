@@ -138,12 +138,11 @@ const isLoading = ref(true);
 const loadingMessage = ref('Sahne Yükleniyor...');
 const loadingProgress = ref(0);
 
-// AR Export Composable
+// AR Export Composable (Backend tarafında sahne oluşturma)
 const { 
     exportProgress, 
     isExporting, 
-    exportSceneToGLB, 
-    convertToUSDZ, 
+    exportSceneFromBackend, 
     startARView,
     resetExport 
 } = useARExport();
@@ -454,36 +453,23 @@ const handleViewInAR = async () => {
         return;
     }
 
-    if (isExporting.value) return;
+    if (isExporting.value || !scene) return;
 
     try {
-        // Scene'i GLB olarak export et
-        const glbBlob = await exportSceneToGLB(
-            scene,
-            sceneData.value?.settings,
-            {
-                buildPerimeterLayers,
-                isMobile: true
-            }
-        );
-
-        const fileName = sceneData.value?.name || 'sahne';
-        const safeFileName = fileName.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-
-        let usdzUrl: string | undefined;
+        const convertToUsdz = isIOS; // iOS için USDZ gerekli
         
-        // iOS için USDZ'ye çevir
-        if (isIOS) {
-            console.log("🍏 iOS Cihazı Algılandı - USDZ dönüşümü başlatılıyor...");
-            usdzUrl = await convertToUSDZ(glbBlob, `${safeFileName}.glb`);
-        }
+        console.log(`🚀 AR export başlatılıyor... [platform=${isIOS ? 'iOS' : 'Android'}]`);
 
-        // AR görüntülemeyi başlat
-        await startARView({
-            glbBlob,
-            usdzUrl,
-            fileName: safeFileName
+        // Backend'den sahneyi export et (tüm iş sunucuda yapılır — mobil cihaz yükü almaz)
+        const exportResult = await exportSceneFromBackend(shareToken, {
+            sceneName: sceneData.value?.name || 'scene',
+            convertToUsdz,
         });
+
+        // AR görüntülemeyi başlat (URL tabanlı)
+        // iOS: AR Quick Look (USDZ URL)
+        // Android: Google Scene Viewer (GLB URL)
+        await startARView(exportResult);
 
         console.log("✅ AR görüntüleme başlatıldı!");
         
