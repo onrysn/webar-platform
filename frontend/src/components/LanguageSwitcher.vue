@@ -57,7 +57,7 @@ interface Props {
   variant?: 'dark' | 'light';
 }
 
-const props = withDefaults(defineProps<Props>(), {
+withDefaults(defineProps<Props>(), {
   variant: 'dark'
 });
 
