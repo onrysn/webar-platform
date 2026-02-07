@@ -585,11 +585,11 @@ export default {
     },
     form: {
       basicInfo: 'Basic Information',
-      basicInfoDesc: 'Update your company\'s display name and domain settings here.',
+      basicInfoDesc: "Update your company's display name and domain settings here.",
       name: 'Company Name',
       namePlaceholder: 'Enter company name',
       domain: 'Domain Name',
-      domainHint: 'Optional. Used for CORS policies and Whitelist operations. You don\'t need to type \'http://\' or \'https://\'.',
+      domainHint: "Optional. Used for CORS policies and Whitelist operations. You don't need to type 'http://' or 'https://'.",
       domainSecurityHint: 'Used for CORS and security settings (Optional).',
       email: 'Email',
       phone: 'Phone',

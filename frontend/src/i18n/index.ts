@@ -6,6 +6,9 @@ const i18n = createI18n({
   legacy: false,
   locale: localStorage.getItem('locale') || 'tr',
   fallbackLocale: 'en',
+  globalInjection: true,
+  missingWarn: false,
+  fallbackWarn: false,
   messages: {
     tr,
     en
