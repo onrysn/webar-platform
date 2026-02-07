@@ -49,6 +49,7 @@ services:
       - redis
     volumes:
       - ./uploads:/app/uploads
+      - ./frontend/public/textures:/shared/textures
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.backend.rule=Host(`ozmediadigital.online`) && PathPrefix(`/api`)"
