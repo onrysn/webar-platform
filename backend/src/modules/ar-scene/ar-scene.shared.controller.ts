@@ -1,12 +1,12 @@
-import { Controller, Get, NotFoundException, Param, Query, Res, StreamableFile, ParseIntPipe, ForbiddenException } from "@nestjs/common";
-import { ApiOperation, ApiTags, ApiQuery } from "@nestjs/swagger";
+import { Controller, Get, Post, NotFoundException, Param, Query, Res, StreamableFile, ParseIntPipe, ForbiddenException, Body } from "@nestjs/common";
+import { ApiOperation, ApiTags, ApiQuery, ApiBody } from "@nestjs/swagger";
 import type { Response } from 'express';
 
 import { ARSceneService } from "./ar-scene.service";
 import { PrismaService } from "src/prisma/prisma.service";
 import { ARModelService } from "../ar-model/ar-model.service";
 import { Public } from "src/common/decorators/public.decorator";
-import { SceneExportService } from "./scene-export.service";
+import { SceneExportQueueService } from "./scene-export-queue.service";
 
 @ApiTags('ar-scene-shared')
 @Controller('shared/ar-scene')
@@ -14,7 +14,7 @@ import { SceneExportService } from "./scene-export.service";
 export class ARSceneSharedController {
     constructor(
         private readonly arSceneService: ARSceneService,
-        private readonly sceneExportService: SceneExportService,
+        private readonly sceneExportQueueService: SceneExportQueueService,
         private readonly arModelService: ARModelService,
         private readonly prisma: PrismaService,
     ) { }
@@ -88,53 +88,52 @@ export class ARSceneSharedController {
     }
 
     // ================================================================
-    // 3. SAHNE EXPORT - Backend tarafında sahneyi GLB olarak oluştur + USDZ dönüşümü
+    // 3. SAHNE EXPORT - Queue tabanlı (Bull/Redis)
     // ================================================================
 
-    @Get(':token/export')
+    @Post(':token/export')
     @ApiOperation({
-        summary: 'Sahneyi backend tarafında GLB olarak oluşturur, opsiyonel olarak USDZ ye dönüştürür ve URL döner.',
-        description: 'Backend Three.js ile sahneyi (zemin, duvarlar, modeller) sıfırdan GLB olarak oluşturur. Mobil cihazlardaki export yükünü almak için tüm işlem sunucuda yapılır. Android Scene Viewer ve iOS AR Quick Look için URL tabanlı erişim sağlar.',
+        summary: 'Sahne export işini kuyruğa ekler ve jobId döner.',
+        description: 'Export işi arka planda çalışır. Durum takibi için GET /export/status/:jobId kullanın.',
     })
-    @ApiQuery({ name: 'sceneName', required: false, description: 'Export dosya adı' })
-    @ApiQuery({ name: 'convertToUsdz', required: false, type: String, description: 'USDZ dönüşümü (varsayılan: true)' })
-    async exportScene(
+    @ApiBody({
+        schema: {
+            type: 'object',
+            properties: {
+                sceneName: { type: 'string', description: 'Export dosya adı' },
+                convertToUsdz: { type: 'boolean', description: 'USDZ dönüşümü (varsayılan: true)' },
+            },
+        },
+        required: false,
+    })
+    async startExport(
         @Param('token') token: string,
-        @Query('sceneName') sceneName?: string,
-        @Query('convertToUsdz') convertToUsdz?: string,
+        @Body() body?: { sceneName?: string; convertToUsdz?: boolean },
     ) {
         // Token doğrulama
         const scene = await this.arSceneService.getSharedScene(token);
         if (!scene) throw new NotFoundException('Sahne bulunamadı.');
         if (!scene.company?.isActive) throw new NotFoundException('Erişim kısıtlandı.');
 
-        const shouldConvert = convertToUsdz !== 'false';
-        const name = sceneName || scene.name || 'scene';
+        const sceneName = body?.sceneName || scene.name || 'scene';
+        const convertToUsdz = body?.convertToUsdz !== false;
 
-        const result = await this.sceneExportService.exportScene(
+        const { jobId } = await this.sceneExportQueueService.enqueue(
             token,
-            {
-                sceneName: name,
-                convertToUsdz: shouldConvert,
-            },
+            sceneName,
+            convertToUsdz,
         );
 
-        // URL'leri tam API path ile döndür
-        return {
-            exportId: result.exportId,
-            sceneName: result.sceneName,
-            glb: result.glb ? {
-                ...result.glb,
-                url: `/api${result.glb.url}`,
-                sizeFormatted: this.formatFileSize(result.glb.size),
-            } : undefined,
-            usdz: result.usdz ? {
-                ...result.usdz,
-                url: `/api${result.usdz.url}`,
-                sizeFormatted: this.formatFileSize(result.usdz.size),
-            } : undefined,
-            usdzError: result.usdzError,
-        };
+        return { jobId, message: 'Export kuyruğa eklendi.' };
+    }
+
+    @Get('export/status/:jobId')
+    @ApiOperation({
+        summary: 'Export job durumunu sorgular.',
+        description: 'Polling ile durum takibi yapılır. status=completed olduğunda result içinde URL\'ler bulunur.',
+    })
+    async getExportStatus(@Param('jobId') jobId: string) {
+        return this.sceneExportQueueService.getJobStatus(jobId);
     }
 
     private formatFileSize(bytes: number): string {

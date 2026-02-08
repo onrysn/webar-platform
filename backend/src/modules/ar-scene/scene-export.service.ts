@@ -25,7 +25,10 @@ import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 import fetch from 'node-fetch';
 import FormData from 'form-data';
-import { execSync } from 'child_process';
+import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 import * as THREE from 'three';
 import { Document, NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
@@ -37,9 +40,12 @@ import { generateFilletPath } from './utils/generate-fillet-path';
 import { parseSVGPathToShapes } from './utils/svg-path-parser';
 
 // ─── Types ────────────────────────────────────────────
+type ProgressCallback = (progress: number, message: string) => void | Promise<void>;
+
 interface ExportOptions {
     sceneName?: string;
     convertToUsdz?: boolean;
+    onProgress?: ProgressCallback;
 }
 
 interface ExportResult {
@@ -95,9 +101,14 @@ export class SceneExportService {
         const sceneName = options.sceneName || sceneData.name || 'scene';
         const safeName = sceneName.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
 
+        const report = async (p: number, m: string) => {
+            if (options.onProgress) await options.onProgress(p, m);
+        };
+
         try {
             // 2. Build gltf-transform Document from scene data (floor, walls, layers)
             this.logger.log(`Building GLB for scene "${sceneName}"…`);
+            await report(15, 'Sahne geometrisi oluşturuluyor...');
             const doc = await this.buildGltfDocument(sceneData);
 
             // 3. Write scene-only GLB to temp
@@ -111,6 +122,7 @@ export class SceneExportService {
             glbFiles.push(sceneGlbPath);
 
             // 4. Write each model GLB with transforms applied
+            await report(25, 'Modeller hazırlanıyor...');
             for (const item of sceneData.items || []) {
                 try {
                     const modelGlbPath = await this.writeModelGlb(io, item, tempDir);
@@ -129,13 +141,13 @@ export class SceneExportService {
             const outputGlbPath = path.join(exportDir, glbFileName);
 
             // 6. Merge all GLBs using gltf-transform CLI (handles all extensions, textures, etc.)
+            await report(40, 'GLB dosyaları birleştiriliyor...');
             if (glbFiles.length === 1) {
                 fs.copyFileSync(glbFiles[0], outputGlbPath);
             } else {
                 const args = glbFiles.map((f) => `"${f}"`).join(' ');
-                execSync(`gltf-transform merge ${args} "${outputGlbPath}"`, {
+                await execAsync(`gltf-transform merge ${args} "${outputGlbPath}"`, {
                     timeout: 60000,
-                    stdio: 'pipe',
                 });
                 this.logger.log(`Merged ${glbFiles.length} GLBs via CLI`);
 
@@ -181,6 +193,7 @@ export class SceneExportService {
 
             // 7. Optional USDZ conversion (uses uncompressed GLB — converter doesn't support Draco)
             if (options.convertToUsdz) {
+                await report(65, 'USDZ dönüşümü yapılıyor...');
                 try {
                     const usdz = await this.convertGlbToUsdz(
                         outputGlbPath,
@@ -199,10 +212,10 @@ export class SceneExportService {
             }
 
             // 8. Apply Draco compression to the final GLB for smaller file size
+            await report(80, 'Draco sıkıştırma uygulanıyor...');
             try {
-                execSync(`gltf-transform draco "${outputGlbPath}" "${outputGlbPath}"`, {
+                await execAsync(`gltf-transform draco "${outputGlbPath}" "${outputGlbPath}"`, {
                     timeout: 120000,
-                    stdio: 'pipe',
                 });
                 const compressedBuffer = fs.readFileSync(outputGlbPath);
                 this.logger.log(

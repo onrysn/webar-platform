@@ -1,13 +1,13 @@
 // src/modules/ar-scene/composables/useARExport.ts
-// Simplified composable — all GLB export is done on the backend.
-// Frontend only calls the API and uses returned URLs.
+// Queue-based export composable — job is queued on backend, status polled until complete.
 
-import { ref, computed } from 'vue';
+import { ref, computed, onBeforeUnmount } from 'vue';
 import { arSceneService } from '../../../services/arSceneService';
 import type { SceneExportResponse } from '../dto/arScene.dto';
 
 export type ExportStatus =
   | 'idle'
+  | 'queued'
   | 'preparing'
   | 'exporting'
   | 'converting'
@@ -19,6 +19,9 @@ interface ExportProgress {
   message: string;
   progress: number; // 0-100
 }
+
+const POLL_INTERVAL = 1500; // 1.5 saniye
+const POLL_TIMEOUT = 300000; // 5 dakika maksimum bekleme
 
 export function useARExport() {
   const exportProgress = ref<ExportProgress>({
@@ -34,6 +37,8 @@ export function useARExport() {
       exportProgress.value.status !== 'error',
   );
 
+  let pollTimer: ReturnType<typeof setTimeout> | null = null;
+
   const updateProgress = (
     status: ExportStatus,
     message: string,
@@ -42,10 +47,21 @@ export function useARExport() {
     exportProgress.value = { status, message, progress };
   };
 
+  const stopPolling = () => {
+    if (pollTimer) {
+      clearTimeout(pollTimer);
+      pollTimer = null;
+    }
+  };
+
+  // Component unmount olduğunda polling'i durdur
+  onBeforeUnmount(() => {
+    stopPolling();
+  });
+
   /**
-   * Backend'den sahneyi export etmesini ister.
-   * Backend Three.js ile sahneyi sıfırdan GLB olarak oluşturur, opsiyonel USDZ dönüşümü yapar.
-   * Mobil cihazlardaki export yükünü tamamen sunucuya alır.
+   * Backend'e export işini kuyruğa ekletir, polling ile takip eder.
+   * İş tamamlandığında SceneExportResponse döner.
    */
   const exportSceneFromBackend = async (
     token: string,
@@ -54,21 +70,26 @@ export function useARExport() {
       convertToUsdz?: boolean;
     } = {},
   ): Promise<SceneExportResponse> => {
-    updateProgress('preparing', 'Sahne hazırlanıyor...', 10);
-
+    stopPolling();
     const convertToUsdz = options.convertToUsdz !== false;
 
-    console.log(`📦 Backend export başlatılıyor...`);
+    updateProgress('queued', 'Export kuyruğa ekleniyor...', 5);
+
+    console.log(`📦 Backend export başlatılıyor (queue)...`);
 
     try {
-      updateProgress('exporting', 'Sunucu tarafında sahne oluşturuluyor...', 30);
-
-      // Backend'e export isteği gönder (tüm iş sunucuda yapılır)
-      const result = await arSceneService.exportSceneForAR(
+      // 1. Job'ı kuyruğa ekle
+      const { jobId } = await arSceneService.startExport(
         token,
         options.sceneName || 'scene',
         convertToUsdz,
       );
+
+      console.log(`🔄 Job kuyruğa eklendi: ${jobId}`);
+      updateProgress('queued', 'Kuyrukta bekleniyor...', 10);
+
+      // 2. Polling ile durumu takip et
+      const result = await pollJobStatus(jobId);
 
       updateProgress('ready', 'Export tamamlandı!', 100);
 
@@ -82,9 +103,62 @@ export function useARExport() {
 
       return result;
     } catch (err) {
-      updateProgress('error', 'Export başarısız oldu.', 0);
+      stopPolling();
+      const msg = err instanceof Error ? err.message : String(err);
+      updateProgress('error', msg || 'Export başarısız oldu.', 0);
       throw err;
     }
+  };
+
+  /**
+   * Job durumunu polling ile takip eder.
+   * Tamamlanana veya hata olana kadar bekler.
+   */
+  const pollJobStatus = (jobId: string): Promise<SceneExportResponse> => {
+    const startTime = Date.now();
+
+    return new Promise((resolve, reject) => {
+      const poll = async () => {
+        try {
+          // Timeout kontrolü
+          if (Date.now() - startTime > POLL_TIMEOUT) {
+            reject(new Error('Export zaman aşımına uğradı. Lütfen tekrar deneyin.'));
+            return;
+          }
+
+          const status = await arSceneService.getExportStatus(jobId);
+
+          switch (status.status) {
+            case 'queued':
+              updateProgress('queued', status.progressMessage || 'Kuyrukta bekleniyor...', 10);
+              break;
+            case 'active': {
+              const progress = Math.max(15, Math.min(95, status.progress || 15));
+              const message = status.progressMessage || 'Sahne oluşturuluyor...';
+              updateProgress('exporting', message, progress);
+              break;
+            }
+            case 'completed':
+              if (status.result) {
+                resolve(status.result);
+                return;
+              }
+              reject(new Error('Export sonucu alınamadı.'));
+              return;
+            case 'failed':
+              reject(new Error(status.error || 'Export başarısız oldu.'));
+              return;
+          }
+
+          // Devam et
+          pollTimer = setTimeout(poll, POLL_INTERVAL);
+        } catch (err) {
+          reject(err);
+        }
+      };
+
+      poll();
+    });
   };
 
   /**
@@ -123,9 +197,6 @@ export function useARExport() {
     }
   };
 
-  /**
-   * iOS AR Quick Look'u USDZ URL ile açar
-   */
   const openARQuickLook = (usdzUrl: string, fileName: string) => {
     const link = document.createElement('a');
     link.setAttribute('rel', 'ar');
@@ -134,7 +205,6 @@ export function useARExport() {
 
     document.body.appendChild(link);
 
-    // AR Quick Look <a rel="ar"> linki için img child gerekli
     const img = document.createElement('img');
     link.appendChild(img);
 
@@ -142,9 +212,6 @@ export function useARExport() {
     document.body.removeChild(link);
   };
 
-  /**
-   * Android Google Scene Viewer ile GLB'yi AR olarak gösterir
-   */
   const openGoogleSceneViewer = (glbUrl: string, fileName: string) => {
     const encodedUrl = encodeURIComponent(glbUrl);
     const encodedTitle = encodeURIComponent(fileName);
@@ -158,10 +225,8 @@ export function useARExport() {
     document.body.removeChild(link);
   };
 
-  /**
-   * Export işlemini sıfırlar
-   */
   const resetExport = () => {
+    stopPolling();
     exportProgress.value = {
       status: 'idle',
       message: '',

@@ -10,7 +10,8 @@ import type {
   FloorTextureDto,
   CreateFloorTextureDto,
   ShareSceneResponse,
-  SceneExportResponse
+  ExportJobStartResponse,
+  ExportJobStatusResponse,
 } from "../modules/ar-scene/dto/arScene.dto";
 
 export const arSceneService = {
@@ -125,28 +126,30 @@ export const arSceneService = {
   },
 
   // =================================================================
-  // 5. SCENE EXPORT - Frontend GLB upload + Backend USDZ dönüşümü
+  // 5. SCENE EXPORT - Queue tabanlı backend export
   // =================================================================
 
   /**
-   * Backend'den sahneyi GLB olarak export etmesini ister.
-   * Backend Three.js ile sahneyi sıfırdan oluşturur, opsiyonel olarak USDZ'ye dönüştürür.
-   * Mobil cihazlardaki export yükünü tamamen sunucuya alır.
+   * Export işini kuyruğa ekler, jobId döner.
    */
-  async exportSceneForAR(
+  async startExport(
     token: string,
     sceneName: string,
     convertToUsdz: boolean = true,
-  ): Promise<SceneExportResponse> {
-    const params: any = { sceneName };
-    if (!convertToUsdz) params.convertToUsdz = 'false';
-
-    const res = await apiService.get<SceneExportResponse>(
+  ): Promise<ExportJobStartResponse> {
+    const res = await apiService.post<ExportJobStartResponse>(
       `/shared/ar-scene/${token}/export`,
-      {
-        params,
-        timeout: 120000, // 2dk timeout - sahne oluşturma + USDZ dönüşümü uzun sürebilir
-      },
+      { sceneName, convertToUsdz },
+    );
+    return res.data;
+  },
+
+  /**
+   * Export job durumunu sorgular (polling ile kullanılır).
+   */
+  async getExportStatus(jobId: string): Promise<ExportJobStatusResponse> {
+    const res = await apiService.get<ExportJobStatusResponse>(
+      `/shared/ar-scene/export/status/${jobId}`,
     );
     return res.data;
   },

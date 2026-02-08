@@ -251,3 +251,20 @@ export interface SceneExportResponse {
     usdz?: SceneExportFileInfo;
     usdzError?: string;
 }
+
+// 7. Export Job Queue
+export interface ExportJobStartResponse {
+    jobId: string;
+    message: string;
+}
+
+export interface ExportJobStatusResponse {
+    jobId: string;
+    status: 'queued' | 'active' | 'completed' | 'failed';
+    progress: number;
+    progressMessage?: string;
+    result?: SceneExportResponse;
+    error?: string;
+    createdAt?: number;
+    finishedAt?: number;
+}
